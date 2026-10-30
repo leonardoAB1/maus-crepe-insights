@@ -18,9 +18,10 @@ __pycache__/
 worktrees/
 
 # Personal agent notes
+AGENTS.local.md
 CLAUDE.local.md
 
-# Claude Code's own worktrees (not used here, see CLAUDE.md)
+# Worktrees created by agent tools outside the convention
 .claude/worktrees/
 
 # Pixi environments and tool caches

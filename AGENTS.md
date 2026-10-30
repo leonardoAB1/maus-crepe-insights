@@ -2,7 +2,9 @@
 
 This is the **canonical, tool-agnostic rulebook** for everyone working in this repo, human or AI
 agent (Claude Code, Codex, Cursor, and others). Codex and Cursor read `AGENTS.md` by default;
-Claude Code imports it from `CLAUDE.md`. Edit shared rules here, in one place.
+Claude Code imports it from `CLAUDE.md`. Edit shared rules here, in one place. Tool-specific
+files (`CLAUDE.md` and similar) only map these rules to that tool's features; they never add
+rules.
 
 BaselHack 2026 project on the Maus Robotics challenge: turning crêpe robot run data (phases, logs,
 vision checks with images, recipe parameters, video) into insight on why runs fail and what to
@@ -177,3 +179,19 @@ git pull
 ```
 
 (`-D` is needed because squash merges do not keep the branch commits in `main`.)
+
+## AI agents
+
+These apply to every agent tool (Claude Code, Codex, Cursor, and others).
+
+- Agents follow the Worktree convention for every change. Create worktrees with the
+  `git worktree add` command above, not with a tool's built-in worktree feature when that feature
+  puts them outside `worktrees/` or generates branch names that break `type/N-desc`
+- A sub-agent or parallel agent that edits code gets its own issue, branch and worktree before it
+  starts, and is told the worktree path. Never point two agents at the same worktree. Read-only
+  agents (search, review) need none
+- Bulk dashboard exports go through `pixi run export`, not through tool calls in a chat
+- Memory or notes recalled from earlier sessions are background only. Verify that any file,
+  function or flag they name still exists before acting on it
+- Personal, non-shared instructions go in a gitignored local file (`AGENTS.local.md`,
+  `CLAUDE.local.md` or your tool's equivalent), never in the shared rules
