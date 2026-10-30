@@ -5,7 +5,7 @@ Every run is logged with phases, machine logs, on-robot vision checks (with imag
 We turn that data into insight: why runs fail, which settings and conditions matter, and how to catch problems early.
 
 ## Team
-Leonardo Acha (leonardoAB1) · Qbyte248 · AetherDim · salarehman0 · Timon Tscheulin
+Leonardo Acha (leonardoAB1) · Qbyte248 · AetherDim · salarehman · Timon Tscheulin (timonTscheulin) · WhyAge36
 
 ## Repo layout (BaselHack template)
 ```
