@@ -20,6 +20,9 @@ worktrees/
 # Personal agent notes
 CLAUDE.local.md
 
+# Claude Code's own worktrees (not used here, see CLAUDE.md)
+.claude/worktrees/
+
 # Pixi environments and tool caches
 .pixi/
 .ruff_cache/

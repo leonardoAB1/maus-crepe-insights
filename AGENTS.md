@@ -92,8 +92,8 @@ worktrees/         # git worktrees, gitignored
 **Everything goes through pull requests.** No direct pushes to `main`, for anyone.
 
 1. Open (or pick) a GitHub issue describing the change
-2. Create a branch named `type/issueNumber-short-description` (e.g. `feat/3-failure-model`,
-   `fix/7-token-refresh`) in its own worktree (see below)
+2. Create a fresh branch named `type/issueNumber-short-description` (e.g. `feat/3-failure-model`,
+   `fix/7-token-refresh`) in a new worktree of its own (see Worktree convention)
 3. Commit in small logical steps using Conventional Commits
 4. Push and open a PR that references the issue (`Closes #N`). Fill in what changed, why, and how
    it was tested (offline tests, live dashboard run, or both)
@@ -128,8 +128,15 @@ test: cover mcap round trip with synthetic run
 
 ## Worktree convention
 
-Every non-trivial change is developed in a dedicated git worktree so branches never share a dirty
-working tree.
+**One PR = one issue = one branch = one worktree.** This applies to humans and agents alike.
+
+- Every change, however small, is made on a fresh branch in its own worktree under `worktrees/`
+- Never edit, commit or switch branches in the main repo folder. It stays on `main` and is only used
+  to pull and to create or remove worktrees
+- Never reuse a worktree or branch for a second PR. Start a new one from an up-to-date `main`
+- Never share a worktree between two agents or people working at the same time. Parallel work
+  means parallel worktrees
+- Do not touch another agent's or person's worktree unless asked
 
 Worktrees live in a gitignored `worktrees/` folder at the repo root. One folder per branch type,
 and inside it the branch leaf (the part after `type/`). Branch `feat/5-dashboard` checks out at
@@ -147,18 +154,26 @@ maus-crepe-insights/worktrees/ <- gitignored
 Create (always from the main repo folder, never from inside another worktree):
 
 ```
-git switch main && git pull
+git pull
 git worktree add -b feat/5-dashboard worktrees/feat/5-dashboard main
+```
+
+For a stacked PR, branch from the parent PR's branch instead of `main`:
+
+```
+git fetch
+git worktree add -b feat/6-dashboard-export worktrees/feat/6-dashboard-export origin/feat/5-dashboard
 ```
 
 Each worktree has its own `code/.pixi/`; run `pixi install` in `code/` inside it. `data/` is per
 worktree too; point `maus-export --data-dir` at the main folder's `data/` to share one export.
 
-Remove after the PR is merged:
+Remove after the PR is merged (GitHub already deleted the remote branch), then update `main`:
 
 ```
 git worktree remove worktrees/feat/5-dashboard
 git branch -D feat/5-dashboard
+git pull
 ```
 
 (`-D` is needed because squash merges do not keep the branch commits in `main`.)
