@@ -1,0 +1,15 @@
+# Exported Maus data stays local (company data, repo is public)
+data/
+*.mcap
+*.parquet
+*.mp4
+
+# Secrets / tokens
+.env
+.maus-export/
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
