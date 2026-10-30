@@ -1,4 +1,4 @@
-# Maus Crêpe Insights – BaselHack 2026
+# Maus Crêpe Insights - BaselHack 2026
 
 Our BaselHack 2026 project on the **Maus Robotics** challenge. Maus builds autonomous crêpe robots.
 Every run is logged with phases, machine logs, on-robot vision checks (with images), recipe parameters and video.
@@ -53,4 +53,4 @@ Tests: `uv run pytest`
 - [MCAP topics & schemas](documentation/mcap.md)
 
 ## License
-MIT – see [license.txt](license.txt).
+MIT - see [license.txt](license.txt).
