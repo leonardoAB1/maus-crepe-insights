@@ -1,10 +1,12 @@
 # maus-crepe-insights
 
-This is the **canonical, tool-agnostic rulebook** for everyone working in this repo, human or AI
-agent (Claude Code, Codex, Cursor, and others). Codex and Cursor read `AGENTS.md` by default;
-Claude Code imports it from `CLAUDE.md`. Edit shared rules here, in one place. Tool-specific
-files (`CLAUDE.md` and similar) only map these rules to that tool's features; they never add
-rules.
+This is the **single rulebook** for everyone working in this repo, human or AI agent, whatever
+tool they use. Edit rules here, in one place.
+
+- Tools that read `AGENTS.md` natively need nothing else
+- Tools that don't get a thin **pointer file** at the repo root that only loads this file and may
+  map rules to that tool's feature names. A pointer file never adds rules. Current pointer files:
+  `CLAUDE.md`
 
 BaselHack 2026 project on the Maus Robotics challenge: turning crêpe robot run data (phases, logs,
 vision checks with images, recipe parameters, video) into insight on why runs fail and what to
@@ -182,7 +184,7 @@ git pull
 
 ## AI agents
 
-These apply to every agent tool (Claude Code, Codex, Cursor, and others).
+These apply to every agent, whatever tool runs it.
 
 - Agents follow the Worktree convention for every change. Create worktrees with the
   `git worktree add` command above, not with a tool's built-in worktree feature when that feature
@@ -193,5 +195,8 @@ These apply to every agent tool (Claude Code, Codex, Cursor, and others).
 - Bulk dashboard exports go through `pixi run export`, not through tool calls in a chat
 - Memory or notes recalled from earlier sessions are background only. Verify that any file,
   function or flag they name still exists before acting on it
-- Personal, non-shared instructions go in a gitignored local file (`AGENTS.local.md`,
-  `CLAUDE.local.md` or your tool's equivalent), never in the shared rules
+- Personal, non-shared instructions go in a gitignored `*.local.md` file (e.g.
+  `AGENTS.local.md`), never in the shared rules
+- **Adding a tool:** if it does not read `AGENTS.md` natively, add its pointer file (loads
+  `AGENTS.md`, maps tool-specific feature names only) and gitignore any worktree folder it creates
+  outside `worktrees/`. Do it in a PR like any other change

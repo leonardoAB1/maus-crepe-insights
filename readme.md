@@ -48,6 +48,9 @@ Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
 - **Models → [ONNX](https://onnx.ai)**. Train with any framework, ship `.onnx` and run it with `onnxruntime`.
   See [code/models/README.md](code/models/README.md). Use the pixi `ml` environment: `pixi run -e ml ...`.
 
+## Contributing
+Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
+
 ## Documentation
 - [What data the dashboard has](documentation/data.md)
 - [MCAP topics & schemas](documentation/mcap.md)

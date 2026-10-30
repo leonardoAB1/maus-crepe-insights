@@ -17,11 +17,10 @@ __pycache__/
 # Git worktrees (one per branch, see AGENTS.md)
 worktrees/
 
-# Personal agent notes
-AGENTS.local.md
-CLAUDE.local.md
+# Personal agent notes (any tool)
+*.local.md
 
-# Worktrees created by agent tools outside the convention
+# Worktree folders created by agent tools (outside the convention)
 .claude/worktrees/
 
 # Pixi environments and tool caches
