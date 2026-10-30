@@ -97,8 +97,12 @@ worktrees/         # git worktrees, gitignored
 3. Commit in small logical steps using Conventional Commits
 4. Push and open a PR that references the issue (`Closes #N`). Fill in what changed, why, and how
    it was tested (offline tests, live dashboard run, or both)
-5. At least one teammate reviews. Ruff and pytest must pass
-6. **Squash merge** into `main` (the only merge strategy). Delete the branch after merge
+5. Reviews are encouraged but not required during the hackathon (0 approvals). Ruff and pytest
+   must pass before merging
+6. **Squash merge** into `main` (the only merge strategy). GitHub deletes the branch after merge
+
+The `main` branch is protected by the "protect main" ruleset: no force pushes, no deletion,
+changes only through PRs, squash merge only. The repo admin can bypass it for emergencies.
 
 Stacked PRs (a branch based on another open PR) are fine when changes depend on each other. Say so
 in the PR description and merge in order.
