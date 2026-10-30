@@ -19,17 +19,26 @@ run with `onnxruntime`.
 ```python
 # scikit-learn
 from skl2onnx import to_onnx
+
 onx = to_onnx(clf, X_train[:1].astype("float32"), target_opset=17)
 open("models/<name>/model.onnx", "wb").write(onx.SerializeToString())
 
 # PyTorch
-torch.onnx.export(net, sample, "models/<name>/model.onnx", input_names=["x"], output_names=["y"],
-                  dynamic_axes={"x": {0: "batch"}}, opset_version=17)
+torch.onnx.export(
+    net,
+    sample,
+    "models/<name>/model.onnx",
+    input_names=["x"],
+    output_names=["y"],
+    dynamic_axes={"x": {0: "batch"}},
+    opset_version=17,
+)
 ```
 
 ```python
 # Inference
 import onnxruntime as ort
+
 sess = ort.InferenceSession("models/<name>/model.onnx")
 pred = sess.run(None, {"x": X.astype("float32")})[0]
 ```
