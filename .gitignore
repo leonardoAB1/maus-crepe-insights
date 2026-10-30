@@ -13,3 +13,9 @@ data/
 __pycache__/
 *.egg-info/
 .pytest_cache/
+
+# Git worktrees (one per branch, see AGENTS.md)
+worktrees/
+
+# Personal agent notes
+CLAUDE.local.md
