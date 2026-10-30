@@ -14,11 +14,17 @@ change.
 
 ## Stack
 
-- **Language:** Python (>= 3.11, pinned to 3.12 in `code/.python-version`)
-- **Package manager:** uv only (`uv sync`, `uv run`, `uv add`) - never pip. Run it from `code/`.
-  Commit `code/uv.lock` with every dependency change
-- **Lint and format:** ruff (`uv run ruff check .`, `uv run ruff format .`)
-- **Tests:** pytest (`uv run pytest`)
+- **Language:** Python 3.12 (pinned in the pixi manifest)
+- **Package manager:** pixi only (`pixi install`, `pixi run`, `pixi add`) - never pip, conda or
+  plain uv. Run it from `code/`; the manifest is the `[tool.pixi.*]` section of
+  `code/pyproject.toml`. Prefer conda-forge (`pixi add <pkg>`); use PyPI (`pixi add --pypi <pkg>`)
+  only when a package is not on conda-forge. Commit `code/pixi.lock` with every dependency change
+- **Environments:** `default` (runtime + dev tools) and `ml` (adds scikit-learn, onnx,
+  onnxruntime, skl2onnx; use `pixi run -e ml ...`)
+- **Tasks:** `pixi run fetch | mcap | table | export`, `pixi run test`, `pixi run lint`,
+  `pixi run fmt`
+- **Lint and format:** ruff (`pixi run lint`, `pixi run fmt`)
+- **Tests:** pytest (`pixi run test`)
 - **Build backend:** hatchling (`code/pyproject.toml`)
 - **Dashboard access:** MCP over HTTP at `https://dash.mausrobotics.com/mcp` (protocol
   2026-07-28, OAuth with PKCE). See `code/maus_export/client.py`
@@ -141,7 +147,7 @@ git switch main && git pull
 git worktree add -b feat/5-dashboard worktrees/feat/5-dashboard main
 ```
 
-Each worktree has its own `code/.venv`; run `uv sync` in `code/` inside it. `data/` is per
+Each worktree has its own `code/.pixi/`; run `pixi install` in `code/` inside it. `data/` is per
 worktree too; point `maus-export --data-dir` at the main folder's `data/` to share one export.
 
 Remove after the PR is merged:
