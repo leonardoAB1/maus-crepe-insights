@@ -20,8 +20,6 @@ from urllib.parse import parse_qs, urlparse
 import anyio
 import httpx2
 from mcp.client.auth import OAuthClientProvider
-from mcp.client.session import ClientSession
-from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.auth import (
     AuthorizationCodeResult,
     OAuthClientInformationFull,
@@ -43,7 +41,7 @@ class FileTokenStorage:
 
     def _load(self) -> dict[str, Any]:
         try:
-            return json.loads(self.path.read_text())
+            return json.loads(self.path.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
@@ -51,7 +49,7 @@ class FileTokenStorage:
         data = self._load()
         data[key] = value
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(data, indent=2))
+        self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     async def get_tokens(self) -> OAuthToken | None:
         raw = self._load().get("tokens")
@@ -132,32 +130,68 @@ def _http_client(storage: FileTokenStorage) -> httpx2.AsyncClient:
     return httpx2.AsyncClient(auth=auth, timeout=timeout)
 
 
-class MausClient:
-    """Thin wrapper: call a dashboard tool and get its JSON result back."""
+PROTOCOL_VERSION = "2026-07-28"
 
-    def __init__(self, session: ClientSession, storage: FileTokenStorage):
-        self.session = session
+
+class MausClient:
+    """Calls dashboard tools over MCP streamable HTTP (stateless 2026-07-28 protocol).
+
+    We speak JSON-RPC directly instead of using the SDK session: the SDK's strict result
+    validation rejects this server's tools/list (missing cacheScope/ttlMs). The SDK's
+    OAuth provider still handles sign-in and token refresh on the HTTP client.
+    """
+
+    def __init__(self, http: httpx2.AsyncClient, storage: FileTokenStorage):
+        self.http = http
         self.storage = storage
+        self._id = 0
 
     async def call(self, tool: str, **args: Any) -> Any:
-        res = await self.session.call_tool(tool, {k: v for k, v in args.items() if v is not None})
-        if getattr(res, "is_error", False):
-            text = " ".join(getattr(c, "text", "") for c in res.content)
-            raise RuntimeError(f"{tool} failed: {text}")
-        if res.structured_content is not None:
-            return res.structured_content
-        text = "".join(getattr(c, "text", "") for c in res.content)
-        return json.loads(text)
+        self._id += 1
+        body = {
+            "jsonrpc": "2.0",
+            "id": self._id,
+            "method": "tools/call",
+            "params": {
+                "name": tool,
+                "arguments": {k: v for k, v in args.items() if v is not None},
+                "_meta": {"io.modelcontextprotocol/protocolVersion": PROTOCOL_VERSION},
+            },
+        }
+        headers = {
+            "Accept": "application/json, text/event-stream",
+            "MCP-Protocol-Version": PROTOCOL_VERSION,
+            "Mcp-Method": "tools/call",
+            "Mcp-Name": tool,
+        }
+        r = await self.http.post(SERVER_URL, json=body, headers=headers)
+        msg = _parse_rpc(r.text, r.headers.get("content-type", ""))
+        if "error" in msg:
+            raise RuntimeError(f"{tool} failed: {msg['error']}")
+        res = msg["result"]
+        if res.get("isError"):
+            raise RuntimeError(f"{tool} failed: {res.get('content')}")
+        if res.get("structuredContent") is not None:
+            return res["structuredContent"]
+        return json.loads("".join(c.get("text", "") for c in res.get("content", [])))
 
     def bearer_token(self) -> str | None:
         return os.environ.get("MAUS_TOKEN") or self.storage.access_token()
+
+
+def _parse_rpc(text: str, content_type: str) -> dict[str, Any]:
+    if "text/event-stream" in content_type:
+        for line in text.splitlines():
+            if line.startswith("data:"):
+                msg = json.loads(line[5:].strip())
+                if "result" in msg or "error" in msg:
+                    return msg
+        raise RuntimeError("no JSON-RPC response in event stream")
+    return json.loads(text)
 
 
 @asynccontextmanager
 async def connect() -> AsyncIterator[MausClient]:
     storage = FileTokenStorage()
     async with _http_client(storage) as http:
-        async with streamable_http_client(SERVER_URL, http_client=http) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                yield MausClient(session, storage)
+        yield MausClient(http, storage)

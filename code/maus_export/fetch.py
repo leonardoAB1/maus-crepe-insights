@@ -59,7 +59,7 @@ async def fetch(
 
     async with connect() as client:
         robots = await client.call("robot_list")
-        (data_dir / "raw" / "robots.json").write_text(json.dumps(robots, indent=2))
+        (data_dir / "raw" / "robots.json").write_text(json.dumps(robots, indent=2), encoding="utf-8")
 
         ids = await list_run_ids(client, date_from, date_to, hide_tests)
         if limit:
@@ -78,10 +78,10 @@ async def fetch(
                 async with sem:
                     path = runs_dir / f"{run_id}.json"
                     if path.exists() and not refresh:
-                        run = json.loads(path.read_text())
+                        run = json.loads(path.read_text(encoding="utf-8"))
                     else:
                         run = await client.call("crepe_get", id=run_id)
-                        path.write_text(json.dumps(run, ensure_ascii=False))
+                        path.write_text(json.dumps(run, ensure_ascii=False), encoding="utf-8")
                     if media:
                         for name, url in (run.get("checkImageUrls") or {}).items():
                             await _download(http, url, media_dir / str(run_id) / name)
