@@ -3,10 +3,9 @@
 This is the **single rulebook** for everyone working in this repo, human or AI agent, whatever
 tool they use. Edit rules here, in one place.
 
-- Tools that read `AGENTS.md` natively need nothing else
-- Tools that don't get a thin **pointer file** at the repo root that only loads this file and may
-  map rules to that tool's feature names. A pointer file never adds rules. Current pointer files:
-  `CLAUDE.md`
+- Agent tools are expected to read this file natively. Keep your tool up to date
+- If a tool can't, configure it locally to load `AGENTS.md` (a setting or a gitignored local
+  file). Do not add per-tool rule files to the repo
 
 BaselHack 2026 project on the Maus Robotics challenge: turning crêpe robot run data (phases, logs,
 vision checks with images, recipe parameters, video) into insight on why runs fail and what to
@@ -195,8 +194,8 @@ These apply to every agent, whatever tool runs it.
 - Bulk dashboard exports go through `pixi run export`, not through tool calls in a chat
 - Memory or notes recalled from earlier sessions are background only. Verify that any file,
   function or flag they name still exists before acting on it
-- Personal, non-shared instructions go in a gitignored `*.local.md` file (e.g.
-  `AGENTS.local.md`), never in the shared rules
-- **Adding a tool:** if it does not read `AGENTS.md` natively, add its pointer file (loads
-  `AGENTS.md`, maps tool-specific feature names only) and gitignore any worktree folder it creates
-  outside `worktrees/`. Do it in a PR like any other change
+- Personal, non-shared instructions go in `AGENTS.local.md` (gitignored), never in the shared
+  rules. Do not create a tool-specific project instructions file (such as `CLAUDE.md` or
+  `CLAUDE.local.md`): some tools stop reading `AGENTS.md` when one exists
+- **Adding a tool:** check that it reads `AGENTS.md` (or configure it locally to do so), and
+  gitignore any worktree folder it creates outside `worktrees/` in a PR like any other change
