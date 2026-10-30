@@ -43,4 +43,4 @@ sess = ort.InferenceSession("models/<name>/model.onnx")
 pred = sess.run(None, {"x": X.astype("float32")})[0]
 ```
 
-Install the ML extras with `uv sync --extra ml`.
+The ML stack lives in the pixi `ml` environment: `pixi run -e ml python train.py`.
