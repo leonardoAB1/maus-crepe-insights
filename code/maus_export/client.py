@@ -1,7 +1,8 @@
 """MCP client for the Maus dashboard (https://dash.mausrobotics.com/mcp).
 
 Auth: OAuth 2.1 with dynamic client registration + PKCE. The first run opens a
-browser to sign in; tokens are cached in ~/.maus-export/auth.json (outside the repo).
+browser to sign in; tokens are cached in ~/.maus-export/auth.json
+(outside the repo).
 Set MAUS_TOKEN to skip the browser flow and use a bearer token directly.
 """
 
@@ -11,10 +12,11 @@ import json
 import os
 import threading
 import webbrowser
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import anyio
@@ -62,15 +64,19 @@ class FileTokenStorage:
         raw = self._load().get("client")
         return OAuthClientInformationFull.model_validate(raw) if raw else None
 
-    async def set_client_info(self, client_info: OAuthClientInformationFull) -> None:
-        self._save("client", client_info.model_dump(mode="json", exclude_none=True))
+    async def set_client_info(
+        self, client_info: OAuthClientInformationFull
+    ) -> None:
+        self._save(
+            "client", client_info.model_dump(mode="json", exclude_none=True)
+        )
 
     def access_token(self) -> str | None:
         return (self._load().get("tokens") or {}).get("access_token")
 
 
 def _wait_for_callback() -> AuthorizationCodeResult:
-    """Run a one-shot local HTTP server and return the ?code=&state= it receives."""
+    """One-shot local HTTP server; returns the ?code=&state= it gets."""
     result: dict[str, str] = {}
 
     class Handler(BaseHTTPRequestHandler):
@@ -78,7 +84,7 @@ def _wait_for_callback() -> AuthorizationCodeResult:
             qs = parse_qs(urlparse(self.path).query)
             if "code" in qs:
                 result.update({k: v[0] for k, v in qs.items()})
-                body = b"<h2>Signed in to the Maus dashboard. You can close this tab.</h2>"
+                body = b"<h2>Signed in. You can close this tab.</h2>"
                 self.send_response(200)
             else:
                 body = b"Missing code"
@@ -96,7 +102,9 @@ def _wait_for_callback() -> AuthorizationCodeResult:
             server.handle_request()
     finally:
         server.server_close()
-    return AuthorizationCodeResult(code=result["code"], state=result.get("state"), iss=result.get("iss"))
+    return AuthorizationCodeResult(
+        code=result["code"], state=result.get("state"), iss=result.get("iss")
+    )
 
 
 async def _redirect_handler(url: str) -> None:
@@ -112,7 +120,9 @@ def _http_client(storage: FileTokenStorage) -> httpx2.AsyncClient:
     timeout = httpx2.Timeout(60.0, read=300.0)
     token = os.environ.get("MAUS_TOKEN")
     if token:
-        return httpx2.AsyncClient(headers={"Authorization": f"Bearer {token}"}, timeout=timeout)
+        return httpx2.AsyncClient(
+            headers={"Authorization": f"Bearer {token}"}, timeout=timeout
+        )
     auth = OAuthClientProvider(
         server_url=SERVER_URL,
         client_metadata=OAuthClientMetadata(
@@ -134,10 +144,11 @@ PROTOCOL_VERSION = "2026-07-28"
 
 
 class MausClient:
-    """Calls dashboard tools over MCP streamable HTTP (stateless 2026-07-28 protocol).
+    """Calls dashboard tools over MCP streamable HTTP (protocol 2026-07-28).
 
-    We speak JSON-RPC directly instead of using the SDK session: the SDK's strict result
-    validation rejects this server's tools/list (missing cacheScope/ttlMs). The SDK's
+    We speak JSON-RPC directly instead of using the SDK session: the SDK's
+    strict result validation rejects this server's tools/list (missing
+    cacheScope/ttlMs). The SDK's
     OAuth provider still handles sign-in and token refresh on the HTTP client.
     """
 
@@ -155,7 +166,9 @@ class MausClient:
             "params": {
                 "name": tool,
                 "arguments": {k: v for k, v in args.items() if v is not None},
-                "_meta": {"io.modelcontextprotocol/protocolVersion": PROTOCOL_VERSION},
+                "_meta": {
+                    "io.modelcontextprotocol/protocolVersion": PROTOCOL_VERSION
+                },
             },
         }
         headers = {
@@ -173,7 +186,9 @@ class MausClient:
             raise RuntimeError(f"{tool} failed: {res.get('content')}")
         if res.get("structuredContent") is not None:
             return res["structuredContent"]
-        return json.loads("".join(c.get("text", "") for c in res.get("content", [])))
+        return json.loads(
+            "".join(c.get("text", "") for c in res.get("content", []))
+        )
 
     def bearer_token(self) -> str | None:
         return os.environ.get("MAUS_TOKEN") or self.storage.access_token()

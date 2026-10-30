@@ -1,4 +1,4 @@
-"""Download crêpe runs (and optionally their check images / videos) as raw JSON."""
+"""Download crêpe runs (optionally check images and videos) as raw JSON."""
 
 from __future__ import annotations
 
@@ -10,18 +10,24 @@ import httpx2
 
 from .client import MausClient, connect
 
-# The account's visible window on the dashboard (runs outside it are not returned).
+# The account's visible window on the dashboard (nothing outside it).
 DEFAULT_FROM = "2026-08-30"
 DEFAULT_TO = "2026-12-30"
 PAGE = 500
 
 
-async def list_run_ids(client: MausClient, date_from: str, date_to: str, hide_tests: bool) -> list[int]:
+async def list_run_ids(
+    client: MausClient, date_from: str, date_to: str, hide_tests: bool
+) -> list[int]:
     ids: list[int] = []
     offset = 0
     while True:
         page = await client.call(
-            "crepe_list", **{"from": date_from, "to": date_to}, limit=PAGE, offset=offset, hideTests=hide_tests
+            "crepe_list",
+            **{"from": date_from, "to": date_to},
+            limit=PAGE,
+            offset=offset,
+            hideTests=hide_tests,
         )
         items = page.get("items", [])
         ids += [it["id"] for it in items]
@@ -59,7 +65,9 @@ async def fetch(
 
     async with connect() as client:
         robots = await client.call("robot_list")
-        (data_dir / "raw" / "robots.json").write_text(json.dumps(robots, indent=2), encoding="utf-8")
+        (data_dir / "raw" / "robots.json").write_text(
+            json.dumps(robots, indent=2), encoding="utf-8"
+        )
 
         ids = await list_run_ids(client, date_from, date_to, hide_tests)
         if limit:
@@ -71,7 +79,9 @@ async def fetch(
         sem = anyio.Semaphore(concurrency)
         done = 0
 
-        async with httpx2.AsyncClient(headers=headers, timeout=120.0, follow_redirects=True) as http:
+        async with httpx2.AsyncClient(
+            headers=headers, timeout=120.0, follow_redirects=True
+        ) as http:
 
             async def one(run_id: int) -> None:
                 nonlocal done
@@ -81,12 +91,23 @@ async def fetch(
                         run = json.loads(path.read_text(encoding="utf-8"))
                     else:
                         run = await client.call("crepe_get", id=run_id)
-                        path.write_text(json.dumps(run, ensure_ascii=False), encoding="utf-8")
+                        path.write_text(
+                            json.dumps(run, ensure_ascii=False),
+                            encoding="utf-8",
+                        )
                     if media:
-                        for name, url in (run.get("checkImageUrls") or {}).items():
-                            await _download(http, url, media_dir / str(run_id) / name)
+                        for name, url in (
+                            run.get("checkImageUrls") or {}
+                        ).items():
+                            await _download(
+                                http, url, media_dir / str(run_id) / name
+                            )
                     if video and run.get("videoUrl"):
-                        await _download(http, run["videoUrl"], media_dir / str(run_id) / "video.mp4")
+                        await _download(
+                            http,
+                            run["videoUrl"],
+                            media_dir / str(run_id) / "video.mp4",
+                        )
                     done += 1
                     if done % 25 == 0 or done == len(ids):
                         print(f"  {done}/{len(ids)}")
