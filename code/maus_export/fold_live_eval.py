@@ -79,12 +79,18 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
         )
     ]
     rows = []
+    run_medians: list[float] = []
     for group, item in selected:
         run_id = item["id"]
         live = root / "live" / str(run_id)
         if not live.exists():
             analyse_video(data_dir, run_id)
         timeline = pd.read_csv(live / "timeline.csv")
+        if (
+            "inference_ms" in timeline
+            and timeline["inference_ms"].notna().any()
+        ):
+            run_medians.append(float(timeline["inference_ms"].median()))
         run = json.loads(
             (data_dir / "raw" / "runs" / f"{run_id}.json").read_text()
         )
@@ -122,6 +128,11 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
             f"{correct / len(subset):.1%}" if len(subset) else "not available"
         )
         lines.append(f"- {group}: {value} ({correct}/{len(subset)} checks)")
+    if run_medians:
+        lines.append(
+            f"- Median of per-run median inference times: "
+            f"{pd.Series(run_medians).median():.1f} ms/frame."
+        )
     lines.extend(
         ["", "Checks beyond the video are excluded from agreement.", ""]
     )

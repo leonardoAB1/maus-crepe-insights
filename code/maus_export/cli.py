@@ -69,6 +69,7 @@ def main() -> None:
         ("fold-segment", "segment fold check frames"),
         ("fold-eval", "evaluate fold segmentation"),
         ("fold-live-eval", "evaluate sampled live videos"),
+        ("fold-review", "create a private contact sheet"),
     ):
         fold_command = sub.add_parser(name, help=help_text)
         fold_command.add_argument(
@@ -179,6 +180,10 @@ def main() -> None:
         from .fold_live_eval import evaluate_live
 
         print(evaluate_live(data_dir))
+    if args.cmd == "fold-review":
+        from .fold_review import contact_sheet
+
+        print(f"Review frames: {contact_sheet(data_dir)}")
     if args.cmd == "fold-dashboard":
         from .fold_dashboard import serve_dashboard
 

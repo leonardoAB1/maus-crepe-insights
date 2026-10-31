@@ -163,6 +163,11 @@ def analyse_video(data_dir: Path, run_id: int) -> dict[str, float | int]:
                 out.writeheader()
                 out.writerows(rows)
             _timeline_plot(stage / "timeline.png", rows, events)
+            (stage / "summary.json").write_text(
+                json.dumps(
+                    {"frames": len(rows), "median_ms": float(np.median(times))}
+                )
+            )
             shutil.move(str(stage), str(destination))
         return {"frames": len(rows), "median_ms": float(np.median(times))}
     finally:
