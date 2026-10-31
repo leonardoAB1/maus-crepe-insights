@@ -111,7 +111,9 @@ worktrees/         # git worktrees, gitignored
 6. **Squash merge** into `main` (the only merge strategy). GitHub deletes the branch after merge
 
 The `main` branch is protected by the "protect main" ruleset: no force pushes, no deletion,
-changes only through PRs, squash merge only. The repo admin can bypass it for emergencies.
+changes only through PRs, squash merge only. Collaborators with write access can bypass it when
+merging a PR (for example when CI is red); direct pushes to `main` stay blocked.
+The repo admin can bypass it fully for emergencies.
 
 Stacked PRs (a branch based on another open PR) are fine when changes depend on each other. Say so
 in the PR description and merge in order.
