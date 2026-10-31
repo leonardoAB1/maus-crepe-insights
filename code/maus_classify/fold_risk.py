@@ -18,7 +18,6 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from .check_verdict import embedding_columns
-from .split import TEST
 
 SPREAD = "spread"
 FOLDS = ("fold1", "fold2")
@@ -52,6 +51,44 @@ def fold_target(frames: pd.DataFrame) -> pd.Series:
     return (~folds["ok"].astype(bool)).groupby(folds["run_id"]).any()
 
 
+RESIDUE_ERRORS = frozenset({"batter left on the plate"})
+SHAPE_ERRORS = frozenset(
+    {"not a half fold", "not a quarter fold", "wrong fold shape"}
+)
+# Without a crepe the fold check cannot say anything about residue or shape
+NO_CREPE = "no crepe detected"
+MECHANISMS = {
+    "any": "fail_any",
+    "residue": "fail_residue",
+    "shape": "fail_shape",
+}
+
+
+def fold_mechanisms(frames: pd.DataFrame) -> pd.DataFrame:
+    """Run id -> `fail_any`, `fail_residue` and `fail_shape` (1.0 / 0.0) over
+    all fold1 and fold2 attempts. Residue and shape are NaN for runs where a
+    fold check saw no crepe. Runs without a fold check are absent."""
+    folds = frames[frames["check"].isin(FOLDS)]
+    rows = {}
+    for run_id, g in folds.groupby("run_id"):
+        errors = {
+            " ".join(str(e).lower().split()) for es in g["errors"] for e in es
+        }
+        no_crepe = NO_CREPE in errors
+        rows[run_id] = {
+            "fail_any": float((~g["ok"].astype(bool)).any()),
+            "fail_residue": math.nan
+            if no_crepe
+            else float(bool(errors & RESIDUE_ERRORS)),
+            "fail_shape": math.nan
+            if no_crepe
+            else float(bool(errors & SHAPE_ERRORS)),
+        }
+    return pd.DataFrame.from_dict(
+        rows, orient="index", columns=list(MECHANISMS.values())
+    )
+
+
 def last_spread(frames: pd.DataFrame) -> pd.DataFrame:
     """The last spread attempt of each run, indexed by run id."""
     spread = frames[(frames["check"] == SPREAD) & frames["is_last_attempt"]]
@@ -64,15 +101,16 @@ def fold_risk_table(
     embeddings: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Model rows indexed by run id: score features, `spread_ok`, optional
-    embedding columns, `fold_fail`, `label`, `split`, `robot` and `ts_utc`.
-    Runs
-    missing a target or any score are dropped."""
+    embedding columns, `fold_fail`, the `fail_*` mechanism targets, `label`,
+    `split`, `robot` and `ts_utc`. Runs missing a target or any score are
+    dropped."""
     spread = last_spread(frames)
     scores = vision.set_index("id")[[VISION_PREFIX + f for f in SCORE_FEATURES]]
     scores.columns = SCORE_FEATURES
     cols = ["ok", "split", "ts_utc", "robot", "check", "attempt"]
     table = spread[cols].join(scores, how="inner")
     table = table.join(fold_target(frames).rename("fold_fail"), how="inner")
+    table = table.join(fold_mechanisms(frames), how="left")
     table[VERDICT_FEATURE] = table.pop("ok").astype(float)
     if embeddings is not None:
         emb = embeddings.set_index(["run_id", "check", "attempt"])
@@ -175,36 +213,6 @@ def lift_report(
         )
         out[k] = {"value": v, "ci": ci}
     return out
-
-
-def verdict_baseline(table: pd.DataFrame) -> np.ndarray:
-    """Holdout risk from the robot's spread verdict alone: the train fail
-    rate among runs with the same verdict."""
-    train = table[table["split"] != TEST]
-    rate = train.groupby(VERDICT_FEATURE)["fold_fail"].mean()
-    test = table[table["split"] == TEST]
-    fallback = train["fold_fail"].mean()
-    return test[VERDICT_FEATURE].map(rate).fillna(fallback).to_numpy(float)
-
-
-def robot_breakdown(table: pd.DataFrame) -> list[dict[str, Any]]:
-    """Runs and fold-fail rate per split and robot. Robots are relabelled
-    A, B, ... by train run count, so the card holds no machine names."""
-    train = table[table["split"] != TEST]
-    order = list(train["robot"].value_counts().index)
-    order += [r for r in table["robot"].unique() if r not in order]
-    names = {r: chr(ord("A") + i) for i, r in enumerate(order)}
-    rows = []
-    for (split, robot), g in table.groupby(["split", "robot"]):
-        rows.append(
-            {
-                "split": split,
-                "robot": names[robot],
-                "n_runs": len(g),
-                "fold_fail_rate": float(g["fold_fail"].mean()),
-            }
-        )
-    return sorted(rows, key=lambda r: (r["split"], r["robot"]))
 
 
 def signal_verdict(report: dict[str, Any]) -> str:
