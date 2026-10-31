@@ -171,6 +171,7 @@ def test_as_dict_leaves_out_the_masks() -> None:
     assert json.dumps(payload)  # serialisable without numpy
     assert "material" in layer_fields()
 
+
 def test_layer_json_reports_mask_areas() -> None:
     mask = np.zeros((10, 20), dtype=bool)
     mask[0:2, 0:5] = True
