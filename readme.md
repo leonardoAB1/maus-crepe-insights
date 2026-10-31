@@ -190,6 +190,10 @@ Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
 Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
 See [documentation/analysis.md](documentation/analysis.md).
 
+Designed experiment for Maus: `pixi run doe --robot <robot>` writes a run sheet to `data/doe/`,
+`pixi run -e ml doe-analyze <sheet>` reads it back once the runs are done.
+See [documentation/doe.md](documentation/doe.md).
+
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
 
 **VS Code.** Run `pixi install -e ml` in `code/`, open the repo folder (or a worktree folder) and
@@ -213,6 +217,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Robot system](documentation/system.md)
 - [Crêpe stages and where runs fail](documentation/crepe-stages.md)
 - [Which settings matter (history analysis)](documentation/analysis.md)
+- [Designed experiment (DoE batch)](documentation/doe.md)
 - [Data pipeline and data model](documentation/pipeline.md)
 - [Candidate run-start training dataset](documentation/training-dataset.md)
 
