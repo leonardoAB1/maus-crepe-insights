@@ -1,0 +1,100 @@
+{
+  "name": "frame-embedder",
+  "description": "Frozen ImageNet MobileNetV3-Small; one 576-d embedding per raw check frame for small classifier heads",
+  "backbone": "torchvision.models.mobilenet_v3_small",
+  "weights": "MobileNet_V3_Small_Weights.IMAGENET1K_V1",
+  "trainable": false,
+  "inputs": [
+    {
+      "name": "x",
+      "dtype": "float32",
+      "shape": [
+        null,
+        3,
+        224,
+        224
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "y",
+      "dtype": "float32",
+      "shape": [
+        null,
+        576
+      ]
+    }
+  ],
+  "embedding_dim": 576,
+  "opset": 17,
+  "preprocess": {
+    "source": "raw camera frame (BGR), never the overlay",
+    "crop_xywh": [
+      190,
+      0,
+      570,
+      509
+    ],
+    "resize": [
+      224,
+      224
+    ],
+    "interpolation": "cv2.INTER_AREA",
+    "color": "RGB",
+    "scale": "1/255",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "layout": "NCHW",
+    "function": "maus_export.frame_preprocess.preprocess"
+  },
+  "training": null,
+  "parity": {
+    "sample": "first local raw frame",
+    "max_abs_diff": 4.410743713378906e-06,
+    "atol": 0.0001
+  },
+  "latency": {
+    "host": {
+      "cpu": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+      "system": "Windows-11-10.0.26300-SP0"
+    },
+    "batch": 1,
+    "single_thread": {
+      "threads": 1,
+      "runs": 50,
+      "model": {
+        "median_ms": 2.02,
+        "p95_ms": 2.16
+      },
+      "preprocess_and_model": {
+        "median_ms": 3.97,
+        "p95_ms": 4.18
+      }
+    },
+    "default_threads": {
+      "threads": "default",
+      "runs": 50,
+      "model": {
+        "median_ms": 1.17,
+        "p95_ms": 1.43
+      },
+      "preprocess_and_model": {
+        "median_ms": 4.03,
+        "p95_ms": 4.48
+      }
+    },
+    "pi5_estimate_ms": 16,
+    "pi5_estimate_method": "single-thread preprocess+model median x 4 (rough Cortex-A76 vs x86 factor, not measured)",
+    "target_ms": 300.0
+  },
+  "commit": "1b7f80ad61e1413ca3e3d5ce12314cec8f607fed"
+}

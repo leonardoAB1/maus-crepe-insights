@@ -10,6 +10,15 @@ data/
 *.parquet
 *.mp4
 
+# Private ML inputs and intermediates, including accidental alternate paths
+training_data/
+training-data/
+datasets/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+
 # Secrets / tokens
 .env
 .maus-export/

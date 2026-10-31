@@ -259,6 +259,11 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Candidate run-start dataset](documentation/training/training-dataset.md)
 - [Data preparation handoff](documentation/training/data-preparation-handoff.md)
 - [Vision-target training dataset](documentation/training/vision-targets.md)
+- [Frame-level check dataset](documentation/frames.md)
+- [Frame embeddings](documentation/frame-embeddings.md)
+- [Private phase-labeling pilot](documentation/phase-labeling-pilot.md)
+- [Camera rectification](documentation/rectification.md)
+- [Per-robot correction](documentation/robot-correction.md)
 
 ## License
 MIT - see [license.txt](license.txt).

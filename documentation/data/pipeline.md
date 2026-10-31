@@ -6,6 +6,8 @@ How run data flows from the robots to our analysis. Everything after the
 dashboard runs locally; outputs land in the gitignored `data/` folder.
 For the preparation history and reproduction checklist, see the
 [data preparation handoff](../training/data-preparation-handoff.md).
+For private phase-labeling frames, see the
+[phase-labeling pilot](../phase-labeling-pilot.md).
 
 <!-- diagram: pipeline -->
 ```mermaid

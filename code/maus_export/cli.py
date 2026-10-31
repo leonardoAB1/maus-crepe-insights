@@ -104,6 +104,11 @@ def main() -> None:
         "doe-figures", help="redraw the doe figures in assets/ (ml env)"
     )
     df.add_argument("--assets", type=Path, default=REPO_ROOT / "assets")
+    em = sub.add_parser(
+        "embed", help="cache frame embeddings -> data/training/ (ml env)"
+    )
+    em.add_argument("--model", type=Path, default=None, help="model.onnx")
+    em.add_argument("--batch-size", type=int, default=None)
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -202,6 +207,18 @@ def main() -> None:
         from .doe_analyze import analyze
 
         analyze(data_dir, args.sheet)
+    if args.cmd == "embed":
+        from .frame_embeddings import (
+            BATCH_SIZE,
+            MODEL_PATH,
+            build_frame_embeddings,
+        )
+
+        build_frame_embeddings(
+            data_dir,
+            args.model or MODEL_PATH,
+            args.batch_size or BATCH_SIZE,
+        )
     if args.cmd == "doe-figures":
         from .doe_figures import example_figures
 
