@@ -4,9 +4,10 @@ Clone the public code, fetch data with your own Maus account, then annotate
 locally in Label Studio Community **1.23.2**. No private dataset, database,
 account, password or human labels ship with the source repository.
 
-The current human taxonomy is **`crepe-visual-v1`**, exactly:
+The current human taxonomy is **`crepe-visual-v2`**, exactly:
 
 - `emptyplate`
+- `spreading`
 - `circle`
 - `halffold`
 - `quarter fold`
@@ -175,7 +176,7 @@ not a frame-specific suggestion and must not be translated automatically into
 the human visual taxonomy. Context can still bias reviewers. The imported task
 records `phase_context_shown=true` (configured to be displayed),
 `suggestion_shown=false`, `phase_suggestion=null` and
-`human_taxonomy_version=crepe-visual-v1`. This is display configuration, not proof
+`human_taxonomy_version=crepe-visual-v2`. This is display configuration, not proof
 that a particular reviewer read the context.
 
 Agree class criteria with the dataset owner, review a shared sample, record

@@ -13,8 +13,15 @@ from pathlib import Path
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
-HUMAN_TAXONOMY_VERSION = "crepe-visual-v1"
-HUMAN_LABELS = ("emptyplate", "circle", "halffold", "quarter fold", "ugly")
+HUMAN_TAXONOMY_VERSION = "crepe-visual-v2"
+HUMAN_LABELS = (
+    "emptyplate",
+    "spreading",
+    "circle",
+    "halffold",
+    "quarter fold",
+    "ugly",
+)
 
 
 def runtime(pilot: Path, app: Path, port: int) -> tuple[list[str], dict]:
