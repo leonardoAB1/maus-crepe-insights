@@ -18,4 +18,4 @@ cd code
 pixi run -e ml python models/doe-response/train.py data/doe/<doe_id>.parquet
 ```
 
-See [documentation/doe.md](../../../documentation/doe.md).
+See [documentation/analysis/doe.md](../../../documentation/analysis/doe.md).

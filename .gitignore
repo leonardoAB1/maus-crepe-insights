@@ -1,11 +1,9 @@
 # Exported Maus data stays local (company data, repo is public)
 data/
-# Only these documentation pages are exempt from the data-directory rule.
+# Markdown pages in documentation/data/ are guides, not exported data.
 !/documentation/data/
 /documentation/data/*
-!/documentation/data/data.md
-!/documentation/data/mcap.md
-!/documentation/data/pipeline.md
+!/documentation/data/*.md
 *.mcap
 *.parquet
 *.mp4
