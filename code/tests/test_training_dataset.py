@@ -455,6 +455,26 @@ def test_cli_failure_does_not_echo_private_field_values(tmp_path: Path) -> None:
     )
     assert result.returncode != 0
     assert "private-sentinel" not in result.stderr + result.stdout
+    assert "run.json" in result.stderr
+    assert "sensor" in result.stderr
+
+
+def test_duplicate_run_id_names_both_files(tmp_path: Path) -> None:
+    raw = tmp_path / "raw" / "runs"
+    raw.mkdir(parents=True)
+    run = {"id": 1, "tsStart": "2026-01-01T00:00:00Z"}
+    for name in ("a.json", "b.json"):
+        (raw / name).write_text(json.dumps(run))
+    with pytest.raises(ValueError, match=r"b\.json: .*also in a\.json"):
+        build_training_dataset(tmp_path)
+
+
+def test_malformed_json_names_the_file(tmp_path: Path) -> None:
+    raw = tmp_path / "raw" / "runs"
+    raw.mkdir(parents=True)
+    (raw / "broken.json").write_text('{"id": 1, "machineName": "private"')
+    with pytest.raises(ValueError, match=r"broken\.json: invalid JSON"):
+        build_training_dataset(tmp_path)
 
 
 def test_absent_recipe_key_is_null_and_manifest_warns_about_availability(
