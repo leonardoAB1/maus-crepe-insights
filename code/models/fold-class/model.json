@@ -819,7 +819,7 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "415c3b7720d2c5ef7f697affce18e396743580cc",
+  "commit": "52b62fa47b8acf98585d073164978ebf3f00a71e",
   "labels": {
     "rule": "spread ok -> flat, fold1 ok -> half, fold2 ok -> quarter (frames.fold_class); plate_clean ok -> empty",
     "counts": {
@@ -862,6 +862,41 @@
       "3.0": 0.03831888346989022,
       "10.0": 0.03951919783199968,
       "30.0": 0.04005145112735607
+    },
+    "cv_by_robot": {
+      "maus-otto": {
+        "n": 14,
+        "accuracy": 1.0,
+        "log_loss": 0.04908806378835261,
+        "label_counts": {
+          "half": 6,
+          "empty": 6,
+          "quarter": 1,
+          "flat": 1
+        }
+      },
+      "maus-pixi": {
+        "n": 55,
+        "accuracy": 0.9454545454545454,
+        "log_loss": 0.17477536594462725,
+        "label_counts": {
+          "empty": 30,
+          "flat": 16,
+          "half": 6,
+          "quarter": 3
+        }
+      },
+      "maus-quin": {
+        "n": 360,
+        "accuracy": 0.9972222222222222,
+        "log_loss": 0.01283422086202362,
+        "label_counts": {
+          "empty": 94,
+          "half": 93,
+          "flat": 91,
+          "quarter": 82
+        }
+      }
     }
   },
   "sanity_checks": {
@@ -961,7 +996,7 @@
   "caveats": {
     "scope": "Names the fold state of a step that succeeded. It does not detect an incomplete fold: on failed fold frames it spreads its answers over the classes at high confidence (see sanity_checks.failed_fold_checks). Use the check verdict head (#91) to decide whether a fold succeeded.",
     "triangle_fold": "Unsupported. No frame in the data shows a triangle fold, so the head can only answer empty, flat, half or quarter. Human fold labels from the labelling workstream (#87) are the path to add it, but its visual taxonomy (crepe-visual-v2) has no triangle label yet; the follow-up (#106) depends on adding one.",
-    "label_leakage": "Weak labels: the class equals the check that took the frame. The head may learn check-specific camera timing or plate state instead of the fold shape. sanity_checks.geometry tests this with failed folds that changed nothing (small n, stated there). Still-flat crepes after a failed fold1 are named flat (pass). Still-half crepes after a failed fold2 are never named half (fail): by eye they are half folds turned sideways, which no training frame shows, and the head reads the wedge as quarter or the pan as empty. Half vs quarter is only shown to work in the robot's normal fold pose. The stronger check against human labels on video frames is tracked in #104.",
+    "label_leakage": "Weak labels: the class equals the check that took the frame. The head may learn check-specific camera timing or plate state instead of the fold shape. sanity_checks.geometry tests this with failed folds that changed nothing (small n, stated there). Still-flat crepes after a failed fold1 are named flat (pass). Still-half crepes after a failed fold2 are never named half (fail): by eye they are half folds turned sideways, which no training frame shows, and the head reads the wedge as quarter or the pan as empty. The likely cause is rotation: the head reads the wedge's orientation, not the fold, so half vs quarter is only shown to work in the robot's normal fold pose. Follow-up: rotation augmentation (#103) and rotation robustness plus the check against human labels on video frames (#104).",
     "empty": "empty is learned from passed plate_clean frames only and tested on passed plate_present frames, a check it never trained on.",
     "failed_checks": "Failed checks are excluded from training because their true state is unknown.",
     "single_robot_holdout": "The holdout is the latest runs, which all come from maus-pixi; other robots are only in train."
