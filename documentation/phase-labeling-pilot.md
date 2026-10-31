@@ -75,7 +75,7 @@ read -r FROM
 printf 'Last requested date (YYYY-MM-DD): '
 read -r TO
 pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
-  export --data-dir "$PRIVATE" fetch --from "$FROM" --to "$TO" --video
+  export --data-dir "$PRIVATE" fetch --from "$FROM" --to "$TO" --media --video
 ```
 
 Authenticate through the exporter's normal OAuth browser flow using **your own
@@ -121,6 +121,49 @@ are never overwritten. Preparation reserves 2 GiB plus a per-video frame
 allowance. Unsupported or ambiguous timestamps abort. Ordinary failures remove
 the unfinished output; forced termination may leave a directory without
 `manifest.json`. Absence of that final manifest means incomplete, not importable.
+
+### Shared rectified images for all labels
+
+To use the exact same pixels for phase labels, segmentation masks and training,
+rectify the extracted images **before** importing any project. Do not rectify
+or resize images in place after annotation. Keep the raw pilot unchanged:
+
+```bash
+export RAW_PILOT="$PILOT"
+export PILOT="$PRIVATE/labeling/rectified-v1"
+pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
+  python -m maus_export.labeling_rectification \
+  --data-dir "$PRIVATE" --pilot "$RAW_PILOT" --output "$PILOT"
+```
+
+This requires check images from `fetch --media` in the same private snapshot.
+The existing experimental alignment estimator requires two independently
+accepted temporal samples to agree against a same-run square overlay.
+It estimates a video-resolution transform rather than scaling a check-image
+transform. Only raw video pixels are warped; overlay paint is never copied.
+Videos are not re-encoded, and original selected frame indices, PTS and time
+bases stay unchanged.
+
+Check the aggregate `selected`, `ok`, `rejected` and `frames` counts. Rejected
+runs have no output frames and an explicit reason in the private manifest.
+They never fall back to raw images. A pilot with zero accepted frames cannot
+be imported. A partial pilot requires a deliberate review of that missingness.
+Existing output directories are never overwritten; choose a new name to retry.
+
+The pilot stores rectified PNGs, source-image hashes, the original manifest
+hash, per-run transforms with reference/video hashes, and binary validity
+masks. Startup verifies image, transform and mask hashes and image dimensions.
+Validity masks are preprocessing artifacts, not human segmentation labels.
+Exclude their unsupported pixels from downstream losses and measurements.
+Both phase and mask projects must reference this same pilot and image hashes,
+not independently regenerated or resized copies. Exports carry the frame
+coordinate space and preprocessing version.
+
+**Visually review accepted outputs before labeling.** Temporal consistency is
+an experimental safeguard, not physical camera calibration. Lens distortion,
+parallax and camera movement can still invalidate a transform. Review static
+plate/background alignment across the run, not just the food silhouette.
+Keep these limitations when reproducing preprocessing for live inference.
 
 ## 4. Start, sign up, configure and import
 

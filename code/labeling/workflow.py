@@ -14,6 +14,11 @@ from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
 HUMAN_TAXONOMY_VERSION = "crepe-visual-v2"
+RECTIFICATION_VERSION = "upstream-rectified-v1"
+RECTIFIED_COORDINATE_SPACE = "rectified_upstream"
+SHA256_HEX_LENGTH = 64
+MIN_TEMPORAL_SAMPLES = 2
+VALID_MASK_VALUES = {0, 255}
 HUMAN_LABELS = (
     "emptyplate",
     "spreading",
@@ -218,9 +223,25 @@ def _validate_manifest(pilot: Path, manifest: dict) -> None:
         classes.update(p["phase"] for p in run["phase_sequence"])
         if run["phase_alignment"] != "unverified":
             raise ValueError("only unaligned pilots are supported")
-        if run["status"] not in {"ok", "missing_video", "invalid_video"}:
+        if run["status"] not in {
+            "ok",
+            "missing_video",
+            "invalid_video",
+            "alignment_rejected",
+        }:
             raise ValueError("unknown video status")
+        if run["status"] == "alignment_rejected" and (
+            not manifest.get("preprocessing") or run.get("frames")
+        ):
+            raise ValueError("rejected alignment must not contain frames")
         for frame in run.get("frames", []):
+            if (
+                not manifest.get("preprocessing")
+                and frame.get("coordinate_space", "raw") != "raw"
+            ):
+                raise ValueError(
+                    "rectified frames require preprocessing metadata"
+                )
             relative = Path(frame["image"])
             image = pilot / relative
             if (
@@ -259,6 +280,61 @@ def _validate_manifest(pilot: Path, manifest: dict) -> None:
             p for p in images if p.parent == directory
         }:
             raise ValueError("frame storage contains unexpected files")
+    if manifest.get("preprocessing"):
+        _validate_rectified(pilot, manifest)
+
+
+def _validate_rectified(pilot: Path, manifest: dict) -> None:
+    from PIL import Image
+
+    preprocessing = manifest["preprocessing"]
+    version = RECTIFICATION_VERSION
+    space = RECTIFIED_COORDINATE_SPACE
+    if (
+        preprocessing["version"] != version
+        or preprocessing["coordinate_space"] != space
+        or len(preprocessing["source_manifest_sha256"]) != SHA256_HEX_LENGTH
+    ):
+        raise ValueError("unsupported rectified frame contract")
+    for run in manifest["runs"]:
+        for frame in run.get("frames", []):
+            if (
+                frame["coordinate_space"] != space
+                or frame["preprocessing_version"] != version
+                or len(frame["source_image_sha256"]) != SHA256_HEX_LENGTH
+            ):
+                raise ValueError("mixed raw and rectified frames")
+            directory = Path(frame["image"]).parent.name
+            artifacts = (
+                ("transform", f"transforms/{directory}.json"),
+                ("valid_mask", f"valid/{frame['image']}"),
+            )
+            for key, expected in artifacts:
+                relative = frame[key]
+                path = pilot / relative
+                if (
+                    relative != expected
+                    or path.absolute() != path.resolve(strict=True)
+                    or hashlib.sha256(path.read_bytes()).hexdigest()
+                    != frame[f"{key}_sha256"]
+                ):
+                    raise ValueError("unsafe or changed rectification artifact")
+            transform = json.loads((pilot / frame["transform"]).read_text())
+            if (
+                transform["target_size"] != frame["image_size"]
+                or transform["video_sha256"] != run["video_sha256"]
+                or len(set(transform["video_validation_frames"]))
+                < MIN_TEMPORAL_SAMPLES
+            ):
+                raise ValueError("rectification provenance mismatch")
+            with Image.open(pilot / frame["image"]) as image:
+                if list(image.size) != frame["image_size"]:
+                    raise ValueError("rectified image size mismatch")
+            with Image.open(pilot / frame["valid_mask"]) as valid:
+                if list(valid.size) != frame["image_size"] or valid.mode != "L":
+                    raise ValueError("validity mask dimensions or mode differ")
+                if not set(valid.tobytes()).issubset(VALID_MASK_VALUES):
+                    raise ValueError("validity mask must be binary")
 
 
 def build_plan(pilot: Path) -> dict:
