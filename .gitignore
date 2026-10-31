@@ -26,3 +26,7 @@ worktrees/
 # Pixi environments and tool caches
 .pixi/
 .ruff_cache/
+
+# Jupyter checkpoints (can hold notebook outputs) and macOS metadata
+.ipynb_checkpoints/
+.DS_Store
