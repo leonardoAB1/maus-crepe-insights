@@ -266,4 +266,13 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Per-robot correction](documentation/robot-correction.md)
 
 ## License
-MIT - see [license.txt](license.txt).
+PolyForm Noncommercial 1.0.0 - see [license.txt](license.txt).
+
+The code, models and documentation here are free for noncommercial use:
+research, study, teaching, personal projects and noncommercial
+organizations. Commercial use, including shipping any of it inside a
+product or a paid service, needs a separate license from the copyright
+holders. Open an issue to ask for commercial terms.
+
+Revisions published before this change were released under MIT and keep
+their MIT terms for anyone who already has them.
