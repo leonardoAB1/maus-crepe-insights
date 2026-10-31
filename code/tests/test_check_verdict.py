@@ -20,6 +20,7 @@ from maus_classify.check_verdict import (  # noqa: E402
     make_head,
     summary_table,
     train_check,
+    verdict,
 )
 
 DIM = 8
@@ -104,6 +105,7 @@ def test_spread_head_beats_majority_and_exports(tmp_path):
     ]
     assert 0 <= test["agreement"] <= 1
     assert card["label"]["positive"] == FAIL
+    assert card["embedder_sha256"] == ["abc"]
 
     saved = json.loads((tmp_path / "model.json").read_text("utf-8"))
     assert saved["verdict"] == card["verdict"]
@@ -123,6 +125,21 @@ def test_push_off_uses_all_attempts_and_has_no_overlay(tmp_path):
     counts = card["counts"]
     assert counts["train"][FAIL] == counts["train"][PASS] == TEST_FROM
     assert "test_last_attempt" in card["metrics"]
+
+
+def test_verdict_flags_missed_and_few_failures():
+    head = {
+        "balanced_accuracy": 0.7,
+        "f1_macro": 0.7,
+        "per_class": {FAIL: {"recall": 3 / 7, "support": 7}},
+    }
+    majority = {"balanced_accuracy": 0.5, "f1_macro": 0.4}
+    text = verdict(head, majority)
+    assert text.startswith("Beats")
+    assert "catches 3 of 7" in text
+    assert "Only 7 failures" in text
+    worse = verdict(head | {"balanced_accuracy": 0.5}, majority)
+    assert worse.startswith("Does not beat")
 
 
 def test_summary_table_has_one_row_per_check(tmp_path):

@@ -39,9 +39,14 @@ KEYS = ["run_id", "check", "attempt"]
 EMBEDDING_COLUMN = re.compile(r"^e(\d+)$")
 VISION_PREFIX = "vision."
 VISION_ID = "id"
+EMBEDDER_HASH = "model_sha256"
 # L2 strength of the heads; a few hundred rows against hundreds of features
 HEAD_C = 0.1
 MAX_ITER = 2000
+# Below these the verdict warns: too few holdout failures to trust the
+# score, or too many robot failures missed
+MIN_FAIL_SUPPORT = 10
+MIN_FAIL_RECALL = 0.7
 WEAK_LABELS = (
     "Labels are the robot's own check verdicts (weak labels). Metrics measure "
     "agreement with the robot, not verified crepe quality."
@@ -155,19 +160,35 @@ def overlay_baseline(
 
 
 def verdict(head: dict[str, Any], majority: dict[str, Any]) -> str:
-    """One sentence on whether the head beats the majority baseline."""
+    """Whether the head beats the majority baseline, and where it falls
+    short on catching robot failures."""
     ba, ba0 = head["balanced_accuracy"], majority["balanced_accuracy"]
     f1, f10 = head["f1_macro"], majority["f1_macro"]
-    if ba > ba0 and f1 > f10:
-        return (
-            f"Beats the majority baseline on the holdout: balanced accuracy "
-            f"{ba:.2f} vs {ba0:.2f}, macro F1 {f1:.2f} vs {f10:.2f}."
-        )
-    return (
-        f"Does not beat the majority baseline on the holdout: balanced "
-        f"accuracy {ba:.2f} vs {ba0:.2f}, macro F1 {f1:.2f} vs {f10:.2f}. "
-        f"Do not rely on this head for {FAIL!r} calls."
+    scores = (
+        f"balanced accuracy {ba:.2f} vs {ba0:.2f}, "
+        f"macro F1 {f1:.2f} vs {f10:.2f}."
     )
+    if not (ba > ba0 and f1 > f10):
+        return (
+            f"Does not beat the majority baseline on the holdout: {scores} "
+            f"Do not rely on this head for {FAIL!r} calls."
+        )
+    text = f"Beats the majority baseline on the holdout: {scores}"
+    fail = head["per_class"].get(FAIL)
+    if fail is None:
+        return text
+    caught = round(fail["recall"] * fail["support"])
+    if fail["recall"] < MIN_FAIL_RECALL:
+        text += (
+            f" Falls short on failures: catches {caught} of "
+            f"{fail['support']} robot fails."
+        )
+    if fail["support"] < MIN_FAIL_SUPPORT:
+        text += (
+            f" Only {fail['support']} failures in the holdout, so these "
+            f"scores are rough."
+        )
+    return text
 
 
 def train_check(
@@ -219,6 +240,11 @@ def train_check(
         DummyClassifier(strategy="most_frequent"), X, y, split
     )
     card["check"] = check
+    if EMBEDDER_HASH in embeddings.columns:
+        # Heads only fit embeddings from the exact embedder they saw
+        card["embedder_sha256"] = sorted(
+            embeddings[EMBEDDER_HASH].dropna().astype(str).unique()
+        )
     card["label"] = {
         "positive": FAIL,
         "source": "frames.ok (robot verdict per frame attempt)",
