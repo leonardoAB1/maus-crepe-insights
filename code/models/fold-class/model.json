@@ -768,7 +768,7 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "847b436bf9cc07ead1b3d33de215a038d6d77a90",
+  "commit": "e30438752fdd4283bda623e8f6b7a28e860e4856",
   "labels": {
     "column": "frames.fold_class",
     "rule": "spread ok -> flat, fold1 ok -> half, fold2 ok -> quarter",
