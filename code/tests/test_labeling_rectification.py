@@ -211,3 +211,40 @@ def test_public_or_unrelated_output_is_refused(source_pilot: tuple) -> None:
     with pytest.raises(ValueError, match="private direct children"):
         prepare_rectified(data, pilot, output)
     assert not output.exists()
+
+
+def test_experimental_transfer_is_opt_in_and_visible_in_project(
+    source_pilot: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data, pilot = source_pilot
+
+    def transfer(frames: list, references: list[Path]) -> dict:
+        return {
+            "schema_version": 1,
+            "source_size": [SIZE, SIZE],
+            "target_size": [SIZE, SIZE],
+            "matrix": np.eye(3).tolist(),
+            "reference_path": str(references[0]),
+            "video_validation_frames": [0, 10],
+            "kind": "experimental_photo_video_transfer",
+        }
+
+    monkeypatch.setattr(
+        "maus_export.labeling_rectification.experimental_alignment", transfer
+    )
+    output = pilot.parent / "experimental"
+    summary = prepare_rectified(data, pilot, output, experimental=True)
+    assert summary["ok"] == 2
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["preprocessing"]["experimental"] is True
+    assert manifest["preprocessing"]["version"] == (
+        "upstream-rectified-experimental-v1"
+    )
+    plan = load_workflow().build_plan(output)
+    assert "Experimental rectification" in plan["config"]
+    assert len(plan["tasks"]) == 2
+    assert all(
+        task["data"]["preprocessing_version"]
+        == "upstream-rectified-experimental-v1"
+        for task in plan["tasks"]
+    )

@@ -31,7 +31,7 @@ def load_workflow() -> ModuleType:
     return module
 
 
-@pytest.fixture(params=["raw", "rectified"])
+@pytest.fixture(params=["raw", "rectified", "experimental"])
 def pilot(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     from PIL import Image
 
@@ -78,9 +78,15 @@ def pilot(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
             {**frames_data[0], "requested_seconds": 10},
         ]
     )
-    if request.param == "rectified":
+    if request.param != "raw":
+        version = (
+            "upstream-rectified-experimental-v1"
+            if request.param == "experimental"
+            else "upstream-rectified-v1"
+        )
         manifest["preprocessing"] = {
-            "version": "upstream-rectified-v1",
+            "version": version,
+            "experimental": request.param == "experimental",
             "coordinate_space": "rectified_upstream",
             "source_manifest_sha256": "0" * 64,
         }
@@ -106,7 +112,7 @@ def pilot(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
             frame.update(
                 {
                     "coordinate_space": "rectified_upstream",
-                    "preprocessing_version": "upstream-rectified-v1",
+                    "preprocessing_version": version,
                     "source_image_sha256": frame["image_sha256"],
                     "image_size": [8, 8],
                     "transform": "transforms/run-000.json",

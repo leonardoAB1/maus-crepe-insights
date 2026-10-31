@@ -15,6 +15,7 @@ from xml.etree import ElementTree as ET
 
 HUMAN_TAXONOMY_VERSION = "crepe-visual-v2"
 RECTIFICATION_VERSION = "upstream-rectified-v1"
+EXPERIMENTAL_RECTIFICATION_VERSION = "upstream-rectified-experimental-v1"
 RECTIFIED_COORDINATE_SPACE = "rectified_upstream"
 SHA256_HEX_LENGTH = 64
 MIN_TEMPORAL_SAMPLES = 2
@@ -288,14 +289,19 @@ def _validate_rectified(pilot: Path, manifest: dict) -> None:
     from PIL import Image
 
     preprocessing = manifest["preprocessing"]
-    version = RECTIFICATION_VERSION
+    version = preprocessing["version"]
     space = RECTIFIED_COORDINATE_SPACE
     if (
-        preprocessing["version"] != version
+        version
+        not in {RECTIFICATION_VERSION, EXPERIMENTAL_RECTIFICATION_VERSION}
         or preprocessing["coordinate_space"] != space
         or len(preprocessing["source_manifest_sha256"]) != SHA256_HEX_LENGTH
     ):
         raise ValueError("unsupported rectified frame contract")
+    if version == EXPERIMENTAL_RECTIFICATION_VERSION and (
+        preprocessing.get("experimental") is not True
+    ):
+        raise ValueError("experimental rectification must be explicit")
     for run in manifest["runs"]:
         for frame in run.get("frames", []):
             if (
@@ -345,6 +351,12 @@ def build_plan(pilot: Path) -> dict:
     _validate_manifest(pilot, manifest)
     view = ET.Element("View")
     ET.SubElement(view, "Image", name="image", value="$image")
+    if manifest.get("preprocessing", {}).get("experimental"):
+        ET.SubElement(
+            view,
+            "Header",
+            value="Experimental rectification: review geometry before labeling",
+        )
     ET.SubElement(view, "Header", value="Recorded context: UNALIGNED")
     ET.SubElement(view, "Text", name="context", value="$phase_sequence")
     choices = ET.SubElement(

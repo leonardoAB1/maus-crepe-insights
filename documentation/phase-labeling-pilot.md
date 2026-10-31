@@ -165,6 +165,40 @@ parallax and camera movement can still invalidate a transform. Review static
 plate/background alignment across the run, not just the food silhouette.
 Keep these limitations when reproducing preprocessing for live inference.
 
+#### Explicit experimental transfer without calibration files
+
+If the strict route has no usable video fits and no original camera calibration
+is available, an explicitly experimental alternative is available:
+
+```bash
+export PILOT="$PRIVATE/labeling/rectified-experimental-v1"
+pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
+  python -m maus_export.labeling_rectification \
+  --data-dir "$PRIVATE" --pilot "$RAW_PILOT" --output "$PILOT" \
+  --experimental-photo-transfer
+```
+
+This does **not** loosen the strict estimator's thresholds or silently retry
+failed strict fits. It uses the separately existing experimental robot-photo
+estimator, then measures the video-to-unpainted-photo similarity mapping from
+matched features. Two temporally distinct registrations must agree over the
+video field. Resolution scaling is measured, not assumed. Same-run references
+are preferred; a reference from another selected run can be tried only for
+the same machine and must pass independent video registration again.
+
+The resulting transform composes the measured registration with the photo
+alignment. It records both stages, their diagnostics and reference hashes.
+The method uses the existing robot estimator's median-error, coverage and
+inlier-share thresholds, not the strict direct-video acceptance profile.
+Outlier errors, raised objects, changing cameras and extrapolation remain risks.
+There is no claim of physical calibration or final composed-transform accuracy.
+
+This mode has a distinct preprocessing version, an explicit experimental flag
+and an on-screen warning in Label Studio. Inspect the plate and its edges in
+several frames before labeling, and skip visibly wrong results. Never mix these
+images with strict or raw pilots under the same dataset identity. Human masks
+and phase labels should still reference the exact same immutable PNG files.
+
 ## 4. Start, sign up, configure and import
 
 First launch permits local signup. No account is created by the helper:
