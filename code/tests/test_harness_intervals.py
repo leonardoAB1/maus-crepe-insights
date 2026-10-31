@@ -198,7 +198,8 @@ def test_card_names_holdout_robots(tmp_path):
     )
     assert card["data"]["test"]["robots"] == ["pixi"]
     assert card["data"]["train"]["robots"] == ["otto", "quin"]
-    assert "pixi only" in card["data"]["holdout_note"]
+    assert "otto, quin" in card["data"]["holdout_note"]
+    assert card["data"]["split_version"]
     assert set(card["metrics"]["per_robot"]["test"]) == {"pixi"}
     assert "within robot" in card["intervals"]["method"]
     assert "recall_fail" in card["intervals"]["metrics"]
@@ -221,3 +222,43 @@ def test_card_has_intervals_without_robots(tmp_path):
     assert "balanced_accuracy" in card["intervals"]["metrics"]
     assert "leave_one_robot_out" not in card
     assert isinstance(run_starts(groups, ts), pd.Series)
+
+
+def test_robot_confound_is_exposed(tmp_path):
+    """Features only identify the robot, and fail rates differ by robot.
+    A pooled score looks fine, but no robot beats majority on its own, so
+    the card must not claim to generalize."""
+    rng = np.random.default_rng(3)
+    n_runs = 150
+    groups = np.repeat(np.arange(n_runs), FRAMES_PER_RUN)
+    names = np.array(["quin", "otto", "pixi"])
+    robots = names[groups % 3]
+    fail_rate = {"quin": 0.1, "otto": 0.5, "pixi": 0.9}
+    y = np.where(
+        rng.random(len(groups)) < np.vectorize(fail_rate.get)(robots),
+        "fail",
+        "pass",
+    )
+    X = np.stack(
+        [(robots == r).astype(float) for r in names], axis=1
+    ) + rng.normal(scale=0.05, size=(len(y), 3))
+    ts = START + groups.astype("timedelta64[h]")
+    split = np.where(groups % 5 == 4, "test", "train")
+    card = train_and_evaluate(
+        LogisticRegression(max_iter=500),
+        X,
+        y,
+        split,
+        groups,
+        name="confound",
+        feature_names=["a", "b", "c"],
+        out_dir=tmp_path,
+        timestamps=ts,
+        robots=robots,
+        positive="fail",
+        n_boot=N_BOOT,
+    )
+    assert card["metrics"]["test"]["balanced_accuracy"] > 0.6  # looks fine
+    gen = card["generalization"]
+    assert gen["generalizes"] is False
+    assert gen["not_above_majority"]

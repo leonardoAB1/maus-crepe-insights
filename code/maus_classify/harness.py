@@ -36,7 +36,7 @@ from sklearn.pipeline import Pipeline
 
 from maus_export.doe_analyze import dump_json
 
-from .split import TEST, TRAIN
+from .split import MIN_RUNS_FOR_TEST, SPLIT_VERSION, TEST, TRAIN
 
 ONNX_INPUT = "x"
 ONNX_LABEL = "label"
@@ -49,6 +49,8 @@ CI_LEVEL = 0.95
 SEED = 0
 N_FOLDS = 5
 MIN_CLASSES = 2
+# Balanced accuracy of always predicting the majority class
+MAJORITY_BA = 0.5
 
 
 class HarnessError(ValueError):
@@ -266,7 +268,7 @@ def per_robot_metrics(
     }
 
 
-def _fit(
+def fit_model(
     estimator: ClassifierMixin,
     X: np.ndarray,
     y: np.ndarray,
@@ -292,10 +294,13 @@ def leave_one_robot_out(
     positive: str | None = None,
     score: Callable[[np.ndarray, np.ndarray, list[str]], dict[str, Any]]
     | None = None,
+    min_runs: int = MIN_RUNS_FOR_TEST,
+    sample_weight: np.ndarray | None = None,
     n_boot: int = N_BOOT,
 ) -> dict[str, Any]:
     """Train on every other robot, score the held-out one. A transfer check
-    that ignores the time split; a robot is skipped when its train side has
+    that ignores the time split; a robot is skipped when it has fewer than
+    `min_runs` runs (rows when `groups` is not given) or its train side has
     one class only.
 
     With `positive`, adds its ROC AUC when the held-out robot has both
@@ -304,13 +309,21 @@ def leave_one_robot_out(
     y = np.asarray(y).astype(str)
     robots = np.asarray(robots).astype(str)
     out: dict[str, Any] = {}
+    units = robots if groups is None else np.asarray(groups)
     for r in sorted(set(robots)):
         test = robots == r
         train = ~test
+        n_runs = len(set(units[test]))
+        if n_runs < min_runs:
+            out[r] = {"n": int(test.sum()), "skipped": f"{n_runs} runs"}
+            continue
         if len(set(y[train])) < MIN_CLASSES:
             out[r] = {"n": int(test.sum()), "skipped": "one class in train"}
             continue
-        model = _fit(estimator, X[train], y[train])
+        w = None if sample_weight is None else np.asarray(sample_weight)
+        model = fit_model(
+            estimator, X[train], y[train], None if w is None else w[train]
+        )
         classes = [str(c) for c in model.classes_]
         pred = model.predict(X[test]).astype(str)
         proba = model.predict_proba(X[test])
@@ -342,8 +355,21 @@ def run_starts(groups: np.ndarray, timestamps: np.ndarray) -> pd.Series:
     return ts.groupby(np.asarray(groups)).min()
 
 
+def _time_blocks(starts: pd.Series, n_blocks: int) -> pd.Series | None:
+    """Block number per run from its start time; tied times share a
+    block. None when there are fewer distinct times than blocks."""
+    times = np.sort(starts.dropna().unique())
+    if len(times) < n_blocks:
+        return None
+    chunks = np.array_split(times, n_blocks)
+    block_of = {t: b for b, chunk in enumerate(chunks) for t in chunk}
+    return starts.map(block_of)
+
+
 def time_group_folds(
-    starts: pd.Series, n_folds: int = N_FOLDS
+    starts: pd.Series,
+    n_folds: int = N_FOLDS,
+    robots: pd.Series | None = None,
 ) -> list[tuple[np.ndarray, np.ndarray]]:
     """Expanding-window folds over runs ordered by start time.
 
@@ -351,13 +377,32 @@ def time_group_folds(
     runs with tied start times always share a block. Fold k fits on blocks
     0..k and validates on block k + 1. Returns (fit run ids, validation run
     ids) per fold; the first block is never validated.
+
+    With `robots` (indexed like `starts`) the blocks are cut within each
+    robot, like the split, so every fold mixes robots. A robot with too few
+    distinct start times always sits in the fit side.
     """
-    times = np.sort(starts.dropna().unique())
-    if len(times) < n_folds + 1:
+    n_blocks = n_folds + 1
+    if robots is None:
+        block = _time_blocks(starts, n_blocks)
+    else:
+        robots = robots.reindex(starts.index).astype(str)
+        parts = [
+            _time_blocks(starts[robots == r], n_blocks)
+            for r in sorted(robots.unique())
+        ]
+        if all(p is None for p in parts):
+            block = None
+        else:
+            block = pd.concat(
+                p
+                if p is not None
+                else pd.Series(0, index=starts[robots == r].index)
+                for p, r in zip(parts, sorted(robots.unique()), strict=True)
+            ).reindex(starts.index)
+    if block is None:
         raise HarnessError("too few distinct run start times for the folds")
-    blocks = np.array_split(times, n_folds + 1)
-    block_of = {t: b for b, chunk in enumerate(blocks) for t in chunk}
-    block = starts.map(block_of).to_numpy()
+    block = block.to_numpy()
     ids = starts.index.to_numpy()
     return [(ids[block <= k], ids[block == k + 1]) for k in range(n_folds)]
 
@@ -370,11 +415,13 @@ def cross_val_proba(
     timestamps: np.ndarray,
     *,
     sample_weight: np.ndarray | None = None,
+    robots: np.ndarray | None = None,
     n_folds: int = N_FOLDS,
 ) -> tuple[np.ndarray, list[str]]:
     """Out-of-fold class probabilities from time-ordered, run-grouped folds.
 
     Pass train rows only; the holdout stays untouched for the final score.
+    With `robots` (one per row) folds are cut in time within each robot.
     Rows in the first time block, or in a fold whose fit side has one class,
     get NaN. Returns (probabilities, classes) with columns in class order.
     """
@@ -383,19 +430,72 @@ def cross_val_proba(
     groups = np.asarray(groups)
     classes = sorted(set(y))
     proba = np.full((len(y), len(classes)), np.nan)
-    for fit_runs, val_runs in time_group_folds(
-        run_starts(groups, timestamps), n_folds
-    ):
+    starts = run_starts(groups, timestamps)
+    robot_of = (
+        None
+        if robots is None
+        else pd.Series(np.asarray(robots)).groupby(groups).first()
+    )
+    for fit_runs, val_runs in time_group_folds(starts, n_folds, robot_of):
         fit, val = np.isin(groups, fit_runs), np.isin(groups, val_runs)
         if len(set(y[fit])) < MIN_CLASSES or not val.any():
             continue
         w = None if sample_weight is None else np.asarray(sample_weight)[fit]
-        model = _fit(estimator, X[fit], y[fit], w)
+        model = fit_model(estimator, X[fit], y[fit], w)
         cols = [classes.index(str(c)) for c in model.classes_]
         rows = np.flatnonzero(val)
         proba[rows] = 0.0  # classes the fold never saw get probability 0
         proba[np.ix_(rows, cols)] = model.predict_proba(X[val])
     return proba, classes
+
+
+def holdout_note(train_robots: list[str], test_robots: list[str]) -> str:
+    """Plain sentence on which robots the holdout covers."""
+    text = f"The holdout covers robot(s) {', '.join(test_robots)}."
+    only_train = sorted(set(train_robots) - set(test_robots))
+    if only_train:
+        text += (
+            f" Robot(s) {', '.join(only_train)} have too few runs for a test "
+            f"part and appear in train only."
+        )
+    return text
+
+
+def generalization(
+    per_robot: dict[str, Any], loro: dict[str, Any]
+) -> dict[str, Any]:
+    """Whether the model may claim to generalize across robots.
+
+    It may only if every robot beats the majority baseline, both in its
+    own holdout and when held out entirely. Scores on a robot whose rows
+    hold one class only, and skipped robots, are listed as not evaluated.
+    """
+    below, evaluated, missing = [], [], []
+    views = (("holdout", per_robot), ("leave_one_robot_out", loro))
+    for view, scores in views:
+        for robot, m in scores.items():
+            if "skipped" in m or _n_classes(m) < MIN_CLASSES:
+                missing.append(f"{robot} ({view})")
+                continue
+            evaluated.append(f"{robot} ({view})")
+            # equal to majority is no better than guessing per robot, which
+            # is what a model that only recognizes the robot scores
+            if m["balanced_accuracy"] <= MAJORITY_BA:
+                below.append(f"{robot} ({view})")
+    ok = bool(evaluated) and not below
+    return {
+        "generalizes": ok,
+        "rule": "every robot beats the majority baseline (balanced "
+        f"accuracy {MAJORITY_BA}) in its holdout and leave-one-robot-out",
+        "not_above_majority": below,
+        "evaluated": evaluated,
+        "not_evaluated": missing,
+    }
+
+
+def _n_classes(m: dict[str, Any]) -> int:
+    """Classes present in the true labels behind a metrics() dict."""
+    return sum(1 for c in m["per_class"].values() if c["support"] > 0)
 
 
 def _data_range(
@@ -471,15 +571,18 @@ def train_and_evaluate(
     description: str = "",
     robots: np.ndarray | None = None,
     positive: str | None = None,
+    sample_weight: np.ndarray | None = None,
     n_boot: int = N_BOOT,
 ) -> dict[str, Any]:
     """Fit on train rows, score on test rows, export and check ONNX, write
     `model.onnx` and `model.json` in `out_dir`. Returns the model card.
 
     The card always carries run-bootstrap intervals for the holdout. With
-    `robots` (one per row) it also names the robots each side covers and
-    adds per-robot holdout metrics and a leave-one-robot-out check. With
-    `positive` the intervals include that class's recall."""
+    `robots` (one per row) it also names the robots each side covers, adds
+    per-robot holdout metrics, a leave-one-robot-out check and a
+    `generalization` verdict. With `positive` the intervals include that
+    class's recall. `sample_weight` (one per row) weights the train fit and
+    the leave-one-robot-out fits."""
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y).astype(str)
     split = np.asarray(split)
@@ -489,7 +592,13 @@ def train_and_evaluate(
         raise HarnessError("one feature name per column is required")
     train, test = split == TRAIN, split == TEST
 
-    model = clone(estimator).fit(X[train].astype(np.float32), y[train])
+    weights = None if sample_weight is None else np.asarray(sample_weight)
+    model = fit_model(
+        estimator,
+        X[train].astype(np.float32),
+        y[train],
+        None if weights is None else weights[train],
+    )
     classes = [str(c) for c in model.classes_]
     x_test = X[test].astype(np.float32)
     proba = model.predict_proba(x_test)
@@ -520,7 +629,9 @@ def train_and_evaluate(
             },
         ],
         "data": {
-            "split": "chronological, run-grouped holdout (frames.split)",
+            "split": "chronological within each robot, run-grouped "
+            "(frames.split)",
+            "split_version": SPLIT_VERSION,
             TRAIN: _data_range(train, groups, timestamps),
             TEST: _data_range(test, groups, timestamps),
         },
@@ -536,10 +647,9 @@ def train_and_evaluate(
         strata = robots[test]
         for side, mask in ((TRAIN, train), (TEST, test)):
             card["data"][side]["robots"] = sorted(set(robots[mask]))
-        covered = ", ".join(card["data"][TEST]["robots"])
-        card["data"]["holdout_note"] = (
-            f"The holdout covers robot(s) {covered} only. Robots ran in "
-            f"separate time windows, so robot also stands for era."
+        card["data"]["robots"] = sorted(set(robots))
+        card["data"]["holdout_note"] = holdout_note(
+            card["data"][TRAIN]["robots"], card["data"][TEST]["robots"]
         )
         card["metrics"]["per_robot"] = {
             TEST: per_robot_metrics(y[test], pred, proba, strata, classes)
@@ -551,7 +661,11 @@ def train_and_evaluate(
             robots,
             groups=groups,
             positive=positive,
+            sample_weight=weights,
             n_boot=n_boot,
+        )
+        card["generalization"] = generalization(
+            card["metrics"]["per_robot"][TEST], card["leave_one_robot_out"]
         )
     card["intervals"] = holdout_intervals(
         y[test],
