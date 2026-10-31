@@ -43,6 +43,28 @@ Each `model.json` holds:
 The overlay scores come from the robot's own overlay image. That makes the
 overlay baseline close to an upper bound, not a fair competitor.
 
+## Holdout results
+
+Trained on the 1,112 cached frame embeddings, with the holdout made of the
+latest 20% of runs that have vision checks. Balanced accuracy (BA) is shown
+for both baselines.
+
+| check | test frames | test fails | balanced acc | macro F1 | agreement | majority BA | overlay BA |
+|---|---|---|---|---|---|---|---|
+| spread | 29 | 13 | 0.91 | 0.90 | 0.90 | 0.50 | 0.74 |
+| fold1 | 20 | 7 | 0.68 | 0.69 | 0.75 | 0.50 | 0.66 |
+| fold2 | 19 | 5 | 0.76 | 0.78 | 0.84 | 0.50 | 0.82 |
+| push_off | 36 | 22 | 0.87 | 0.86 | 0.86 | 0.50 | - |
+
+- All four heads beat the majority baseline.
+- spread and push_off are solid: spread catches all 13 test failures, push_off
+  18 of 22.
+- fold1 and fold2 fall short on failures. fold1 catches 3 of 7 and fold2
+  catches 3 of 5. With this few failures in the holdout, their scores are
+  rough. fold2 is slightly below the overlay baseline.
+- The holdout is small, so a single frame moves balanced accuracy by several
+  points. Read these numbers as a first signal, not a final score.
+
 ## Train
 
 ```
