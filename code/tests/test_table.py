@@ -3,8 +3,9 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
-from maus_export.to_table import run_row, runs_to_table
+from maus_export.to_table import build_table, run_row, runs_to_table
 
 RADIUS = "dispense.batter.concentric_outer_radius_offset_mm"
 OIL = "dispense.oil.grams"
@@ -36,6 +37,21 @@ def make_run(
         "logs": [],
         "parameters": params,
     }
+
+
+def test_empty_export_reports_missing_runs_without_overwriting(
+    tmp_path: Path,
+) -> None:
+    csv_path = tmp_path / "runs.csv"
+    parquet_path = tmp_path / "runs.parquet"
+    csv_path.write_bytes(b"existing csv")
+    parquet_path.write_bytes(b"existing parquet")
+
+    with pytest.raises(ValueError, match="No raw run JSON.*fetch"):
+        build_table(tmp_path)
+
+    assert csv_path.read_bytes() == b"existing csv"
+    assert parquet_path.read_bytes() == b"existing parquet"
 
 
 def test_per_check_columns_use_last_attempt() -> None:
