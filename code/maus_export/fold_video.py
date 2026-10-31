@@ -19,21 +19,26 @@ from .fold_dataset import (
     MAX_DURATION_DIFFERENCE,
     run_duration,
 )
-from .fold_frames import check_events, phase_clock_origin, video_time
+from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_geometry import measure_geometry, prepare_geometry
-from .fold_live import STATE_ORDER, FoldStateMachine
 from .fold_mask import CrepeSegmenter
 from .fold_overlay import annotate_frame
 from .fold_plate import detect_plate
 from .fold_rectify import rectify_video_frame
-from .fold_state import classify_state
+from .fold_state import STATE_ORDER, classify_state
+from .fold_sync import CheckWindowEvaluator
 
-ANALYSIS_FPS = 10.0
+DEFAULT_ANALYSIS_FPS = 5.0
+FRAME_BUDGET_MS = 200.0
 MILLISECONDS_PER_SECOND = 1000
 
 
 def analyse_video(
-    data_dir: Path, run_id: int, *, replace: bool = False
+    data_dir: Path,
+    run_id: int,
+    *,
+    replace: bool = False,
+    analysis_fps: float = DEFAULT_ANALYSIS_FPS,
 ) -> dict[str, float | int]:
     """Analyze one cached video sequentially and write private review outputs.
 
@@ -42,6 +47,8 @@ def analyse_video(
     """
     if run_id < 0:
         raise ValueError("Run id must be nonnegative")
+    if not math.isfinite(analysis_fps) or analysis_fps <= 0:
+        raise ValueError("Analysis rate must be positive and finite")
     raw = data_dir / "raw"
     run = json.loads((raw / "runs" / f"{run_id}.json").read_text())
     calibration = json.loads(CALIBRATION_PATH.read_text())
@@ -58,7 +65,7 @@ def analyse_video(
         if (
             not capture.isOpened()
             or not math.isfinite(fps)
-            or fps < ANALYSIS_FPS
+            or fps < analysis_fps
         ):
             raise ValueError("Video cannot be sampled at the requested rate")
         if abs(count / fps - run_duration(run)) > MAX_DURATION_DIFFERENCE:
@@ -66,9 +73,9 @@ def analyse_video(
         origin = phase_clock_origin(run["phases"])
         events = [
             (video_time(event, origin), event)
-            for event in check_events(run["logs"])
+            for event in check_starts(run["logs"])
         ]
-        machine = FoldStateMachine()
+        evaluator = CheckWindowEvaluator(events)
         reference = None
         plate = None
         segmenter = None
@@ -76,6 +83,7 @@ def analyse_video(
         flat_area: float | None = None
         times: list[float] = []
         render_times: list[float] = []
+        processing_times: list[float] = []
         rows: list[dict[str, str | float]] = []
         index = 0
         sample = 0
@@ -84,9 +92,10 @@ def analyse_video(
             stage = Path(temp)
             try:
                 while capture.grab():
-                    if index / fps + 0.5 / fps < sample / ANALYSIS_FPS:
+                    if index / fps + 0.5 / fps < sample / analysis_fps:
                         index += 1
                         continue
+                    processing_started = time.perf_counter()
                     success, raw_frame = capture.retrieve()
                     if not success:
                         raise ValueError("Video frame could not be decoded")
@@ -124,14 +133,25 @@ def analyse_video(
                                 segmenter = CrepeSegmenter(
                                     image.shape[:2], plate, reference
                                 )
-                            if prediction == "flat":
-                                flat_area = max(flat_area or 0.0, geometry.area)
-                            machine.update(prediction)
                             status = "ok"
                         except (ValueError, cv2.error):
                             mask = None
                             geometry = None
                             status = "segmentation_failed"
+                    completed = evaluator.update(
+                        index / fps,
+                        prediction,
+                        geometry.area if geometry is not None else None,
+                        flat_reference_available=flat_area is not None,
+                    )
+                    for check in completed:
+                        if (
+                            check.event.name == "spread"
+                            and check.observation == "flat"
+                            and check.flat_areas
+                        ):
+                            flat_area = float(np.median(check.flat_areas))
+                    latest = completed[-1] if completed else None
                     elapsed = (
                         time.perf_counter() - started
                     ) * MILLISECONDS_PER_SECOND
@@ -142,9 +162,10 @@ def analyse_video(
                         plate,
                         mask,
                         geometry,
-                        machine.state,
-                        prediction,
+                        latest.observation if latest else None,
                         status,
+                        check=latest.event.name if latest else None,
+                        expected=latest.event.state if latest else None,
                     )
                     render_times.append(
                         (time.perf_counter() - render_started)
@@ -155,20 +176,32 @@ def analyse_video(
                         writer = cv2.VideoWriter(
                             str(stage / "annotated.mp4"),
                             cv2.VideoWriter_fourcc(*"mp4v"),
-                            ANALYSIS_FPS,
+                            analysis_fps,
                             (width, height),
                         )
                         if not writer.isOpened():
                             raise OSError("Cannot write annotated video")
                     writer.write(image)
+                    processing_times.append(
+                        (time.perf_counter() - processing_started)
+                        * MILLISECONDS_PER_SECOND
+                    )
                     rows.append(
                         {
                             "video_t": index / fps,
                             "prediction": prediction or "",
-                            "state": machine.state,
+                            "state": latest.observation
+                            if latest and latest.observation
+                            else "",
+                            "check": latest.event.name if latest else "",
+                            "expected_state": latest.event.state
+                            if latest
+                            else "",
+                            "check_status": latest.status if latest else "",
                             "status": status,
                             "inference_ms": elapsed,
                             "render_ms": render_times[-1],
+                            "processing_ms": processing_times[-1],
                             "plate_fraction": geometry.plate_fraction
                             if geometry
                             else "",
@@ -200,6 +233,44 @@ def analyse_video(
                 out = csv.DictWriter(file, fieldnames=list(rows[0]))
                 out.writeheader()
                 out.writerows(rows)
+            evaluator.finish()
+            observation_rows = [
+                {
+                    "check": check.event.name,
+                    "start": check.start,
+                    "expected_state": check.event.state,
+                    "robot_verdict": (
+                        "reported_pass"
+                        if check.event.check_ok is True
+                        else "reported_fail"
+                        if check.event.check_ok is False
+                        else "unknown"
+                    ),
+                    "target": check.target,
+                    "observed_at": check.observed_at
+                    if check.observed_at is not None
+                    else "",
+                    "observation": check.observation or "",
+                    "status": check.status,
+                    "valid_frames": len(check.votes),
+                }
+                for check in evaluator.checks
+            ]
+            columns = [
+                "check",
+                "start",
+                "expected_state",
+                "robot_verdict",
+                "target",
+                "observed_at",
+                "observation",
+                "status",
+                "valid_frames",
+            ]
+            with (stage / "observations.csv").open("w", newline="") as file:
+                out = csv.DictWriter(file, fieldnames=columns)
+                out.writeheader()
+                out.writerows(observation_rows)
             _timeline_plot(stage / "timeline.png", rows, events)
             (stage / "summary.json").write_text(
                 json.dumps(
@@ -207,6 +278,13 @@ def analyse_video(
                         "frames": len(rows),
                         "median_ms": float(np.median(times)),
                         "median_render_ms": float(np.median(render_times)),
+                        "median_processing_ms": float(
+                            np.median(processing_times)
+                        ),
+                        "over_budget_frames": sum(
+                            t > FRAME_BUDGET_MS for t in processing_times
+                        ),
+                        "analysis_fps": analysis_fps,
                     }
                 )
             )
@@ -226,6 +304,10 @@ def analyse_video(
             "frames": len(rows),
             "median_ms": float(np.median(times)),
             "median_render_ms": float(np.median(render_times)),
+            "median_processing_ms": float(np.median(processing_times)),
+            "over_budget_frames": sum(
+                t > FRAME_BUDGET_MS for t in processing_times
+            ),
         }
     finally:
         capture.release()
@@ -238,17 +320,24 @@ def _timeline_plot(path: Path, rows: list[dict], events: list[tuple]) -> None:
     import matplotlib.pyplot as plt
 
     figure, axis = plt.subplots(figsize=(12, 3))
-    axis.step(
-        [row["video_t"] for row in rows],
-        [STATE_ORDER.index(row["state"]) for row in rows],
-        where="post",
+    observations = [row for row in rows if row["state"] in STATE_ORDER]
+    axis.scatter(
+        [row["video_t"] for row in observations],
+        [STATE_ORDER.index(row["state"]) for row in observations],
+        label="Visual estimate at check",
     )
     for timestamp, event in events:
         axis.axvline(
-            timestamp, color="green" if event.check_ok else "red", alpha=0.5
+            timestamp,
+            color="green"
+            if event.check_ok is True
+            else "red"
+            if event.check_ok is False
+            else "grey",
+            alpha=0.5,
         )
     axis.set_yticks(range(len(STATE_ORDER)), STATE_ORDER)
-    axis.set_xlabel("Video time (s)")
+    axis.set_xlabel("Video time (s); lines = logged check starts")
     figure.tight_layout()
     figure.savefig(path)
     plt.close(figure)

@@ -6,6 +6,7 @@ import math
 from typing import Literal
 
 FoldState = Literal["empty", "flat", "half", "quarter"]
+STATE_ORDER: tuple[FoldState, ...] = ("empty", "flat", "half", "quarter")
 FLAT_PLATE_FRACTION = 0.24
 FLAT_REFERENCE_FRACTION = 0.75
 FLAT_NO_EDGE_FRACTION = 0.20

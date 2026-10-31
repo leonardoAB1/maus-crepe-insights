@@ -89,7 +89,15 @@ def main() -> None:
     dashboard.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
     dashboard.add_argument("--port", type=int, default=8765)
     live = sub.add_parser("fold-live", help="analyze one cached video")
+    from .fold_video import DEFAULT_ANALYSIS_FPS
+
     live.add_argument("run_id", type=int)
+    live.add_argument(
+        "--fps",
+        type=float,
+        default=DEFAULT_ANALYSIS_FPS,
+        help="analysis frames per second (default: 5 for a 200 ms budget)",
+    )
     live.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
     live.add_argument(
         "--replace",
@@ -180,7 +188,14 @@ def main() -> None:
     if args.cmd == "fold-live":
         from .fold_video import analyse_video
 
-        print(analyse_video(data_dir, args.run_id, replace=args.replace))
+        print(
+            analyse_video(
+                data_dir,
+                args.run_id,
+                replace=args.replace,
+                analysis_fps=args.fps,
+            )
+        )
     if args.cmd == "fold-live-eval":
         from .fold_live_eval import evaluate_live
 

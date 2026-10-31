@@ -18,7 +18,7 @@ def test_sample_is_balanced_reproducible_and_strict() -> None:
         sample_runs(candidates, 9, 42)
 
 
-def test_live_scoring_reads_first_frame_at_or_after_check(
+def test_live_scoring_uses_check_synchronized_observations(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root = tmp_path / "fold_segmentation"
@@ -60,9 +60,27 @@ def test_live_scoring_reads_first_frame_at_or_after_check(
         (runs / f"{run_id}.json").write_text(json.dumps(run))
         live = root / "live" / str(run_id)
         live.mkdir(parents=True)
+        pd.DataFrame({"video_t": [2.5, 2.6, 2.7]}).to_csv(
+            live / "timeline.csv", index=False
+        )
         pd.DataFrame(
-            {"video_t": [2.5, 2.6, 2.7], "state": ["flat", "half", "quarter"]}
-        ).to_csv(live / "timeline.csv", index=False)
+            [
+                {
+                    "check": name,
+                    "robot_verdict": "unknown",
+                    "expected_state": state,
+                    "observed_at": 2.6,
+                    "observation": "half",
+                    "status": "observed",
+                }
+                for name, state in (
+                    ("plate_clean", "empty"),
+                    ("spread", "flat"),
+                    ("fold1", "half"),
+                    ("fold2", "quarter"),
+                )
+            ]
+        ).to_csv(live / "observations.csv", index=False)
     monkeypatch.setattr("maus_export.fold_live_eval.SAMPLE_PER_GROUP", 1)
     result = evaluate_live(tmp_path)
     assert result == {"runs": 2, "checks": 8, "available": 8}

@@ -45,7 +45,7 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
             int(row["run_id"]),
             row["robot"],
             int(row["source_width"]),
-            bool(row["check_ok"]),
+            bool(row["check_ok"]) if pd.notna(row["check_ok"]) else False,
         )
         for row in records
         if row["expected_state"] == "empty"
@@ -148,7 +148,12 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
                 for ref in flat_refs.get(int(row["run_id"]), [])
                 if ref["frame_id"] != row["frame_id"]
             ]
-            choices.sort(key=lambda ref: (not ref["check_ok"], ref["frame_id"]))
+            choices.sort(
+                key=lambda ref: (
+                    not (pd.notna(ref["check_ok"]) and bool(ref["check_ok"])),
+                    ref["frame_id"],
+                )
+            )
             flat_area = choices[0]["area"] if choices else None
             row["flat_reference_id"] = (
                 choices[0]["frame_id"] if choices else None

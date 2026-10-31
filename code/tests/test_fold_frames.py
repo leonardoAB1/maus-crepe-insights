@@ -4,7 +4,12 @@ from datetime import datetime
 
 import pytest
 
-from maus_export.fold_frames import check_events, phase_clock_origin, video_time
+from maus_export.fold_frames import (
+    check_events,
+    check_starts,
+    phase_clock_origin,
+    video_time,
+)
 
 
 def test_intersection_uses_midpoint_not_first_phase() -> None:
@@ -43,6 +48,21 @@ def test_all_checks_and_unfinished_results() -> None:
     )
     assert [e.state for e in events] == ["empty", "flat", "half", "quarter"]
     assert all(e.check_ok for e in events)
+
+
+def test_starts_include_missing_and_unknown_verdicts() -> None:
+    logs = [
+        {"timestamp": "2026-01-01T10:00:01", "msg": "check_fold1 started"},
+        {
+            "timestamp": "2026-01-01T10:00:02",
+            "msg": "check_fold1: no camera frame",
+        },
+        {"timestamp": "2026-01-01T10:00:03", "msg": "check_fold2 started"},
+    ]
+    starts = check_starts(logs)
+    assert [event.name for event in starts] == ["fold1", "fold2"]
+    assert [event.check_ok for event in starts] == [None, None]
+    assert len(check_events(logs)) == 1
 
 
 def test_no_valid_clock_origin() -> None:

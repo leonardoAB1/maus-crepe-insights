@@ -39,9 +39,11 @@ def annotate_frame(
     plate: PlateEllipse | None,
     mask: np.ndarray | None,
     geometry: CrepeGeometry | None,
-    state: str,
-    prediction: str | None,
+    state: str | None,
     status: str,
+    *,
+    check: str | None = None,
+    expected: str | None = None,
 ) -> np.ndarray:
     """Draw the current mask and measurements without modifying the input.
 
@@ -105,7 +107,13 @@ def annotate_frame(
                     LINE_WIDTH,
                     cv2.LINE_AA,
                 )
-    lines = [f"State: {state} | Raw: {prediction or '-'} | {status}"]
+    if check is None:
+        lines = [f"No logged-check evaluation | {status}"]
+    else:
+        lines = [
+            f"Check {check}: expected {expected or '-'} (log)",
+            f"Vision: {state or 'unknown'} (unverified) | {status}",
+        ]
     if geometry is not None and geometry.centre is not None:
         lines.append(
             f"Area: {geometry.plate_fraction:.1%} plate | "

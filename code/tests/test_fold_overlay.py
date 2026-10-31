@@ -16,7 +16,16 @@ def test_mask_and_geometry_are_drawn_without_changing_input() -> None:
     cv2.rectangle(mask, (250, 300), (450, 450), 255, -1)
     plate = PlateEllipse(300, 300, 550, 550, 0)
     geometry = measure_geometry(mask, plate)
-    output = annotate_frame(image, plate, mask, geometry, "half", "half", "ok")
+    output = annotate_frame(
+        image,
+        plate,
+        mask,
+        geometry,
+        "half",
+        "ok",
+        check="fold1",
+        expected="half",
+    )
     assert np.array_equal(image, original)
     assert output[350, 300, 1] > original[350, 300, 1]
     assert np.array_equal(output[580, 580], original[580, 580])
@@ -28,10 +37,10 @@ def test_mask_and_geometry_are_drawn_without_changing_input() -> None:
 def test_failed_detection_does_not_draw_stale_mask() -> None:
     image = np.full((300, 600, 3), 50, np.uint8)
     output = annotate_frame(
-        image, None, None, None, "empty", None, "segmentation_failed"
+        image, None, None, None, None, "segmentation_failed"
     )
     assert np.array_equal(output[250, 550], image[250, 550])
     with pytest.raises(ValueError, match="dimensions"):
         annotate_frame(
-            image, None, np.zeros((10, 10), np.uint8), None, "empty", None, "ok"
+            image, None, np.zeros((10, 10), np.uint8), None, None, "ok"
         )

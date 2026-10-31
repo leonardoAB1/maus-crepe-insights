@@ -10,12 +10,11 @@ from typing import Any
 
 import pandas as pd
 
-from .fold_frames import check_events, phase_clock_origin, video_time
+from .fold_frames import check_starts
 from .fold_video import analyse_video
 
 SAMPLE_PER_GROUP = 10
 SAMPLE_SEED = 42
-CHECK_DELAY_SECONDS = 1.0
 EXPECTED_CHECKS = {"plate_clean", "spread", "fold1", "fold2"}
 
 
@@ -54,16 +53,16 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
         run = json.loads(
             (data_dir / "raw" / "runs" / f"{run_id}.json").read_text()
         )
-        events = check_events(run["logs"])
+        events = check_starts(run["logs"])
         if not EXPECTED_CHECKS.issubset({event.name for event in events}):
             continue
         group = None
         if run.get("terminal_status") == "succeeded" and all(
-            e.check_ok for e in events
+            e.check_ok is True for e in events
         ):
             group = "good"
         elif any(
-            not e.check_ok and e.name in {"spread", "fold1", "fold2"}
+            e.check_ok is False and e.name in {"spread", "fold1", "fold2"}
             for e in events
         ):
             group = "bad"
@@ -83,33 +82,32 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
     for group, item in selected:
         run_id = item["id"]
         live = root / "live" / str(run_id)
-        if not live.exists():
-            analyse_video(data_dir, run_id)
+        if not (live / "observations.csv").is_file():
+            analyse_video(data_dir, run_id, replace=live.exists())
         timeline = pd.read_csv(live / "timeline.csv")
         if (
             "inference_ms" in timeline
             and timeline["inference_ms"].notna().any()
         ):
             run_medians.append(float(timeline["inference_ms"].median()))
-        run = json.loads(
-            (data_dir / "raw" / "runs" / f"{run_id}.json").read_text()
-        )
-        origin = phase_clock_origin(run["phases"])
-        for event in check_events(run["logs"]):
-            target = video_time(event, origin) + CHECK_DELAY_SECONDS
-            available = timeline[timeline["video_t"] >= target]
-            state = available.iloc[0]["state"] if len(available) else None
+        observations = pd.read_csv(live / "observations.csv")
+        for observation in observations.to_dict("records"):
+            state = observation["observation"]
+            available = pd.notna(state)
             rows.append(
                 {
                     "run_id": run_id,
                     "robot": item["robot"],
                     "group": group,
-                    "check": event.name,
-                    "check_ok": event.check_ok,
-                    "expected_state": event.state,
-                    "video_t": target,
-                    "predicted_state": state,
-                    "match": state == event.state if state else None,
+                    "check": observation["check"],
+                    "robot_verdict": observation["robot_verdict"],
+                    "expected_state": observation["expected_state"],
+                    "video_t": observation["observed_at"],
+                    "predicted_state": state if available else None,
+                    "status": observation["status"],
+                    "match": state == observation["expected_state"]
+                    if available
+                    else None,
                 }
             )
     table = pd.DataFrame(rows)
@@ -118,7 +116,8 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
         "# Live fold-state evaluation",
         "",
         f"Seed: {SAMPLE_SEED}.",
-        "Scored at the first frame at least one second after each check.",
+        "Post-check visual votes are compared with the expected check state.",
+        "Robot verdicts and expected states are not ground truth.",
         "",
     ]
     for group in ("good", "bad"):
@@ -134,7 +133,11 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
             f"{pd.Series(run_medians).median():.1f} ms/frame."
         )
     lines.extend(
-        ["", "Checks beyond the video are excluded from agreement.", ""]
+        [
+            "",
+            "Unknown and incomplete observations are excluded from agreement.",
+            "",
+        ]
     )
     report_path.write_text("\n".join(lines))
     return {

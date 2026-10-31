@@ -14,10 +14,14 @@ from typing import Any
 PHASE_PRECISION = timedelta(seconds=1)
 CHECK_DELAY = timedelta(seconds=0.1)
 CHECKS = {
-    "plate_clean": ("empty", "hotplate clean"),
-    "spread": ("flat", "crepe spread successfully"),
-    "fold1": ("half", "first fold completed"),
-    "fold2": ("quarter", "second fold completed"),
+    "plate_clean": ("empty", "hotplate clean", "hotplate not clean"),
+    "spread": (
+        "flat",
+        "crepe spread successfully",
+        "crepe not spread correctly",
+    ),
+    "fold1": ("half", "first fold completed", "first fold incomplete"),
+    "fold2": ("quarter", "second fold completed", "second fold incomplete"),
 }
 
 
@@ -28,7 +32,7 @@ class CheckEvent:
     name: str
     state: str
     timestamp: datetime
-    check_ok: bool
+    check_ok: bool | None
 
 
 def _local_time(value: str) -> datetime:
@@ -64,21 +68,43 @@ def check_events(logs: list[dict[str, Any]]) -> list[CheckEvent]:
     events: list[CheckEvent] = []
     for log in logs:
         message = log["msg"]
-        for name, (state, success) in CHECKS.items():
+        for name, (state, success, failure) in CHECKS.items():
             prefix = f"check_{name}"
             if message.startswith(f"{prefix} started"):
                 pending[name] = _local_time(log["timestamp"])
             elif message.startswith(f"{prefix}:") and name in pending:
                 result = message[len(prefix) + 1 :].strip()
+                verdict = (
+                    True
+                    if result.startswith(success)
+                    else False
+                    if result.startswith((failure, "failed"))
+                    else None
+                )
                 events.append(
-                    CheckEvent(
-                        name,
-                        state,
-                        pending.pop(name),
-                        result.startswith(success),
-                    )
+                    CheckEvent(name, state, pending.pop(name), verdict)
                 )
     return events
+
+
+def check_starts(logs: list[dict[str, Any]]) -> list[CheckEvent]:
+    """Return every check start, retaining unknown or missing robot verdicts."""
+    results = {
+        (event.name, event.timestamp): event for event in check_events(logs)
+    }
+    starts = []
+    for log in logs:
+        message = log["msg"]
+        for name, (state, _, _) in CHECKS.items():
+            if message.startswith(f"check_{name} started"):
+                timestamp = _local_time(log["timestamp"])
+                starts.append(
+                    results.get(
+                        (name, timestamp),
+                        CheckEvent(name, state, timestamp, None),
+                    )
+                )
+    return sorted(starts, key=lambda event: event.timestamp)
 
 
 def video_time(event: CheckEvent, origin: datetime) -> float:
