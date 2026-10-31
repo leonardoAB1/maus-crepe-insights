@@ -210,29 +210,16 @@ Seen from above, this is a run-to-run feedback loop: the batch measures how
 each recipe setting moves the crêpe quality, read through camera, logs and
 sensors.
 
-<!-- diagram: doe-control-loop -->
+<!-- diagram: doe-loop -->
 ```mermaid
-flowchart LR
-    r([Quality target r]) --> cmp((compare))
-    cmp -->|gap e| ctrl[DoE analysis]
-    ctrl -->|u: 6 settings| fw
-    subgraph plant [Crepe robot, the plant]
-        fw[Robot firmware] -->|motion, heat| proc[Dispense to fold]
-    end
-    d[Disturbances d] -.-> proc
-    proc --> cam[Hotplate camera]
-    proc --> logs[Phase logs]
-    proc --> env[Sensor boards]
-    cam -->|images| vis[Vision scores]
-    logs -->|events| stat[Status, timing]
-    env -->|temp, humidity| dm[Measured d]
-    vis --> y[Outputs y]
-    stat --> y
-    y -->|once per batch| cmp
-    dm -.->|covariates| ctrl
+flowchart TB
+    r([Quality target]) --> ctrl[DoE analysis]
+    ctrl -->|6 settings| robot[Crepe robot]
+    d[Disturbances] -.-> robot
+    robot --> sense[Camera, logs, sensors]
+    sense -->|quality, once per batch| ctrl
 
     style ctrl fill:#2a78d6,stroke:#1c5cab,color:#ffffff
-    style y fill:#cde2fb,stroke:#2a78d6,color:#0b0b0b
 ```
 <!-- /diagram -->
 
