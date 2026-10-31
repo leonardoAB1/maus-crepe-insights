@@ -18,6 +18,8 @@ failure in the current data. The analysis, plot and power numbers are in
     test per mechanism
   - the shared holdout, labelled as one robot
 - `train.py`: rebuilds both files and `assets/fold-risk-effects.png`
+- `figure.py`: writes the example grid `assets/fold-risk-example.jpg`
+  (holdout spread frames, picked by rule, including a missed failure)
 
 ## Design
 
@@ -52,4 +54,5 @@ From `code/`, after `pixi run frames` and `pixi run vision`:
 
 ```bash
 pixi run -e ml python models/fold-risk/train.py
+pixi run -e ml python models/fold-risk/figure.py
 ```
