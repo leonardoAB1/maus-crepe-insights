@@ -39,6 +39,7 @@ def pilot(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     frames = root / "run-000"
     frames.mkdir(parents=True, mode=0o700)
     root.chmod(0o700)
+    root.parent.chmod(0o700)
     image = frames / "000000.png"
     Image.new("RGB", (8, 8), "red").save(image)
     manifest = {
@@ -60,6 +61,7 @@ def pilot(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
                         ).hexdigest(),
                         "requested_seconds": 0,
                         "decoded_pts": 0,
+                        "decoded_frame_index": 0,
                         "human_label": None,
                         "phase_suggestion": None,
                         "suggestion_status": "unavailable_unaligned",
