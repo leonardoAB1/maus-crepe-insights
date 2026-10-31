@@ -8,7 +8,11 @@
 - Cross validation inside each robot separately.
 - Leave one robot out, features only, as a transfer check.
 
-Intervals bootstrap runs within robot over the out-of-fold predictions.
+Intervals bootstrap runs within robot over fixed out-of-fold predictions, so
+they exclude the variance of refitting in CV and are too narrow; pooled
+out-of-fold AUC on small null data is also biased below zero. Whether the
+model beats robot-only is therefore judged by `permutation_test`: labels are
+shuffled within robot and the whole CV is rerun.
 """
 
 from __future__ import annotations
@@ -28,6 +32,9 @@ ROBOT = "robot"
 N_SPLITS = 5
 N_REPEATS = 20
 N_BOOT = 2000
+N_PERM = 1000
+PERM_REPEATS = 5
+ALPHA = 0.05
 C = 1.0
 MAX_ITER = 1000
 CI = (0.025, 0.975)
@@ -143,11 +150,16 @@ def delta_report(
         draws.append(stats(idx))
     draws_arr = np.array(draws)
     names = ("delta_auc_within_robot", "delta_auc_pooled", "brier_skill")
-    out: dict[str, Any] = {"n_runs": len(y), "n_events": int(y.sum())}
+    out: dict[str, Any] = {
+        "n_runs": len(y),
+        "n_events": int(y.sum()),
+        "note": "resample_ci95 resamples fixed out-of-fold predictions; it "
+        "excludes CV refit variance. Use permutation_test for inference.",
+    }
     for i, name in enumerate(names):
         out[name] = {
             "value": float(point[i]),
-            "ci95": _ci(list(draws_arr[:, i])),
+            "resample_ci95": _ci(list(draws_arr[:, i])),
         }
     return out
 
@@ -248,3 +260,48 @@ def pooled_cv(
         rows[ROBOT].astype(str).to_numpy(),
         n_boot=n_boot,
     )
+
+
+def permutation_test(
+    table: pd.DataFrame,
+    target: str,
+    features: list[str],
+    robots: list[str],
+    *,
+    n_perm: int = N_PERM,
+    n_repeats: int = PERM_REPEATS,
+    seed: int = 0,
+) -> dict[str, Any]:
+    """One-sided test that within-robot delta AUC beats labels shuffled
+    within robot. The observed value and every shuffle run the same CV
+    (`n_repeats`), so the CV bias cancels."""
+    rows = table[table[ROBOT].isin(robots) & table[target].notna()].copy()
+    robot = rows[ROBOT].astype(str).to_numpy()
+
+    def delta(col: str, rep_seed: int) -> float:
+        pm, _ = oof_predictions(
+            rows, col, features, n_repeats=n_repeats, seed=rep_seed
+        )
+        return within_auc(rows[col].to_numpy(float), pm, robot) - 0.5
+
+    observed = delta(target, seed)
+    rng = np.random.default_rng(seed)
+    null = np.empty(n_perm)
+    for i in range(n_perm):
+        rows["_perm"] = rows.groupby(ROBOT)[target].transform(
+            lambda s: rng.permutation(s.to_numpy())
+        )
+        null[i] = delta("_perm", seed + 1 + i)
+    p = (1 + int(np.sum(null >= observed))) / (1 + n_perm)
+    return {
+        "observed_delta_auc": float(observed),
+        "n_perm": n_perm,
+        "cv_repeats": n_repeats,
+        "null_mean": float(null.mean()),
+        "null_q05_q95": [
+            float(np.quantile(null, 0.05)),
+            float(np.quantile(null, 0.95)),
+        ],
+        "p_one_sided": float(p),
+        "beats_null": bool(p < ALPHA),
+    }

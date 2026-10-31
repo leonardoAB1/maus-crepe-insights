@@ -3,10 +3,13 @@
 Each robot ran in its own time window, so robot also stands for era, recipe
 and software. Pooled effects mix "this robot fails folds more" with "this
 spread raises fold risk". Every effect here is estimated within robot: a
-logistic regression with a robot fixed effect, one spread feature at a time,
-on a pre-registered feature set. Continuous features are scaled by their
-pooled within-robot standard deviation, so an odds ratio is per within-robot
-SD. Holm corrects across the features of one failure mechanism.
+Firth-penalized logistic regression with a robot fixed effect, one spread
+feature at a time, on a pre-registered feature set. Firth with profile
+likelihood intervals, because some mechanisms have under 10 events; Wald
+results from plain maximum likelihood are kept for comparison. Continuous
+features are scaled by their pooled within-robot standard deviation, so an
+odds ratio is per within-robot SD. Holm corrects across the 7 features
+within one failure mechanism, not across all 21 tests.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from statsmodels.tools.sm_exceptions import (
     PerfectSeparationWarning,
 )
 
+from .firth import firth_logit
 from .fold_risk import MECHANISMS, VERDICT_FEATURE
 
 ROBOT = "robot"
@@ -96,6 +100,24 @@ def adjusted_effect(
         out["events_if_present"] = [int(y[x == 1].sum()), int((x == 1).sum())]
         out["events_if_absent"] = [int(y[x == 0].sum()), int((x == 0).sum())]
     X = _design(rows, feature)
+    j = list(X.columns).index(feature)
+    firth = firth_logit(X.to_numpy(float), y.to_numpy(float))
+    b = float(firth.beta[j])
+    lo, hi = firth.profile_ci(j)
+    out |= {
+        "estimable": True,
+        "method": "Firth, profile penalized likelihood CI and LR test",
+        "log_or": b,
+        "odds_ratio": math.exp(b),
+        "ci95": [math.exp(lo), math.exp(hi)],
+        "p": firth.p_value(j),
+    }
+    out["wald"] = _wald(X, y, feature)
+    return out
+
+
+def _wald(X: pd.DataFrame, y: pd.Series, feature: str) -> dict[str, Any]:
+    """Plain maximum likelihood with Wald interval, for comparison only."""
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", PerfectSeparationWarning)
@@ -106,14 +128,12 @@ def adjusted_effect(
         PerfectSeparationWarning,
         np.linalg.LinAlgError,
     ):
-        return out | {"estimable": False}
+        return {"estimable": False}
     b, se = float(fit.params[feature]), float(fit.bse[feature])
     if not (np.isfinite(b) and np.isfinite(se)) or abs(b) > MAX_ABS_LOG_OR:
-        return out | {"estimable": False}
-    return out | {
+        return {"estimable": False}
+    return {
         "estimable": True,
-        "log_or": b,
-        "se": se,
         "odds_ratio": math.exp(b),
         "ci95": [math.exp(b - Z95 * se), math.exp(b + Z95 * se)],
         "p": float(fit.pvalues[feature]),
