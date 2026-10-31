@@ -202,6 +202,42 @@ private, account-specific fetch-to-vision-target workflow, see the
 Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
 See [documentation/analysis.md](documentation/analysis.md).
 
+Designed experiment for Maus: `pixi run doe --robot <robot>` writes a run sheet to `data/doe/`,
+`pixi run -e ml doe-analyze <sheet>` reads it back once the runs are done.
+See [documentation/doe.md](documentation/doe.md).
+
+Seen from above, this is a run-to-run feedback loop: the batch measures how
+each recipe setting moves the crêpe quality, read through camera, logs and
+sensors.
+
+<!-- diagram: doe-control-loop -->
+```mermaid
+flowchart LR
+    r([Quality target r]) --> cmp((compare))
+    cmp -->|gap e| ctrl[DoE analysis]
+    ctrl -->|u: 6 settings| fw
+    subgraph plant [Crepe robot, the plant]
+        fw[Robot firmware] -->|motion, heat| proc[Dispense to fold]
+    end
+    d[Disturbances d] -.-> proc
+    proc --> cam[Hotplate camera]
+    proc --> logs[Phase logs]
+    proc --> env[Sensor boards]
+    cam -->|images| vis[Vision scores]
+    logs -->|events| stat[Status, timing]
+    env -->|temp, humidity| dm[Measured d]
+    vis --> y[Outputs y]
+    stat --> y
+    y -->|once per batch| cmp
+    dm -.->|covariates| ctrl
+
+    style ctrl fill:#2a78d6,stroke:#1c5cab,color:#ffffff
+    style y fill:#cde2fb,stroke:#2a78d6,color:#0b0b0b
+```
+<!-- /diagram -->
+
+![Example DoE result on a simulated batch: which setting to change and which way](assets/doe-results-example.png)
+
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
 
 **VS Code.** Run `pixi install -e ml` in `code/`, open the repo folder (or a worktree folder) and
@@ -225,6 +261,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Robot system](documentation/system.md)
 - [Crêpe stages and where runs fail](documentation/crepe-stages.md)
 - [Which settings matter (history analysis)](documentation/analysis.md)
+- [Designed experiment (DoE batch)](documentation/doe.md)
 - [Data pipeline and data model](documentation/pipeline.md)
 - [Candidate run-start training dataset](documentation/training-dataset.md)
 - [Vision-target training dataset](documentation/vision-targets.md)

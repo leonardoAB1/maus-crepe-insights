@@ -114,9 +114,10 @@ against changes after that check, nor proof of acquisition timing.
 
 The result has one row per run-start row, in source order, via a one-to-one
 left join on `id`. `id` (int64) and `ts_start` (UTC microsecond timestamp) are
-metadata for joining and chronological evaluation, not model inputs. The 15
-candidate features are the six context fields and nine fixed `param.<key>`
-columns documented in [the run-start dataset](training-dataset.md). Parameter
+metadata for joining and chronological evaluation, not model inputs. The 16
+candidate features are the six context fields and ten fixed `param.<key>`
+columns documented in [the run-start dataset](training-dataset.md) (schema
+version 2). Parameter
 values are canonical JSON scalar strings, or null. The run-start source's
 `terminal_status` is excluded entirely. No durations, end times, phases,
 checks, logs, labels, image metrics, or identifier-derived fields are features.

@@ -36,12 +36,14 @@ FEATURE_PARAMETERS = (
     "dispense.batter.centre_dispense_time",
     "dispense.batter.centre_flowrate",
     "dispense.batter.fan_power",
-    "dispense.batter.concentric_outer_radius_offset_mm",
-    "dispense.batter.concentric_inner_radius_offset_mm",
-    "dispense.batter.concentric_ring_count",
-    "dispense.batter.concentric_rings_enabled",
+    "dispense.batter.concentric_inner_radius_mm",
+    "dispense.batter.concentric_outer_radius_mm",
+    "dispense.batter.concentric_outer_fan_tail_deg",
+    "dispense.batter.concentric_inner_flowrate_g_s",
+    "dispense.batter.concentric_fan_inset_mm",
     "dispense.oil.grams",
 )
+RUN_START_SCHEMA = 2  # run-start dataset version this join accepts
 
 TARGETS = (
     "vision.spread.area_rel",
@@ -141,7 +143,7 @@ def _validate_start(table: pa.Table) -> list[str]:
     except (TypeError, KeyError, ValueError):
         raise VisionTargetsError("Invalid run-start manifest") from None
     expected = {
-        "schema_version": 1,
+        "schema_version": RUN_START_SCHEMA,
         "metadata": ["id", "ts_start"],
         "target": "terminal_status",
         "candidate_features": features,

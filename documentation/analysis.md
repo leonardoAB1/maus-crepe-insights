@@ -2,7 +2,7 @@
 
 The question: from the runs Maus already made, which recipe settings go with
 better crêpes, and in which direction? The answer feeds the designed experiment
-(#26).
+(#26, [doe.md](doe.md)).
 
 The code lives in `code/maus_export/analysis.py` (tested). The notebook
 `code/notebooks/25-history-effects.ipynb` holds the plots and the story.

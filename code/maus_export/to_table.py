@@ -11,6 +11,13 @@ import pandas as pd
 
 PARAM_PREFIX = "param."
 CHECK_PREFIX = "check."
+# Recipe keys renamed by a robot software update: current name -> old names.
+# The value carried over unchanged and the two never appear in one run.
+RENAMED_PARAMETERS = {
+    "dispense.batter.concentric_outer_fan_tail_deg": (
+        "dispense.batter.concentric_fan_tail_deg",
+    ),
+}
 VISION_CHECKS = [
     "plate_present",
     "spread",

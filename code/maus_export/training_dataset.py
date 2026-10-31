@@ -13,7 +13,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from .to_table import canonical_json
+from .to_table import RENAMED_PARAMETERS, canonical_json
 
 CONTEXT = {
     "robot": ("machineName", pa.string()),
@@ -23,18 +23,22 @@ CONTEXT = {
     "env_temp_start": ("envTempStart", pa.float64()),
     "env_humidity_start": ("envHumidityStart", pa.float64()),
 }
+# Settings in the current robot parameter set that are fixed before a run.
+# Radius offsets, ring count and rings enabled were dropped: the current
+# software no longer has them (see documentation/doe.md, Controllability).
 CANDIDATE_PARAMETERS = (
     "dispense.batter.cook_time",
     "dispense.batter.centre_dispense_time",
     "dispense.batter.centre_flowrate",
     "dispense.batter.fan_power",
-    "dispense.batter.concentric_outer_radius_offset_mm",
-    "dispense.batter.concentric_inner_radius_offset_mm",
-    "dispense.batter.concentric_ring_count",
-    "dispense.batter.concentric_rings_enabled",
+    "dispense.batter.concentric_inner_radius_mm",
+    "dispense.batter.concentric_outer_radius_mm",
+    "dispense.batter.concentric_outer_fan_tail_deg",
+    "dispense.batter.concentric_inner_flowrate_g_s",
+    "dispense.batter.concentric_fan_inset_mm",
     "dispense.oil.grams",
 )
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SCALAR_TYPES = (str, int, float, bool)
 OUTPUT = Path("training") / "run_start.parquet"
 
@@ -115,7 +119,7 @@ def _validate_run(run: Any, name: str, seen: dict[int, str]) -> None:
     if params is not None and not isinstance(params, dict):
         raise TrainingInputError(name, "Parameters must be an object or null")
     for key in CANDIDATE_PARAMETERS:
-        value = (params or {}).get(key)
+        value = _param(params or {}, key)
         if value is not None and type(value) not in SCALAR_TYPES:
             raise TrainingInputError(
                 name, "Candidate parameter must be a JSON scalar"
@@ -125,6 +129,14 @@ def _validate_run(run: Any, name: str, seen: dict[int, str]) -> None:
         raise TrainingInputError(
             name, "tsStart must be a timestamp with timezone"
         )
+
+
+def _param(params: dict[str, Any], key: str) -> Any:
+    """A parameter by its current name, falling back to an old name."""
+    for name in (key, *RENAMED_PARAMETERS.get(key, ())):
+        if params.get(name) is not None:
+            return params[name]
+    return None
 
 
 def _schema() -> pa.Schema:
@@ -166,7 +178,7 @@ def _row(run: dict[str, Any]) -> dict[str, Any]:
     row.update({name: run.get(src) for name, (src, _) in CONTEXT.items()})
     params = run.get("parameters") or {}
     for key in CANDIDATE_PARAMETERS:
-        value = params.get(key)
+        value = _param(params, key)
         row[f"param.{key}"] = (
             canonical_json(value) if value is not None else None
         )
