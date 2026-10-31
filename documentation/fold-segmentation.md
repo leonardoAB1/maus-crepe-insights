@@ -74,11 +74,15 @@ remove only its incomplete generated evaluation files before rerunning it.
    diameter, with RMS distance at most 2.5% of chord length and median rim
    distance at least 3% of plate diameter. Report edge angle and the
    intersection and angle of the two longest edges where defined.
-6. Classify in order: no crepe is empty; plate fraction >= 0.24, flat-reference
-   fraction >= 0.75, or no edge with plate fraction >= 0.20 is flat. Otherwise,
-   with a flat reference, fraction >= 0.28 is half and lower is quarter.
-   Without a flat reference, plate fraction >= 0.11 is half and lower is
-   quarter. A flat frame cannot use itself as its own reference.
+6. Classify in order: no crepe is empty; plate fraction >= 0.49 or
+   flat-reference fraction >= 0.75 is flat. Otherwise, flat-reference
+   fraction >= 0.32 or plate fraction >= 0.21 is half; anything smaller is
+   quarter. The flat reference is the largest filled area among the run's
+   other flat frames, so an occluded check frame cannot shrink it. A flat
+   frame cannot use itself as its own reference. Straight edges do not change
+   the decision: on rectified frames flat crepes often expose an edge and
+   half folds often expose none. These thresholds describe the top-down
+   view and were fitted on the local export.
 7. Whole-video analysis sequentially grabs frames at 5 Hz by default (a 200
    ms/frame budget, `--fps` for other rates) and rectifies to 900 by 900
    pixels. It learns the plate, first empty reference and flat area from
@@ -122,22 +126,28 @@ On 2026-11-01, using the cached export and the method above:
 
 - 285 runs, 1,182 extracted frames; 158 videos failed the duration check and
   one check fell outside its video. Eight frames lacked a plate estimate.
-- On 988 usable passed checks, agreement was 69.1%, versus the prototype's
-  94.6% on 991 frames. Empty 96.0%, flat 100.0%, half 0.8%, quarter 73.4%.
-  Of 240 passed half checks, 201 were called flat. Their median plate fraction
-  was 0.318, above the prescribed 0.24 flat threshold. Rectification changes
-  area fractions; the original thresholds were not validated for this view.
-  This observed mismatch does not establish the sole cause of the gap.
+- On 988 usable passed checks, agreement was 95.9%, versus the prototype's
+  94.6% on 991 frames. Empty 96.0%, flat 99.6%, half 98.8%, quarter 87.9%.
+  The thresholds were refit for the rectified top-down view, where a full
+  crepe covers about 0.7 of the plate, a half fold about 0.3 and a quarter
+  fold about 0.17. The old oblique-frame flat threshold of 0.24 sat below the
+  median half-fold fraction of 0.318 and mislabeled 201 of 240 half frames.
+  The remaining quarter errors and the 12 empty frames with visible residue
+  (4 to 19% of the plate) are area overlaps and robot misverdicts, not
+  threshold gaps. All numbers are tuned on this same export and need
+  held-out validation before deployment.
 - Spread-verdict rank AUC was 0.653 for diameter fraction and 0.651 for offset
   fraction, versus the prototype best of 0.66. Centre coverage was 853/1,174,
   edge-angle coverage 531/1,174 and quarter-corner coverage 109/276.
 - In the sampled check-synchronized evaluation, 79/82 logged checks across 20
-  runs produced an estimate; agreement with the expected state was 62.0%
-  (empty 81.0%, flat 95.0%, half 0.0%, quarter 68.4%). Fold checks without a
-  flat reference are reported unknown rather than guessed. On the same host
-  the median of per-run median processing times was 9 ms/frame at 5 fps, far
-  below the 200 ms/frame budget; this timing excludes video decoding,
-  encoding and plotting. Raspberry Pi timing was not measured.
+  runs produced an estimate; agreement with the expected state was 88.6%
+  (empty 81.0%, flat 95.0%, half 100.0%, quarter 78.9%), with 95.1% on the
+  ten all-passed runs and 81.6% on the ten runs with a failed check. Fold
+  checks without a flat reference are reported unknown rather than guessed.
+  On the same host the median of per-run median processing times was 9.1
+  ms/frame at 5 fps, far below the 200 ms/frame budget; this timing excludes
+  video decoding, encoding and plotting. Raspberry Pi timing was not
+  measured.
 
 ## Limits
 
