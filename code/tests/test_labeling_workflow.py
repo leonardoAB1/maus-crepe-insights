@@ -31,14 +31,15 @@ def load_workflow() -> ModuleType:
     return module
 
 
-@pytest.fixture
-def pilot(tmp_path: Path) -> Path:
+@pytest.fixture(params=["raw", "rectified", "experimental"])
+def pilot(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     from PIL import Image
 
     root = tmp_path / "private" / "labeling" / "pilot"
     frames = root / "run-000"
     frames.mkdir(parents=True, mode=0o700)
     root.chmod(0o700)
+    root.parent.chmod(0o700)
     image = frames / "000000.png"
     Image.new("RGB", (8, 8), "red").save(image)
     manifest = {
@@ -60,6 +61,7 @@ def pilot(tmp_path: Path) -> Path:
                         ).hexdigest(),
                         "requested_seconds": 0,
                         "decoded_pts": 0,
+                        "decoded_frame_index": 0,
                         "human_label": None,
                         "phase_suggestion": None,
                         "suggestion_status": "unavailable_unaligned",
@@ -78,6 +80,53 @@ def pilot(tmp_path: Path) -> Path:
             {**frames_data[0], "requested_seconds": 10},
         ]
     )
+    if request.param != "raw":
+        version = (
+            "upstream-rectified-experimental-v1"
+            if request.param == "experimental"
+            else "upstream-rectified-v1"
+        )
+        manifest["preprocessing"] = {
+            "version": version,
+            "experimental": request.param == "experimental",
+            "coordinate_space": "rectified_upstream",
+            "source_manifest_sha256": "0" * 64,
+        }
+        transform = root / "transforms" / "run-000.json"
+        transform.parent.mkdir()
+        transform.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    "source_size": [8, 8],
+                    "target_size": [8, 8],
+                    "video_sha256": "1" * 64,
+                    "video_validation_frames": [0, 1],
+                }
+            )
+        )
+        valid = root / "valid" / "run-000" / "000000.png"
+        valid.parent.mkdir(parents=True)
+        Image.new("L", (8, 8), 255).save(valid)
+        manifest["runs"][0]["video_sha256"] = "1" * 64
+        for frame in frames_data:
+            frame.update(
+                {
+                    "coordinate_space": "rectified_upstream",
+                    "preprocessing_version": version,
+                    "source_image_sha256": frame["image_sha256"],
+                    "image_size": [8, 8],
+                    "transform": "transforms/run-000.json",
+                    "transform_sha256": hashlib.sha256(
+                        transform.read_bytes()
+                    ).hexdigest(),
+                    "valid_mask": "valid/run-000/000000.png",
+                    "valid_mask_sha256": hashlib.sha256(
+                        valid.read_bytes()
+                    ).hexdigest(),
+                }
+            )
     (root / "manifest.json").write_text(json.dumps(manifest))
     return root
 

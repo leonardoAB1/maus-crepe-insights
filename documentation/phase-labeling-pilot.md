@@ -17,8 +17,9 @@ Spelling and spaces are intentional. There is no `unclear` choice. These are
 human visual labels, **not** operational robot phases. No automatic mapping is
 made. The owner still needs to agree annotation criteria, particularly `ugly`,
 before using labels as a training target. This workflow invents neither those
-criteria nor geometry semantics. Geometry, outlines, holes and masks are future
-work.
+criteria nor geometry semantics. Visible crêpe material and hole masks use a
+separate [mask-labeling project](mask-labeling.md) on the same original images.
+Physical geometry measurements remain future work.
 
 ## Supported environment
 
@@ -121,6 +122,94 @@ are never overwritten. Preparation reserves 2 GiB plus a per-video frame
 allowance. Unsupported or ambiguous timestamps abort. Ordinary failures remove
 the unfinished output; forced termination may leave a directory without
 `manifest.json`. Absence of that final manifest means incomplete, not importable.
+
+### Shared rectified images for all labels
+
+This is an optional experiment, not a requirement for labeling. To label
+original frames, skip this subsection and keep `PILOT` pointing to `pilot-v1`.
+Phase and mask projects both support that unchanged original frame set.
+
+To use the exact same pixels for phase labels, segmentation masks and training,
+rectify the extracted images **before** importing any project. Do not rectify
+or resize images in place after annotation. Keep the raw pilot unchanged:
+
+```bash
+export RAW_PILOT="$PILOT"
+export PILOT="$PRIVATE/labeling/rectified-v1"
+pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
+  python -m maus_export.labeling_rectification \
+  --data-dir "$PRIVATE" --pilot "$RAW_PILOT" --output "$PILOT"
+```
+
+This requires check images from `fetch --media` in the same private snapshot.
+The existing experimental alignment estimator requires two independently
+accepted temporal samples to agree against a same-run square overlay.
+It estimates a video-resolution transform rather than scaling a check-image
+transform. Only raw video pixels are warped; overlay paint is never copied.
+Videos are not re-encoded, and original selected frame indices, PTS and time
+bases stay unchanged.
+
+Check the aggregate `selected`, `ok`, `alignment_rejected`, `source_changed`,
+`unavailable` and `frames` counts. `alignment_rejected` means no transform
+passed validation. `source_changed` means a video, run file, reference or
+extracted frame no longer matches its recorded hash. `unavailable` counts runs
+whose video was already missing or invalid in the source pilot. Rejected runs
+keep the `alignment_rejected` status, with `rectification_rejection_kind` and
+an explicit reason in the private manifest. Rejected runs have no output
+frames. A pilot that already holds labels or phase suggestions is refused
+before any output is created.
+They never fall back to raw images. A pilot with zero accepted frames cannot
+be imported. A partial pilot requires a deliberate review of that missingness.
+Existing output directories are never overwritten; choose a new name to retry.
+
+The pilot stores rectified PNGs, source-image hashes, the original manifest
+hash, per-run transforms with reference/video hashes, and binary validity
+masks. Startup verifies image, transform and mask hashes and image dimensions.
+Validity masks are preprocessing artifacts, not human segmentation labels.
+Exclude their unsupported pixels from downstream losses and measurements.
+Both phase and mask projects must reference this same pilot and image hashes,
+not independently regenerated or resized copies. Exports carry the frame
+coordinate space and preprocessing version.
+
+**Visually review accepted outputs before labeling.** Temporal consistency is
+an experimental safeguard, not physical camera calibration. Lens distortion,
+parallax and camera movement can still invalidate a transform. Review static
+plate/background alignment across the run, not just the food silhouette.
+Keep these limitations when reproducing preprocessing for live inference.
+
+#### Explicit experimental transfer without calibration files
+
+If the strict route has no usable video fits and no original camera calibration
+is available, an explicitly experimental alternative is available:
+
+```bash
+export PILOT="$PRIVATE/labeling/rectified-experimental-v1"
+pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
+  python -m maus_export.labeling_rectification \
+  --data-dir "$PRIVATE" --pilot "$RAW_PILOT" --output "$PILOT" \
+  --experimental-photo-transfer
+```
+
+This does **not** loosen the strict estimator's thresholds or silently retry
+failed strict fits. It uses the separately existing experimental robot-photo
+estimator, then measures the video-to-unpainted-photo similarity mapping from
+matched features. Two temporally distinct registrations must agree over the
+video field. Resolution scaling is measured, not assumed. Same-run references
+are preferred; a reference from another selected run can be tried only for
+the same machine and must pass independent video registration again.
+
+The resulting transform composes the measured registration with the photo
+alignment. It records both stages, their diagnostics and reference hashes.
+The method uses the existing robot estimator's median-error, coverage and
+inlier-share thresholds, not the strict direct-video acceptance profile.
+Outlier errors, raised objects, changing cameras and extrapolation remain risks.
+There is no claim of physical calibration or final composed-transform accuracy.
+
+This mode has a distinct preprocessing version, an explicit experimental flag
+and an on-screen warning in Label Studio. Inspect the plate and its edges in
+several frames before labeling, and skip visibly wrong results. Never mix these
+images with strict or raw pilots under the same dataset identity. Human masks
+and phase labels should still reference the exact same immutable PNG files.
 
 ## 4. Start, sign up, configure and import
 
