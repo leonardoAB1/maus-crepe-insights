@@ -23,9 +23,9 @@ but are not returned.
   (`succeeded` | `not_succeeded` | `canceled`), `prevId`/`nextId`.
 - **Sensors:** `hotplateTemp` (setpoint, °C), `envTempStart` (°C), `envHumidityStart` (%), `crepeDiameter`
   (mostly null).
-- **Phases:** `init → prepare → check_serving_plate → oil → spread_batter_concentric → cook → add_topping →
-  fold_carefully (×2) → push_off → plate_handover → wipe_spatula → discard_crepe → plate_load`, each with
-  `elapsed_sec` and `progress`.
+- **Phases:** `init → prepare → check_serving_plate → oil → spread_batter[_concentric] → cook → add_topping →
+  fold_carefully → push_off → plate_handover → wipe_spatula → discard_crepe → plate_load`, each with
+  `elapsed_sec` and `progress`. Stage machine, timings and failure split: [crepe-stages.md](crepe-stages.md).
 - **Vision checks:** about 8 per run, in order (`plate_present`, `spread`, `fold1`, `fold2`, `push_off`, `plate_clean`,
   `plate_loaded`, ...), each with `ok`, `message`, `errors[]`, plus a raw `frame` JPEG and an annotated `overlay` JPEG
   (`checkImageUrls`, which need the bearer token).
@@ -45,6 +45,11 @@ but are not returned.
   `rpm_from_gps: target_gps ... greater than gps_max`, and `fold.spatula_gate_enabled is false`.
 - **Robot settings** (`robot_list`): topping→pump-port map, prices (6–7 per crêpe), and inventory capacity /
   grams per crêpe (batter 113 g, apple 20 g, chocolate 13 g, raspberry 15 g, 60 plates).
+
+## More diagrams
+- [system.md](system.md): robot hardware and control architecture, ROS 2 nodes, customer flow
+- [crepe-stages.md](crepe-stages.md): stage machine, stage timings, where runs end
+- [pipeline.md](pipeline.md): our data pipeline and the run data model
 
 ## Handling
 The repo is public. Raw exports (`data/`, `*.mcap`, images, videos) are gitignored and must stay local.
