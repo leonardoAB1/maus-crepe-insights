@@ -96,7 +96,7 @@ def main() -> None:
         "--fps",
         type=float,
         default=DEFAULT_ANALYSIS_FPS,
-        help="analysis frames per second (default: 5 for a 200 ms budget)",
+        help="analysis frames per second (default: 10 within a 200 ms budget)",
     )
     live.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
     live.add_argument(

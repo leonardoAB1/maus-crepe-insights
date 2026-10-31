@@ -28,7 +28,7 @@ from .fold_rectify import rectify_video_frame
 from .fold_state import STATE_ORDER, classify_state
 from .fold_sync import CheckWindowEvaluator
 
-DEFAULT_ANALYSIS_FPS = 5.0
+DEFAULT_ANALYSIS_FPS = 10.0
 FRAME_BUDGET_MS = 200.0
 MILLISECONDS_PER_SECOND = 1000
 

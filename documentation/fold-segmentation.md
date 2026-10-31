@@ -83,7 +83,7 @@ remove only its incomplete generated evaluation files before rerunning it.
    the decision: on rectified frames flat crepes often expose an edge and
    half folds often expose none. These thresholds describe the top-down
    view and were fitted on the local export.
-7. Whole-video analysis sequentially grabs frames at 5 Hz by default (a 200
+7. Whole-video analysis sequentially grabs frames at 10 Hz by default (a 200
    ms/frame budget, `--fps` for other rates) and rectifies to 900 by 900
    pixels. It learns the plate, first empty reference and flat area from
    frames already observed. Classification is still a per-frame estimate, but
@@ -139,13 +139,13 @@ On 2026-11-01, using the cached export and the method above:
 - Spread-verdict rank AUC was 0.653 for diameter fraction and 0.651 for offset
   fraction, versus the prototype best of 0.66. Centre coverage was 853/1,174,
   edge-angle coverage 531/1,174 and quarter-corner coverage 109/276.
-- In the sampled check-synchronized evaluation, 79/82 logged checks across 20
-  runs produced an estimate; agreement with the expected state was 88.6%
-  (empty 81.0%, flat 95.0%, half 100.0%, quarter 78.9%), with 95.1% on the
-  ten all-passed runs and 81.6% on the ten runs with a failed check. Fold
+- In the sampled check-synchronized evaluation, 80/82 logged checks across 20
+  runs produced an estimate; agreement with the expected state was 88.8%
+  (empty 81.8%, flat 95.0%, half 100.0%, quarter 78.9%), with 95.1% on the
+  ten all-passed runs and 82.1% on the ten runs with a failed check. Fold
   checks without a flat reference are reported unknown rather than guessed.
-  On the same host the median of per-run median processing times was 9.1
-  ms/frame at 5 fps, far below the 200 ms/frame budget; this timing excludes
+  On the same host the median of per-run median processing times was 8.2
+  ms/frame at 10 fps, far below the 200 ms/frame budget; this timing excludes
   video decoding, encoding and plotting. Raspberry Pi timing was not
   measured.
 
