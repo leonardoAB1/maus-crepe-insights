@@ -39,10 +39,14 @@ def main() -> None:
     args = p.parse_args()
 
     if args.cmd == "coverage":
-        from .coverage import CoverageError, report
+        from .coverage import CoverageError, main_data_dir, report
 
+        data_dir = args.data_dir
+        if not (data_dir / "raw" / "runs").is_dir():
+            # A worktree has no export of its own; use the main checkout's
+            data_dir = main_data_dir() or data_dir
         try:
-            print(report(args.data_dir), end="")
+            print(report(data_dir), end="")
         except CoverageError as exc:
             p.exit(1, f"Coverage report failed: {exc}\n")
 

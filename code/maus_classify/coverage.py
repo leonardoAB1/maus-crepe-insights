@@ -9,6 +9,7 @@ writes nothing.
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,22 @@ VIDEO_FILE = "video.mp4"
 
 class CoverageError(ValueError):
     """Missing input, with a fixed message that is safe to print."""
+
+
+def main_data_dir() -> Path | None:
+    """`data/` of the main checkout, found through git, so the command also
+    works from a worktree (which has no export of its own)."""
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    data = Path(res.stdout.strip()).parent / "data"
+    return data if (data / "raw" / "runs").is_dir() else None
 
 
 def load_runs(data_dir: Path) -> pd.DataFrame:
