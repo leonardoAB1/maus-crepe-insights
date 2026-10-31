@@ -11,6 +11,15 @@ is trained; fine-tuning and heads are out of scope.
   latency and the Raspberry Pi 5 estimate
 - `export.py` - rebuilds both files
 
+## Example
+
+![frame-embedder PCA](../../../assets/frame-embedder-example.jpg)
+
+The first two PCA axes of every frame embedding, coloured by robot and
+marked by check. The robots form separate clusters, so heads trained on
+these embeddings can pick up robot identity, not just crepe state. Rebuild
+with `pixi run -e ml model-examples`.
+
 ## Preprocessing
 
 Always use `maus_export.frame_preprocess.preprocess(bgr)`, for training and

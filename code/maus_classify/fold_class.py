@@ -14,6 +14,7 @@ Needs the ml environment: `pixi run -e ml fold-class`.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -26,10 +27,8 @@ from sklearn.model_selection import GroupKFold, cross_val_predict
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from maus_export.doe_analyze import dump_json
-
 from .check_verdict import embedding_columns
-from .harness import ONNX_INPUT, ONNX_PROBA, train_and_evaluate
+from .harness import ONNX_INPUT, ONNX_PROBA, train_and_evaluate, write_card
 from .split import TEST, TRAIN
 
 NAME = "fold-class"
@@ -380,6 +379,7 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
         feature_names=cols,
         out_dir=out_dir,
         timestamps=labeled["ts_utc"].to_numpy(),
+        robots=labeled["robot"].fillna("unknown").to_numpy(),
         description=(
             "Fold state of the crepe from one raw check frame of a "
             "successful step: empty pan, flat, half or quarter, with "
@@ -405,10 +405,6 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
             for side, mask in ((TRAIN, train), (TEST, test))
         },
     }
-    card["data"]["robots"] = {
-        side: sorted(labeled.loc[mask, "robot"].dropna().unique().tolist())
-        for side, mask in ((TRAIN, train), (TEST, test))
-    }
     card["features"] = {
         "source": "data/training/frame_embeddings.parquet",
         "embedder": "code/models/frame-embedder (preprocess first)",
@@ -432,15 +428,9 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
         y[test], predict(sess, X[test]), classes
     )
     card["sanity_checks"] = sanity_checks(sess, df, vision, cols, classes)
-    card["caveats"] = CAVEATS | {
-        "single_robot_holdout": (
-            "The holdout is the latest runs, which all come from "
-            f"{', '.join(card['data']['robots'][TEST])}; other robots are "
-            "only in train."
-        )
-    }
+    card["caveats"] = CAVEATS | {"holdout": card["data"]["holdout_note"]}
     card["out_of_scope"] = "edge angle for plate alignment"
-    dump_json(card, out_dir / "model.json")
+    write_card(card, out_dir / "model.json")
     return card
 
 
@@ -465,7 +455,8 @@ def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
     sess = ort.InferenceSession(
         str(model_dir / "model.onnx"), providers=["CPUExecutionProvider"]
     )
-    classes = list(CLASSES)  # sklearn order, as in model.json
+    card = json.loads((model_dir / "model.json").read_text(encoding="utf-8"))
+    classes = card["outputs"][1]["classes"]
 
     def scored(rows: pd.DataFrame) -> pd.DataFrame:
         proba = predict(sess, rows[cols].to_numpy())
@@ -474,14 +465,17 @@ def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
             confidence=proba.max(axis=1),
         )
 
-    def tile(row: pd.Series, truth: str, note: str = "") -> Example:
+    def tile(
+        row: pd.Series, label: str, note: str = "", truth: str = ""
+    ) -> Example:
         return Example(
             image=load_frame(data_dir / row["frame_path"]),
-            truth=truth,
+            truth=truth or label,
             predicted=row["predicted"],
             confidence=float(row["confidence"]),
             robot=str(row["robot"]),
             note=note,
+            agree=row["predicted"] == label,
         )
 
     test = scored(df[(df["split"] == TEST) & df["label"].notna()])
@@ -500,8 +494,9 @@ def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
             tiles.append(
                 tile(
                     row,
-                    f"{case['expected']} (fold2 did nothing)",
+                    case["expected"],
                     "known FAIL: sideways half",
+                    f"{case['expected']} (fold2 did nothing)",
                 )
             )
     errors = test[test["predicted"] != test["label"]]

@@ -18,6 +18,19 @@ run with `onnxruntime`.
 - Large weights (> 50 MB) are not committed; attach them to a GitHub release and link them in `model.json`.
 - Every export is checked by running the same sample through the original model and `onnxruntime`
   and comparing the outputs.
+- Every model PR includes an example result image from `assets/` that shows at least one failure or
+  known limitation (draw it with `maus_classify.figures.example_grid`).
+
+## Robots
+Models must generalize across robots. Each robot ran in its own time window, so robot also stands
+for era, recipe and software version.
+- Every model trains on mixed robots. Use the shared split in `frames.parquet` (chronological
+  within each robot, see [documentation/frames.md](../../documentation/frames.md)).
+- Every model card reports the robots it covers, per-robot metrics and a leave-one-robot-out check
+  (`maus_classify.harness.train_and_evaluate` with `robots=`).
+- Scores carry 95% intervals from a bootstrap of runs, not frames.
+- A card may say a model generalizes only if every robot beats the majority baseline, in its own
+  holdout and when held out entirely (`generalization` in the card).
 
 ## Export snippets
 ```python

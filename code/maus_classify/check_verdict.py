@@ -28,10 +28,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from maus_export.doe_analyze import dump_json
-
-from .harness import metrics, train_and_evaluate
-from .split import TEST, TRAIN
+from .harness import (
+    N_PERM,
+    cross_val_proba,
+    fit_model,
+    metrics,
+    train_and_evaluate,
+    write_card,
+)
+from .split import SPLIT_VERSION, TEST, TRAIN
 
 CHECKS = ("spread", "fold1", "fold2", "push_off")
 PASS, FAIL = "pass", "fail"
@@ -43,6 +48,12 @@ EMBEDDER_HASH = "model_sha256"
 # L2 strength of the heads; a few hundred rows against hundreds of features
 HEAD_C = 0.1
 MAX_ITER = 2000
+# Sample weighting candidates, picked per check by cross validation on the
+# train part: class balance only (class_weight), or class balance within
+# each robot so no single robot dominates the fit
+CLASS_WEIGHTING = "class"
+ROBOT_WEIGHTING = "robot_class"
+WEIGHTINGS = (CLASS_WEIGHTING, ROBOT_WEIGHTING)
 # Below these the verdict warns: too few holdout failures to trust the
 # score, or too many robot failures missed
 MIN_FAIL_SUPPORT = 10
@@ -88,12 +99,81 @@ def check_rows(
     return rows
 
 
-def make_head(c: float = HEAD_C) -> Pipeline:
-    """Scaled logistic regression with class weights for the imbalance."""
+def make_head(
+    c: float = HEAD_C, class_weight: str | None = "balanced"
+) -> Pipeline:
+    """Scaled logistic regression, by default with class weights for the
+    imbalance. Pass `class_weight=None` when sample weights balance it."""
     return make_pipeline(
         StandardScaler(),
-        LogisticRegression(class_weight="balanced", C=c, max_iter=MAX_ITER),
+        LogisticRegression(class_weight=class_weight, C=c, max_iter=MAX_ITER),
     )
+
+
+def robot_balanced_weights(y: np.ndarray, robots: np.ndarray) -> np.ndarray:
+    """Sample weights giving every (robot, class) cell the same total
+    weight, with a mean weight of 1."""
+    cells = pd.Series(list(zip(robots, y, strict=True)))
+    counts = cells.map(cells.value_counts())
+    n_cells = cells.nunique()
+    return (len(cells) / (n_cells * counts)).to_numpy(float)
+
+
+def weighting_setup(
+    name: str, y: np.ndarray, robots: np.ndarray | None
+) -> tuple[Pipeline, np.ndarray | None]:
+    """Head and sample weights for a weighting candidate."""
+    if name == ROBOT_WEIGHTING and robots is not None:
+        return make_head(class_weight=None), robot_balanced_weights(y, robots)
+    return make_head(), None
+
+
+def choose_weighting(
+    X: np.ndarray,
+    y: np.ndarray,
+    groups: np.ndarray,
+    timestamps: np.ndarray,
+    robots: np.ndarray | None,
+) -> dict[str, Any]:
+    """Out-of-fold balanced accuracy and fail recall of each weighting on
+    train rows; picks the best balanced accuracy (class weighting on ties
+    or when cross validation cannot run)."""
+    if robots is None:
+        return {"chosen": CLASS_WEIGHTING, "cv": {}, "note": "no robots"}
+    cv: dict[str, Any] = {}
+    for name in WEIGHTINGS:
+        head, w = weighting_setup(name, y, robots)
+        try:
+            proba, classes = cross_val_proba(
+                head, X, y, groups, timestamps, sample_weight=w, robots=robots
+            )
+        except ValueError as exc:
+            return {"chosen": CLASS_WEIGHTING, "cv": {}, "note": str(exc)}
+        has = ~np.isnan(proba).any(axis=1)
+        if not has.any() or len(set(y[has])) < len(classes):
+            continue
+        pred = np.array(classes)[proba[has].argmax(axis=1)]
+        m = metrics(y[has], pred, proba[has], classes)
+        cv[name] = {
+            "n_rows": int(has.sum()),
+            "balanced_accuracy": m["balanced_accuracy"],
+            f"recall_{FAIL}": m["per_class"].get(FAIL, {}).get("recall"),
+        }
+    best = CLASS_WEIGHTING
+    if cv.get(ROBOT_WEIGHTING) and cv.get(CLASS_WEIGHTING):
+        if (
+            cv[ROBOT_WEIGHTING]["balanced_accuracy"]
+            > cv[CLASS_WEIGHTING]["balanced_accuracy"]
+        ):
+            best = ROBOT_WEIGHTING
+    helped = best == ROBOT_WEIGHTING
+    return {
+        "chosen": best,
+        "cv": cv,
+        "robot_weights_helped": helped,
+        "selection": "out-of-fold balanced accuracy, time-ordered folds "
+        "within each robot on the train part",
+    }
 
 
 def _score(
@@ -197,9 +277,18 @@ def train_check(
     vision: pd.DataFrame,
     check: str,
     out_dir: Path,
+    n_perm: int = N_PERM,
 ) -> dict[str, Any]:
     """Train, evaluate and export the head for one check. Writes
-    `model.onnx` and `model.json` in `out_dir` and returns the card."""
+    `model.onnx` and `model.json` in `out_dir` and returns the card.
+    `n_perm` label shuffles test the head against a null."""
+    if "split_version" in frames and set(frames["split_version"]) != {
+        SPLIT_VERSION
+    }:
+        raise CheckVerdictError(
+            f"frames.parquet was built with another split; expected "
+            f"{SPLIT_VERSION}, rebuild it with pixi run frames"
+        )
     rows = check_rows(frames, embeddings, check)
     if rows.empty:
         raise CheckVerdictError(f"no labelled frames with embeddings: {check}")
@@ -208,17 +297,33 @@ def train_check(
     y = rows["label"].to_numpy(str)
     split = rows["split"].to_numpy()
     last = rows["is_last_attempt"].to_numpy(bool)
+    groups = rows["run_id"].to_numpy()
+    timestamps = rows["ts_utc"].to_numpy()
+    robots = rows["robot"].to_numpy(str) if "robot" in rows else None
+    train, test = split == TRAIN, split == TEST
 
+    weighting = choose_weighting(
+        X[train],
+        y[train],
+        groups[train],
+        timestamps[train],
+        None if robots is None else robots[train],
+    )
+    head_spec, weights = weighting_setup(weighting["chosen"], y, robots)
     card = train_and_evaluate(
-        make_head(),
+        head_spec,
         X,
         y,
         split,
-        rows["run_id"].to_numpy(),
+        groups,
         name=f"check-verdict-{check}",
         feature_names=features,
         out_dir=out_dir,
-        timestamps=rows["ts_utc"].to_numpy(),
+        timestamps=timestamps,
+        robots=robots,
+        positive=FAIL,
+        sample_weight=weights,
+        n_perm=n_perm,
         description=(
             f"Robot pass/fail verdict for the {check} check frame, from the "
             f"frame embedding. {WEAK_LABELS}"
@@ -226,9 +331,12 @@ def train_check(
     )
     # The harness exported the head fitted on train; refit the same way to
     # add agreement and the last-attempt view without touching its card
-    train = split == TRAIN
-    head = clone(make_head()).fit(X[train].astype(np.float32), y[train])
-    test = split == TEST
+    head = fit_model(
+        head_spec,
+        X[train].astype(np.float32),
+        y[train],
+        None if weights is None else weights[train],
+    )
     card["metrics"][TEST]["agreement"] = _score(head, X[test], y[test])[
         "agreement"
     ]
@@ -240,6 +348,7 @@ def train_check(
         DummyClassifier(strategy="most_frequent"), X, y, split
     )
     card["check"] = check
+    card["weighting"] = weighting
     if EMBEDDER_HASH in embeddings.columns:
         # Heads only fit embeddings from the exact embedder they saw
         card["embedder_sha256"] = sorted(
@@ -271,20 +380,28 @@ def train_check(
         if majority is not None
         else "No majority baseline: train or test rows missing."
     )
-    dump_json(card, out_dir / "model.json")
+    write_card(card, out_dir / "model.json")
     return card
 
 
 def summary_table(cards: dict[str, dict[str, Any]]) -> str:
     """Markdown table of holdout scores per check, aggregates only."""
     head = (
-        "| check | test frames | fail share | balanced acc | macro F1 "
-        "| agreement | majority BA | overlay BA |\n"
-        "|---|---|---|---|---|---|---|---|\n"
+        "| check | test frames | fail share | balanced acc [95% CI] "
+        "| fail recall [95% CI] | macro F1 | agreement | majority BA "
+        "| overlay BA |\n"
+        "|---|---|---|---|---|---|---|---|---|\n"
     )
 
     def ba(scores: dict[str, Any] | None) -> str:
         return f"{scores['balanced_accuracy']:.2f}" if scores else "-"
+
+    def with_ci(card: dict[str, Any], key: str) -> str:
+        entry = card.get("intervals", {}).get("metrics", {}).get(key)
+        if entry is None:
+            return "-"
+        lo, hi = entry["ci95"]
+        return f"{entry['value']:.2f} [{lo:.2f}, {hi:.2f}]"
 
     lines = []
     for check, card in cards.items():
@@ -297,7 +414,8 @@ def summary_table(cards: dict[str, dict[str, Any]]) -> str:
             check,
             str(total),
             share,
-            f"{m['balanced_accuracy']:.2f}",
+            with_ci(card, "balanced_accuracy"),
+            with_ci(card, f"recall_{FAIL}"),
             f"{m['f1_macro']:.2f}",
             f"{m['agreement']:.2f}",
             ba(base["majority"]),

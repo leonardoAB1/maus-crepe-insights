@@ -36,6 +36,10 @@ def main() -> None:
         "fold-class-example", help="example grid -> assets/ (ml env)"
     )
     fx.add_argument("--out", type=Path, default=None, help="image path")
+    sub.add_parser(
+        "model-examples",
+        help="check-verdict and frame-embedder images -> assets/ (ml env)",
+    )
     args = p.parse_args()
 
     if args.cmd == "coverage":
@@ -49,6 +53,25 @@ def main() -> None:
             print(report(data_dir), end="")
         except CoverageError as exc:
             p.exit(1, f"Coverage report failed: {exc}\n")
+
+    if args.cmd == "model-examples":
+        from .examples import (
+            CHECK_VERDICT_ASSET,
+            EMBEDDER_ASSET,
+            check_verdict_example,
+            embedder_example,
+        )
+
+        models = REPO_ROOT / "code" / "models"
+        for path in (
+            check_verdict_example(
+                args.data_dir,
+                models / "check-verdict",
+                REPO_ROOT / CHECK_VERDICT_ASSET,
+            ),
+            embedder_example(args.data_dir, REPO_ROOT / EMBEDDER_ASSET),
+        ):
+            print(f"example figure -> {path}")
 
     if args.cmd == "fold-class-example":
         from .fold_class import EXAMPLE_ASSET, example_figure

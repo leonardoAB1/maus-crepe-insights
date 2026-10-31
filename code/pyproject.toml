@@ -74,6 +74,7 @@ skl2onnx = ">=1.18"
 jupyterlab = ">=4.6.5,<5"
 pytorch-cpu = ">=2.14.1,<3"
 torchvision = ">=0.29.2,<0.30"
+statsmodels = ">=0.15.0,<0.16"
 
 [tool.pixi.feature.ml.tasks]
 analyze = "maus-export analyze"
@@ -82,6 +83,7 @@ doe-figures = "maus-export doe-figures"
 embed = "maus-export embed"
 fold-class = "maus-classify fold-class"
 fold-class-example = "maus-classify fold-class-example"
+model-examples = "maus-classify model-examples"
 notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]

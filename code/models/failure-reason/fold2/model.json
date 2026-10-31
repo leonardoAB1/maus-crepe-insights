@@ -1,0 +1,370 @@
+{
+  "check": "fold2",
+  "rows": "failed frames of this check with an embedding",
+  "design": "multi-label: one binary head per reason class",
+  "class_map": {
+    "not a quarter fold": "shape",
+    "wrong fold shape": "shape",
+    "batter left on the plate": "residue",
+    "no crepe detected": "no_crepe"
+  },
+  "min_support": 8,
+  "support": {
+    "no_crepe": {
+      "train": 2,
+      "test": 0
+    },
+    "other": {
+      "train": 0,
+      "test": 0
+    },
+    "residue": {
+      "train": 9,
+      "test": 0
+    },
+    "shape": {
+      "train": 20,
+      "test": 5
+    }
+  },
+  "robots": {
+    "train": {
+      "maus-quin": 14,
+      "maus-pixi": 9,
+      "maus-otto": 6
+    },
+    "test": {
+      "maus-pixi": 5
+    }
+  },
+  "modelled": [
+    "residue",
+    "shape"
+  ],
+  "not_modelled": [
+    "no_crepe"
+  ],
+  "heads": {
+    "residue": {
+      "verdict": "not deployable: holdout has one class only, cannot score",
+      "holdout": {
+        "n": 5,
+        "balanced_accuracy": 0.4,
+        "f1_macro": 0.2857142857142857,
+        "per_class": {
+          "not_residue": {
+            "precision": 1.0,
+            "recall": 0.4,
+            "f1": 0.5714285714285714,
+            "support": 5
+          },
+          "residue": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 0
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "not_residue",
+            "residue"
+          ],
+          "rows_true_cols_pred": [
+            [
+              2,
+              3
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "calibration": {
+          "per_class": {
+            "not_residue": {
+              "brier": 0.3620868638731018,
+              "ece": 0.5474807381629945,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            },
+            "residue": {
+              "brier": 0.36208686495343734,
+              "ece": 0.5474807530641556,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            }
+          },
+          "brier_mean": 0.36208686441326954
+        }
+      },
+      "holdout_auc": NaN,
+      "train_cv_auc": 0.7388888888888889,
+      "null": {
+        "cv_auc": 0.7388888888888889,
+        "n_perm": 1000,
+        "null_q05_q95": [
+          0.5166666666666667,
+          0.8333333333333333
+        ],
+        "p_one_sided": 0.25074925074925075,
+        "beats_null": false
+      },
+      "majority_baseline": {
+        "n": 5,
+        "balanced_accuracy": 1.0,
+        "f1_macro": 0.5,
+        "per_class": {
+          "not_residue": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5
+          },
+          "residue": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 0
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "not_residue",
+            "residue"
+          ],
+          "rows_true_cols_pred": [
+            [
+              5,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "calibration": {
+          "per_class": {
+            "not_residue": {
+              "brier": 0.0,
+              "ece": 0.0,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            },
+            "residue": {
+              "brier": 0.0,
+              "ece": 0.0,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            }
+          },
+          "brier_mean": 0.0
+        }
+      }
+    },
+    "shape": {
+      "verdict": "not deployable: holdout has one class only, cannot score",
+      "holdout": {
+        "n": 5,
+        "balanced_accuracy": 0.8,
+        "f1_macro": 0.4444444444444444,
+        "per_class": {
+          "not_shape": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 0
+          },
+          "shape": {
+            "precision": 1.0,
+            "recall": 0.8,
+            "f1": 0.8888888888888888,
+            "support": 5
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "not_shape",
+            "shape"
+          ],
+          "rows_true_cols_pred": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              4
+            ]
+          ]
+        },
+        "calibration": {
+          "per_class": {
+            "not_shape": {
+              "brier": 0.10655305609599992,
+              "ece": 0.2581941366195679,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            },
+            "shape": {
+              "brier": 0.10655305609599992,
+              "ece": 0.2581941366195679,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            }
+          },
+          "brier_mean": 0.10655305609599992
+        }
+      },
+      "holdout_auc": NaN,
+      "train_cv_auc": 0.6222222222222222,
+      "null": {
+        "cv_auc": 0.6222222222222222,
+        "n_perm": 1000,
+        "null_q05_q95": [
+          0.38333333333333336,
+          0.788888888888889
+        ],
+        "p_one_sided": 0.3936063936063936,
+        "beats_null": false
+      },
+      "majority_baseline": {
+        "n": 5,
+        "balanced_accuracy": 1.0,
+        "f1_macro": 0.5,
+        "per_class": {
+          "not_shape": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 0
+          },
+          "shape": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "not_shape",
+            "shape"
+          ],
+          "rows_true_cols_pred": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              5
+            ]
+          ]
+        },
+        "calibration": {
+          "per_class": {
+            "not_shape": {
+              "brier": 0.0,
+              "ece": 0.0,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            },
+            "shape": {
+              "brier": 0.0,
+              "ece": 0.0,
+              "bins": {
+                "mean_predicted": [],
+                "fraction_positive": []
+              }
+            }
+          },
+          "brier_mean": 0.0
+        }
+      }
+    }
+  },
+  "abstain": {
+    "threshold": 0.55,
+    "chosen_by": "best train-CV set F1 (run-grouped), ties to higher",
+    "train_cv_set_f1": {
+      "0.5": 0.6896551724137931,
+      "0.55": 0.7126436781609194,
+      "0.6": 0.6436781609195401,
+      "0.65": 0.6091954022988505,
+      "0.7": 0.5402298850574713,
+      "0.75": 0.47126436781609193,
+      "0.8": 0.47126436781609193,
+      "0.85": 0.47126436781609193,
+      "0.9": 0.4022988505747126,
+      "0.95": 0.27586206896551724
+    }
+  },
+  "holdout": {
+    "n": 5,
+    "set_f1": 0.7333333333333333,
+    "abstained": 0,
+    "per_class": {
+      "residue": {
+        "support": 0,
+        "predicted": 2,
+        "precision": 0.0,
+        "recall": null
+      },
+      "shape": {
+        "support": 5,
+        "predicted": 4,
+        "precision": 1.0,
+        "recall": 0.8
+      },
+      "other": {
+        "support": 0,
+        "predicted": 0,
+        "precision": null,
+        "recall": null
+      }
+    }
+  },
+  "holdout_majority": {
+    "n": 5,
+    "set_f1": 1.0,
+    "abstained": 0,
+    "per_class": {
+      "residue": {
+        "support": 0,
+        "predicted": 0,
+        "precision": null,
+        "recall": null
+      },
+      "shape": {
+        "support": 5,
+        "predicted": 5,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "other": {
+        "support": 0,
+        "predicted": 0,
+        "precision": null,
+        "recall": null
+      }
+    }
+  },
+  "verdict": "research only: no head passes the null and majority checks"
+}

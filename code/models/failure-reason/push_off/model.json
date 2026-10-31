@@ -1,0 +1,47 @@
+{
+  "check": "push_off",
+  "rows": "failed frames of this check with an embedding",
+  "design": "multi-label: one binary head per reason class",
+  "class_map": {
+    "crepe not aligned with the plate": "misaligned",
+    "serving plate not found": "no_plate",
+    "no crepe detected": "no_crepe"
+  },
+  "min_support": 8,
+  "support": {
+    "misaligned": {
+      "train": 109,
+      "test": 21
+    },
+    "no_crepe": {
+      "train": 4,
+      "test": 1
+    },
+    "no_plate": {
+      "train": 5,
+      "test": 0
+    },
+    "other": {
+      "train": 0,
+      "test": 0
+    }
+  },
+  "robots": {
+    "train": {
+      "maus-quin": 97,
+      "maus-pixi": 12,
+      "maus-otto": 7
+    },
+    "test": {
+      "maus-pixi": 22
+    }
+  },
+  "modelled": [],
+  "not_modelled": [
+    "misaligned",
+    "no_crepe",
+    "no_plate"
+  ],
+  "heads": {},
+  "verdict": "no reason class has 8 train frames on both sides; not enough data to train a head"
+}

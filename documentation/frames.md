@@ -44,6 +44,7 @@ prints counts only.
 | `fold_class` | string | Shape label, see below |
 | `reason` | string | Normalized failure reason, see below |
 | `split` | string | `train` or `test`, see below |
+| `split_version` | string | Split rule the row was built with (`robot-chrono-v2`) |
 
 `(run_id, check, attempt)` is unique and is the join key for derived tables,
 such as frame embeddings. Numbering follows the raw `visionChecks` order, so it
@@ -66,26 +67,32 @@ is stable for a given raw run file, and missing images still count.
 ## Holdout split
 
 The split is fixed in the table before any modelling, and models never choose
-their own.
+their own. Models must generalize across robots, so both sides mix every
+robot (`maus_classify.split.robot_split`, version `robot-chrono-v2`).
 
 - It is per run, so all frames of a run share one side.
-- It is chronological, by run `tsStart` in UTC. The latest 20% of the runs that
-  have any vision check form `test` (`maus_classify.split.TEST_FRAC`).
+- It is chronological within each robot, by run `tsStart` in UTC. Each
+  robot's latest 20% of runs with any vision check form its `test` part
+  (`maus_classify.split.TEST_FRAC`).
+- A robot needs at least `MIN_RUNS_FOR_TEST` (5) runs to give any to test.
+  Smaller robots stay in train only.
 - The cutoff is set over runs with checks, whatever their verdicts, labels or
-  features. Older runs from before check images were recorded would otherwise
-  move the cutoff and put most frames in test.
-- Runs that start exactly at the cutoff all go to `test`, so tied timestamps
-  never straddle the split.
+  features.
+- Runs that start exactly at a robot's cutoff all go to `test`, so tied
+  timestamps never straddle the split.
 
-The test window is the newest stretch of operation. A score on it is a
-forward-in-time estimate, not a random-split estimate. Robot or software
-changes inside the window can move it.
+Each robot ran in its own time window, and robot also stands for era, recipe
+and software version. The first version of the split (`v1`) held out the
+latest 20% of all runs, which made the test part one robot only. The
+per-robot split keeps "later data" within each robot while every robot is
+scored.
 
 ## Harness
 
 `train_and_evaluate(estimator, X, y, split, groups, *, name, feature_names,
-out_dir, timestamps=None)` (ml environment) takes any feature matrix, so it
-works the same for hand-made image features and embeddings:
+out_dir, timestamps=None, robots=None, positive=None, sample_weight=None)`
+(ml environment) takes any feature matrix, so it works the same for hand-made
+image features and embeddings:
 
 1. It checks that no run (`groups`) spans both splits and that features are
    finite.
@@ -99,6 +106,19 @@ works the same for hand-made image features and embeddings:
 4. It writes `model.onnx` and the `model.json` card (inputs and feature order,
    outputs and classes, train and test run id and date ranges, metrics,
    commit), following [models/README.md](../code/models/README.md).
+5. It adds `intervals`: 95% bootstrap intervals for balanced accuracy, macro
+   F1 and, with `positive`, that class's recall. Whole runs are resampled,
+   within each robot when robots are given.
+6. With `robots` it also names the robots each side covers, adds per-robot
+   holdout metrics and a leave-one-robot-out check (train on the other
+   robots, score the held-out one), and a `generalization` verdict. A model
+   generalizes only if every robot beats the majority baseline in both
+   views.
+
+For model and threshold selection, `cross_val_proba` returns out-of-fold
+probabilities on the train part from time-ordered, run-grouped folds, cut
+within each robot. `run_bootstrap` and `leave_one_robot_out` are generic, so
+other models (fold risk) reuse them.
 
 ## Counts in the local export
 
@@ -110,17 +130,18 @@ missing. Per-robot breakdowns are on
 
 | Check | pass | fail | train | test |
 |---|---:|---:|---:|---:|
-| `fold1` | 119 | 19 | 118 | 20 |
-| `fold2` | 101 | 34 | 116 | 19 |
+| `fold1` | 119 | 19 | 106 | 32 |
+| `fold2` | 101 | 34 | 104 | 31 |
 | `plate_clean` | 162 | 20 | 148 | 34 |
-| `plate_loaded` | 134 | 38 | 150 | 22 |
-| `plate_present` | 49 | 30 | 47 | 32 |
-| `push_off` | 119 | 140 | 223 | 36 |
-| `spread` | 125 | 38 | 134 | 29 |
-| **total** | 809 | 319 | 936 | 192 |
+| `plate_loaded` | 134 | 38 | 143 | 29 |
+| `plate_present` | 49 | 30 | 62 | 17 |
+| `push_off` | 119 | 140 | 198 | 61 |
+| `spread` | 125 | 38 | 129 | 34 |
+| **total** | 809 | 319 | 890 | 238 |
 
-There are 128 train runs (2026-10-13 to 2026-10-28) and 32 test runs
-(2026-10-28 to 2026-10-30). `push_off` fails by design while it retries
+Runs per robot (train / test): maus-quin 66 / 17 (2026-10-13 to 10-20),
+maus-otto 8 / 3 (2026-10-22), maus-pixi 52 / 14 (2026-10-27 to 10-30).
+maus-nilo has no runs with vision checks, so the data covers 3 robots. `push_off` fails by design while it retries
 alignment, so most of its `fail` rows are retries, not bad crepes.
 
 `fold_class`: 125 `flat`, 119 `half`, 101 `quarter`.

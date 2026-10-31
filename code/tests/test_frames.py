@@ -164,10 +164,14 @@ def test_frame_path_relative_and_null_when_missing(frames) -> None:
     ]
 
 
-def test_split_is_per_run_and_latest_run_is_test(frames) -> None:
+def test_split_is_per_run_and_versioned(frames) -> None:
+    from maus_classify.split import SPLIT_VERSION
+
     assert frames.groupby("run_id")["split"].nunique().max() == 1
     split = frames.groupby("run_id")["split"].first().to_dict()
-    assert split == {1: "train", 2: "test"}
+    # one robot with fewer than MIN_RUNS_FOR_TEST runs: it stays in train
+    assert split == {1: "train", 2: "train"}
+    assert set(frames["split_version"]) == {SPLIT_VERSION}
 
 
 def test_build_writes_parquet(tmp_path: Path) -> None:
