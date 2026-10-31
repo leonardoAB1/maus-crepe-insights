@@ -174,6 +174,11 @@ def build_table(data_dir: Path) -> pd.DataFrame:
         json.loads(p.read_text(encoding="utf-8"))
         for p in (data_dir / "raw" / "runs").glob("*.json")
     ]
+    if not runs:
+        raise ValueError(
+            f"No raw run JSON files found in {data_dir / 'raw' / 'runs'}; "
+            "fetch runs into this data directory first"
+        )
     df = runs_to_table(runs)
     df.to_csv(data_dir / "runs.csv", index=False)
     df.to_parquet(data_dir / "runs.parquet", index=False)
