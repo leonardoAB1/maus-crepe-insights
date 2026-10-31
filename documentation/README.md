@@ -19,6 +19,7 @@ Browse the guides by subject:
 
 - [Historical settings analysis](analysis/analysis.md)
 - [Designed experiment](analysis/doe.md)
+- [Fold risk from the spread check](analysis/fold-risk.md)
 
 ## System
 
