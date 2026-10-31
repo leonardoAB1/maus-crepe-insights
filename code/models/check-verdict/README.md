@@ -50,12 +50,19 @@ Trained on the 1,112 cached frame embeddings with the per-robot split
 holdout mixes maus-quin, maus-otto and maus-pixi. maus-nilo has no runs with
 vision checks. Intervals are 95% bootstraps over runs.
 
-| check | test frames | test fails | balanced acc [95% CI] | fail recall [95% CI] | majority BA | overlay BA | generalizes |
+| check | test frames | test fails | balanced acc [95% CI] | fail recall [95% CI] | beats null (p) | overlay BA | generalizes |
 |---|---|---|---|---|---|---|---|
-| spread | 34 | 12 | 0.70 [0.55, 0.85] | 0.50 [0.25, 0.75] | 0.50 | 0.60 | no |
-| fold1 | 32 | 4 | 0.75 [0.50, 1.00] | 0.50 [0.00, 1.00] | 0.50 | 0.74 | yes, weakly |
-| fold2 | 31 | 5 | 0.67 [0.37, 0.89] | 0.60 [0.00, 1.00] | 0.50 | 0.88 | no |
-| push_off | 61 | 32 | 0.92 [0.85, 0.97] | 0.94 [0.86, 1.00] | 0.50 | - | no |
+| spread | 34 | 12 | 0.70 [0.55, 0.85] | 0.50 [0.25, 0.75] | yes (0.015) | 0.60 | no |
+| fold1 | 32 | 4 | 0.75 [0.50, 1.00] | 0.50 [0.00, 1.00] | no (0.17) | 0.74 | yes, weakly |
+| fold2 | 31 | 5 | 0.67 [0.37, 0.89] | 0.60 [0.00, 1.00] | no (0.15) | 0.88 | no |
+| push_off | 61 | 32 | 0.92 [0.85, 0.97] | 0.94 [0.86, 1.00] | yes (0.001) | - | no |
+
+The majority baseline scores 0.50 balanced accuracy for every check. "Beats
+null" compares the holdout balanced accuracy against 1,000 refits on train
+labels shuffled within each robot. That is the deployable rule; the bootstrap
+intervals are descriptive only.
+
+![Balanced accuracy per robot, holdout and robot held out](../../../assets/check-verdict-robots.png)
 
 - **push_off** is the only strong head: high on every robot in the holdout
   (0.75 to 0.97). It drops to majority when maus-otto is held out entirely.
@@ -63,10 +70,10 @@ vision checks. Intervals are 95% bootstraps over runs.
 - **spread** fell from 0.91 on the old pixi-only holdout to 0.70. It works
   on pixi (0.85) but sits at majority on the quin and otto holdouts. The
   earlier score mostly described one robot.
-- **fold1** passes the generalization rule, but quin and otto have no test
-  failures, so their holdouts cannot be scored for it. Leave-one-robot-out
-  gives 0.73 to 0.81.
-- **fold2** is at or below majority for otto and quin in both views. It is
+- **fold1 and fold2 do not beat the shuffled-label null**, so their holdout
+  scores cannot be told apart from noise yet. fold1 passes the
+  generalization rule only because quin and otto have no test failures to
+  score. fold2 is at or below majority for otto and quin in both views, and
   weaker than the overlay baseline.
 - **Weights:** robot-balanced weights won cross validation for spread
   (0.88 vs 0.85) and tied for push_off. They lost for fold1 and fold2, so

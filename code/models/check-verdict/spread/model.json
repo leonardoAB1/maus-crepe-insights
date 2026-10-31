@@ -1060,7 +1060,7 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "59f408da00cde9bbf08a80e884e5a43c1facb5a8",
+  "commit": "6f36bfa43cc8961b519ec1e88b4aac889f5ff471",
   "leave_one_robot_out": {
     "maus-otto": {
       "n": 7,
@@ -1144,7 +1144,7 @@
       "n_train": 155,
       "roc_auc_fail": 0.6666666666666666,
       "intervals": {
-        "method": "bootstrap of runs",
+        "method": "descriptive: bootstrap of runs",
         "level": 0.95,
         "n_boot": 1000,
         "n_runs": 7,
@@ -1275,7 +1275,7 @@
       "n_train": 105,
       "roc_auc_fail": 0.80125,
       "intervals": {
-        "method": "bootstrap of runs",
+        "method": "descriptive: bootstrap of runs",
         "level": 0.95,
         "n_boot": 1000,
         "n_runs": 57,
@@ -1406,7 +1406,7 @@
       "n_train": 64,
       "roc_auc_fail": 0.9513343799058085,
       "intervals": {
-        "method": "bootstrap of runs",
+        "method": "descriptive: bootstrap of runs",
         "level": 0.95,
         "n_boot": 1000,
         "n_runs": 75,
@@ -1454,8 +1454,24 @@
     ],
     "not_evaluated": []
   },
+  "deployable": {
+    "deployable": true,
+    "rule": "holdout balanced accuracy beats the shuffled-label null at p < 0.05",
+    "null": {
+      "value": 0.7045454545454546,
+      "n_perm": 1000,
+      "null_mean": 0.55175,
+      "null_ci95": [
+        0.4506628787878789,
+        0.678030303030303
+      ],
+      "p_value": 0.014985014985014986,
+      "shuffled": "labels within robot",
+      "metric": "balanced_accuracy"
+    }
+  },
   "intervals": {
-    "method": "bootstrap of runs within robot",
+    "method": "descriptive: bootstrap of runs within robot",
     "level": 0.95,
     "n_boot": 1000,
     "n_runs": 32,
