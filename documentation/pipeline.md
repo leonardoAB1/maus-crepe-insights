@@ -133,3 +133,10 @@ robot), since no millimetre scale is published for the plate.
 | `vision.fold1.area_rel`, `vision.fold2.area_rel` | folded crepe area / zone area |
 | `vision.fold2.area_ratio` | fold-2 area / fold-1 area: about 0.5 for a good quarter fold, about 1 when the second fold did nothing |
 | `vision.fold1.l_mean`, `l_std` (and fold2) | browning: CIE L* mean and spread of the crepe |
+
+## Example figure
+
+`pixi run example` redraws `assets/vision-scores-example.jpg`, the annotated
+spread and fold-2 example shown in the README, from the overlays in
+`data/raw/media/`. Pick other runs with `--spread <id> --fold <id>`, or
+write elsewhere with `--out <path>`.
