@@ -4,6 +4,35 @@ Our BaselHack 2026 project on the **Maus Robotics** challenge. Maus builds auton
 Every run is logged with phases, machine logs, on-robot vision checks (with images), recipe parameters and video.
 We turn that data into insight: why runs fail, which settings and conditions matter, and how to catch problems early.
 
+**What is in the repository today.** 828 runs exported from the
+dashboard as raw JSON and as one ROS 2 MCAP per run, a 177-column runs
+table covering every run and its outcome, a per-check verdict model and
+a fold-state model shipped as ONNX with model cards, and a private
+labeling setup with phase, mask and pixel-prefill workflows. The exact
+state, including what does not work yet, is in
+[documentation/status.md](documentation/status.md).
+
+**Check it yourself in a minute.**
+
+```bash
+cd code && pixi install && pixi run test && pixi run lint
+```
+
+The suite runs offline, with no dashboard access and no private data.
+Every number in this repository names the command or file that produced
+it.
+
+**Where to look next.**
+
+- Data and pipeline: [pipeline](documentation/data/pipeline.md)
+- Models and their holdout numbers:
+  [code/models](code/models/README.md)
+- Why runs fail: [crêpe stages](documentation/system/crepe-stages.md)
+- Labeling:
+  [private phase pilot](documentation/phase-labeling-pilot.md) and
+  [material and hole masks](documentation/mask-labeling.md)
+- Fine-tuning against predictions: [project status](documentation/status.md)
+
 ## How it works
 
 **The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
