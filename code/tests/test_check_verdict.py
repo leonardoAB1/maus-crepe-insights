@@ -108,7 +108,8 @@ def test_spread_head_beats_majority_and_exports(tmp_path):
     assert card["label"]["positive"] == FAIL
     assert card["embedder_sha256"] == ["abc"]
     assert card["data"]["test"]["robots"] == ["pixi"]
-    assert "pixi only" in card["data"]["holdout_note"]
+    assert "quin" in card["data"]["holdout_note"]
+    assert card["weighting"]["chosen"] in ("class", "robot_class")
     recall = card["intervals"]["metrics"]["recall_fail"]
     assert recall["ci95"][0] <= recall["value"] <= recall["ci95"][1]
     assert set(card["leave_one_robot_out"]) == {"pixi", "quin"}
