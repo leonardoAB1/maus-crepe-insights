@@ -23,6 +23,8 @@ page per question.
   alignment, and its acceptance thresholds
 - [Per-robot correction](vision/robot-correction.md): mapping the robots into one
   consistent image view
+- [Live overlay](vision/live-overlay.md): drawing every layer onto a video or
+  a stream, and what each source has to emit
 
 ## Labeling
 

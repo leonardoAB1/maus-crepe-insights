@@ -151,6 +151,21 @@ def main() -> None:
     fd.add_argument("--labels", type=Path, required=True)
     fd.add_argument("--predictions", type=Path, default=None)
     fd.add_argument("--out", type=Path, required=True)
+    ov = sub.add_parser(
+        "overlay", help="draw the pipeline layers onto a video or a stream"
+    )
+    ov.add_argument(
+        "--input",
+        required=True,
+        help="video file, or device:N for a camera or stream index",
+    )
+    ov.add_argument("--output", type=Path, required=True, help=".mp4 output")
+    ov.add_argument("--records", type=Path, default=None)
+    ov.add_argument("--masks-dir", type=Path, default=None)
+    ov.add_argument("--run-id", type=int, default=None)
+    ov.add_argument("--fps", type=float, default=15.0)
+    ov.add_argument("--start", type=int, default=0)
+    ov.add_argument("--limit", type=int, default=None)
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -314,6 +329,24 @@ def main() -> None:
             output=dataset_out,
         )
         print(usage_summary(manifest))
+    if args.cmd == "overlay":
+        from .overlay import load_records, render_video
+
+        overlay_out: Path = args.output
+        records = None
+        if args.records is not None:
+            records = load_records(args.records)
+        result = render_video(
+            source=args.input,
+            output=overlay_out,
+            records=records,
+            masks_dir=args.masks_dir,
+            run_id=args.run_id,
+            fps=args.fps,
+            start=args.start,
+            limit=args.limit,
+        )
+        print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

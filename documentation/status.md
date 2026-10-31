@@ -60,6 +60,11 @@ and the offline tests, not the counts.
 - **Rectification is experimental upstream alignment, not camera
   calibration.** Lens distortion is not corrected, a planar homography cannot
   remove parallax, and metric pixel distances inherit that.
+- **The overlay renderer exists but nothing is wired to it.**
+  `code/maus_export/overlay.py` draws masks, states, checks and deviation
+  scores onto a video and is covered by offline tests, but no producer feeds
+  it yet and no live stream has been tested. See
+  [live overlay](vision/live-overlay.md).
 - **No model has been trained on human labels.** Every model metric above comes
   from labels derived from robot check verdicts, not from the labeling work.
 - **A fresh clone produces no artifacts.** Fetching runs needs dashboard access,
