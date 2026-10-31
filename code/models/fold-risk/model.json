@@ -1,6 +1,6 @@
 {
   "name": "fold-risk",
-  "description": "Risk that fold1 or fold2 fails, from the last spread check: overlay scores and the robot's spread verdict. Weak labels (robot verdicts). Small sample, see fold_risk.sample.",
+  "description": "RESEARCH ONLY. Risk that fold1 or fold2 fails, from the last spread check (robot verdict and overlay scores). Weak labels (robot verdicts). See fold_risk.verdict.",
   "estimator": "Pipeline",
   "inputs": [
     {
@@ -8,19 +8,16 @@
       "dtype": "float32",
       "shape": [
         null,
-        10
+        7
       ],
       "features": [
-        "area_rel",
+        "spread_fail",
         "diameter_rel",
         "offset_rel",
         "circularity",
         "hole_frac",
         "uncovered_frac",
-        "l_mean",
-        "l_std",
-        "residue_frac",
-        "spread_ok"
+        "residue_frac"
       ]
     }
   ],
@@ -67,19 +64,19 @@
   "metrics": {
     "test": {
       "n": 20,
-      "balanced_accuracy": 0.3333333333333333,
-      "f1_macro": 0.29292929292929293,
+      "balanced_accuracy": 0.2916666666666667,
+      "f1_macro": 0.23273657289002558,
       "per_class": {
         "fail": {
-          "precision": 0.2857142857142857,
+          "precision": 0.26666666666666666,
           "recall": 0.5,
-          "f1": 0.36363636363636365,
+          "f1": 0.34782608695652173,
           "support": 8
         },
         "ok": {
-          "precision": 0.3333333333333333,
-          "recall": 0.16666666666666666,
-          "f1": 0.2222222222222222,
+          "precision": 0.2,
+          "recall": 0.08333333333333333,
+          "f1": 0.11764705882352941,
           "support": 12
         }
       },
@@ -94,63 +91,63 @@
             4
           ],
           [
-            10,
-            2
+            11,
+            1
           ]
         ]
       },
       "calibration": {
         "per_class": {
           "fail": {
-            "brier": 0.4311645675283982,
-            "ece": 0.4887789934873581,
+            "brier": 0.3920992771557046,
+            "ece": 0.4625815391540528,
             "bins": {
               "mean_predicted": [
-                7.68899917602539e-06,
-                0.28964102268218994,
-                0.31976431608200073,
-                0.5441238681475321,
-                0.6556798219680786,
-                0.8395063082377116,
-                0.9495628774166107
+                0.005937337875366211,
+                0.4860336979230245,
+                0.5515891654150826,
+                0.6462566405534744,
+                0.7963426113128662,
+                0.8689953088760376,
+                0.9111758470535278
               ],
               "fraction_positive": [
                 1.0,
-                1.0,
-                0.0,
-                0.16666666666666666,
                 0.6666666666666666,
                 0.0,
-                0.5
+                0.75,
+                0.0,
+                0.5,
+                0.0
               ]
             }
           },
           "ok": {
-            "brier": 0.4311645636431575,
-            "ece": 0.4887789621949196,
+            "brier": 0.3920992720489425,
+            "ece": 0.46258152984082695,
             "bins": {
               "mean_predicted": [
-                0.050437116995453835,
-                0.16049369176228842,
-                0.3443201680978139,
-                0.4558761368195216,
-                0.6802356839179993,
-                0.7103589773178101,
-                0.999992311000824
+                0.08882414549589157,
+                0.1310046911239624,
+                0.2036573737859726,
+                0.35374336689710617,
+                0.44841085161481586,
+                0.5139663020769755,
+                0.9940626621246338
               ],
               "fraction_positive": [
+                1.0,
                 0.5,
                 1.0,
-                0.3333333333333333,
-                0.8333333333333334,
+                0.25,
                 1.0,
-                0.0,
+                0.3333333333333333,
                 0.0
               ]
             }
           }
         },
-        "brier_mean": 0.43116456558577787
+        "brier_mean": 0.3920992746023235
       }
     }
   },
@@ -159,288 +156,970 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "869431de037bf6deac7f6bdbe304163068038f5d",
+  "commit": "8e539d068133c81f1fea344fdb719e3e055b1fe6",
   "fold_risk": {
-    "target": "any fold1 or fold2 attempt in the run not ok (robot verdict, weak label)",
-    "positive_class": "fail",
-    "sample": {
-      "n_runs": 113,
-      "n_fail": 41,
-      "train": 93,
-      "test": 20,
-      "test_fail": 8,
-      "note": "small sample: holdout intervals are wide"
+    "verdict": "research only",
+    "verdict_rule": "deployable only if the 95% CI of within-robot delta AUC over robot-only (any fold failure) is above 0",
+    "target": {
+      "any": "any fold1 or fold2 attempt not ok",
+      "residue": "a fold error 'batter left on the plate'",
+      "shape": "a fold error 'not a half fold', 'not a quarter fold' or 'wrong fold shape'",
+      "excluded": "runs with 'no crepe detected' are left out of residue and shape"
     },
-    "holdout": {
-      "n_runs": 20,
-      "n_fail": 8,
-      "base_rate": 0.4,
-      "base_rate_ci": [
-        0.21880653127178018,
-        0.6134185007652458
-      ],
-      "top_frac": 0.25,
-      "ci_level": 0.95,
-      "n_boot_used": 2000,
-      "roc_auc": {
-        "value": 0.3333333333333333,
-        "ci": [
-          0.0707070707070707,
-          0.6458333333333333
-        ]
-      },
-      "average_precision": {
-        "value": 0.3751288453978082,
-        "ci": [
-          0.1880169172932331,
-          0.6993892876129716
-        ]
-      },
-      "ap_lift": {
-        "value": 0.9378221134945205,
-        "ci": [
-          0.7328236107328734,
-          1.8851899921762032
-        ]
-      },
-      "top_lift": {
-        "value": 0.5,
-        "ci": [
-          0.0,
-          1.777777777777778
-        ]
-      },
-      "brier_skill": {
-        "value": -0.7965189953091738,
-        "ci": [
-          -1.9304000931826726,
-          -0.26864706594301946
-        ]
-      }
-    },
-    "verdict": "no clear signal: ROC AUC interval includes chance (0.5)",
-    "comparisons": {
-      "spread_verdict_only": {
-        "what": "train fold-fail rate by robot spread verdict",
-        "holdout": {
-          "n_runs": 20,
-          "n_fail": 8,
-          "base_rate": 0.4,
-          "base_rate_ci": [
-            0.21880653127178018,
-            0.6134185007652458
-          ],
-          "top_frac": 0.25,
-          "ci_level": 0.95,
-          "n_boot_used": 2000,
-          "roc_auc": {
-            "value": 0.5,
-            "ci": [
-              0.3076923076923077,
-              0.7000000000000002
-            ]
-          },
-          "average_precision": {
-            "value": 0.4,
-            "ci": [
-              0.2,
-              0.6730769230769231
-            ]
-          },
-          "ap_lift": {
-            "value": 1.0,
-            "ci": [
-              0.9183673469387755,
-              1.5172066326530602
-            ]
-          },
-          "top_lift": {
-            "value": 1.0,
-            "ci": [
-              0.0,
-              2.0
-            ]
-          },
-          "brier_skill": {
-            "value": -0.1269165869472788,
-            "ci": [
-              -0.6646223762773511,
-              0.14967596887239754
-            ]
-          }
-        }
-      },
-      "scores_plus_embedding": {
-        "what": "scores + PCA(8) of the spread frame embedding (models/frame-embedder)",
-        "n_runs": 113,
-        "holdout": {
-          "n_runs": 20,
-          "n_fail": 8,
-          "base_rate": 0.4,
-          "base_rate_ci": [
-            0.21880653127178018,
-            0.6134185007652458
-          ],
-          "top_frac": 0.25,
-          "ci_level": 0.95,
-          "n_boot_used": 2000,
-          "roc_auc": {
-            "value": 0.44791666666666674,
-            "ci": [
-              0.17708333333333337,
-              0.71875
-            ]
-          },
-          "average_precision": {
-            "value": 0.46372933535762484,
-            "ci": [
-              0.20144024834814309,
-              0.7463562476126813
-            ]
-          },
-          "ap_lift": {
-            "value": 1.159323338394062,
-            "ci": [
-              0.7986553275703119,
-              2.150410353535353
-            ]
-          },
-          "top_lift": {
-            "value": 0.5,
-            "ci": [
-              0.0,
-              1.7142857142857144
-            ]
-          },
-          "brier_skill": {
-            "value": -0.5146168124632999,
-            "ci": [
-              -1.6822759255672797,
-              -0.006345178583025122
-            ]
-          }
-        }
-      }
-    },
+    "features": [
+      "spread_fail",
+      "diameter_rel",
+      "offset_rel",
+      "circularity",
+      "hole_frac",
+      "uncovered_frac",
+      "residue_frac"
+    ],
+    "fit_robots": [
+      "maus-quin",
+      "maus-pixi"
+    ],
+    "report_only_robots": [
+      "maus-otto"
+    ],
     "robots": [
       {
-        "split": "test",
-        "robot": "B",
-        "n_runs": 20,
-        "fold_fail_rate": 0.4
-      },
-      {
-        "split": "train",
-        "robot": "A",
-        "n_runs": 73,
-        "fold_fail_rate": 0.2054794520547945
-      },
-      {
-        "split": "train",
-        "robot": "B",
-        "n_runs": 13,
-        "fold_fail_rate": 0.9230769230769231
-      },
-      {
-        "split": "train",
-        "robot": "C",
+        "robot": "maus-otto",
+        "in_fit": false,
         "n_runs": 7,
-        "fold_fail_rate": 0.8571428571428571
+        "first_utc": "2026-10-22T15:59:47+00:00",
+        "last_utc": "2026-10-22T16:30:46+00:00",
+        "spread_fail": 6,
+        "any_fail": 6,
+        "residue_fail": 5,
+        "shape_fail": 2,
+        "excluded_no_crepe": 0
+      },
+      {
+        "robot": "maus-pixi",
+        "in_fit": true,
+        "n_runs": 33,
+        "first_utc": "2026-10-27T15:16:25+00:00",
+        "last_utc": "2026-10-30T16:54:29+00:00",
+        "spread_fail": 9,
+        "any_fail": 20,
+        "residue_fail": 7,
+        "shape_fail": 17,
+        "excluded_no_crepe": 0
+      },
+      {
+        "robot": "maus-quin",
+        "in_fit": true,
+        "n_runs": 73,
+        "first_utc": "2026-10-13T11:25:33+00:00",
+        "last_utc": "2026-10-20T10:19:54+00:00",
+        "spread_fail": 6,
+        "any_fail": 15,
+        "residue_fail": 2,
+        "shape_fail": 11,
+        "excluded_no_crepe": 2
       }
     ],
-    "train_cv": {
-      "scheme": "20x5-fold stratified, train runs",
-      "all_robots": {
-        "n_runs": 93,
-        "n_fail": 33,
-        "roc_auc_mean": 0.7845436507936508,
-        "roc_auc_std": 0.11297581239726882
-      },
-      "largest_robot": {
-        "all_features": {
-          "n_runs": 73,
-          "n_fail": 15,
-          "roc_auc_mean": 0.5056818181818182,
-          "roc_auc_std": 0.1716263035718802
-        },
-        "verdict_only": {
-          "n_runs": 73,
-          "n_fail": 15,
-          "roc_auc_mean": 0.4647348484848484,
-          "roc_auc_std": 0.10143129592905517
-        },
-        "without_lightness": {
-          "n_runs": 73,
-          "n_fail": 15,
-          "roc_auc_mean": 0.45611111111111113,
-          "roc_auc_std": 0.15213667976415232
-        }
-      }
+    "pooled_spread_verdict": {
+      "after_spread_fail": [
+        13,
+        21
+      ],
+      "after_spread_ok": [
+        28,
+        92
+      ]
     },
-    "importance": {
-      "note": "std_coef: log-odds of fold failure per train SD; positive raises risk",
-      "features": [
+    "effects": {
+      "any": [
         {
-          "feature": "l_std",
-          "std_coef": -1.0112321687318007,
-          "perm_auc_drop_mean": 0.012552083333333318,
-          "perm_auc_drop_std": 0.09083009299935145
-        },
-        {
-          "feature": "l_mean",
-          "std_coef": 0.8938617431687209,
-          "perm_auc_drop_mean": -0.03927083333333335,
-          "perm_auc_drop_std": 0.05906084653770211
-        },
-        {
-          "feature": "circularity",
-          "std_coef": 0.6324447850965318,
-          "perm_auc_drop_mean": -0.00010416666666668517,
-          "perm_auc_drop_std": 0.06922178714806648
-        },
-        {
-          "feature": "spread_ok",
-          "std_coef": -0.36817484859321026,
-          "perm_auc_drop_mean": 0.0021874999999999863,
-          "perm_auc_drop_std": 0.042050188061080324
+          "feature": "spread_fail",
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "present vs absent",
+          "events_if_present": [
+            8,
+            15
+          ],
+          "events_if_absent": [
+            27,
+            91
+          ],
+          "estimable": true,
+          "log_or": 0.5210484196349473,
+          "se": 0.6254896361039357,
+          "odds_ratio": 1.6837920452652164,
+          "ci95": [
+            0.4941635519175624,
+            5.737282000456782
+          ],
+          "p": 0.4048307060886063,
+          "p_holm": 1.0,
+          "significant": false
         },
         {
           "feature": "diameter_rel",
-          "std_coef": -0.26159273963544766,
-          "perm_auc_drop_mean": 0.01651041666666665,
-          "perm_auc_drop_std": 0.020944430341415084
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.2996222850536625,
+          "se": 0.2295933909732678,
+          "odds_ratio": 0.7410980916485848,
+          "ci95": [
+            0.472547474270182,
+            1.162267097699374
+          ],
+          "p": 0.1918885322190803,
+          "p_holm": 1.0,
+          "significant": false
         },
         {
           "feature": "offset_rel",
-          "std_coef": 0.2381610082981212,
-          "perm_auc_drop_mean": -0.011718750000000016,
-          "perm_auc_drop_std": 0.04233753541931727
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.30562059599601754,
+          "se": 0.2355328014715806,
+          "odds_ratio": 1.357467180350101,
+          "ci95": [
+            0.8555461756470502,
+            2.1538488490513163
+          ],
+          "p": 0.19443470042086664,
+          "p_holm": 1.0,
+          "significant": false
         },
         {
-          "feature": "uncovered_frac",
-          "std_coef": 0.21527086403865872,
-          "perm_auc_drop_mean": -0.0004687500000000167,
-          "perm_auc_drop_std": 0.014255903839140938
-        },
-        {
-          "feature": "residue_frac",
-          "std_coef": -0.18358348702610167,
-          "perm_auc_drop_mean": -0.006666666666666673,
-          "perm_auc_drop_std": 0.047267339557974804
-        },
-        {
-          "feature": "area_rel",
-          "std_coef": -0.16668245730449555,
-          "perm_auc_drop_mean": 0.013437499999999984,
-          "perm_auc_drop_std": 0.016879821841970566
+          "feature": "circularity",
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.06245081709625595,
+          "se": 0.22133205250318727,
+          "odds_ratio": 0.939459267011939,
+          "ci95": [
+            0.6088071862006189,
+            1.4496933255380036
+          ],
+          "p": 0.7778216415593272,
+          "p_holm": 1.0,
+          "significant": false
         },
         {
           "feature": "hole_frac",
-          "std_coef": 0.1642322437064789,
-          "perm_auc_drop_mean": 0.00036458333333332175,
-          "perm_auc_drop_std": 0.011570356752578741
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.1449048128503061,
+          "se": 0.28076218107881595,
+          "odds_ratio": 1.1559295353934305,
+          "ci95": [
+            0.6667241076898467,
+            2.0040869609839373
+          ],
+          "p": 0.6057759831476461,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "uncovered_frac",
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.5162328913521349,
+          "se": 0.40388476990800126,
+          "odds_ratio": 1.6757031887388025,
+          "ci95": [
+            0.7592936304041605,
+            3.698149259140689
+          ],
+          "p": 0.20118993229490922,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "residue_frac",
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.21768959437028082,
+          "se": 0.32354254346314537,
+          "odds_ratio": 1.2432011110968646,
+          "ci95": [
+            0.659388665051342,
+            2.3439119968981235
+          ],
+          "p": 0.5010545354862596,
+          "p_holm": 1.0,
+          "significant": false
+        }
+      ],
+      "residue": [
+        {
+          "feature": "spread_fail",
+          "n_runs": 104,
+          "n_events": 9,
+          "unit": "present vs absent",
+          "events_if_present": [
+            2,
+            14
+          ],
+          "events_if_absent": [
+            7,
+            90
+          ],
+          "estimable": true,
+          "log_or": -0.041164141273995446,
+          "se": 0.9109776094536736,
+          "odds_ratio": 0.9596715953009138,
+          "ci95": [
+            0.1609522653407948,
+            5.72200440222057
+          ],
+          "p": 0.9639584346248756,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "diameter_rel",
+          "n_runs": 104,
+          "n_events": 9,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.23134056135091172,
+          "se": 0.30749811949248024,
+          "odds_ratio": 0.7934691950749517,
+          "ci95": [
+            0.43429736752953463,
+            1.4496826612472524
+          ],
+          "p": 0.4518516512298,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "offset_rel",
+          "n_runs": 104,
+          "n_events": 9,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.43431464857706964,
+          "se": 0.27461469838139124,
+          "odds_ratio": 1.5439045790772865,
+          "ci95": [
+            0.9012971550906843,
+            2.644678656570243
+          ],
+          "p": 0.11375418920603157,
+          "p_holm": 0.5687709460301579,
+          "significant": false
+        },
+        {
+          "feature": "circularity",
+          "n_runs": 104,
+          "n_events": 9,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.6044518391170985,
+          "se": 0.32093096915945196,
+          "odds_ratio": 0.5463738453368574,
+          "ci95": [
+            0.2912815423089051,
+            1.0248654154391905
+          ],
+          "p": 0.05964177032113804,
+          "p_holm": 0.35785062192682826,
+          "significant": false
+        },
+        {
+          "feature": "hole_frac",
+          "n_runs": 104,
+          "n_events": 9,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.4047204505488218,
+          "se": 0.37228084858685956,
+          "odds_ratio": 1.4988834294439348,
+          "ci95": [
+            0.7225731598489429,
+            3.1092374584343596
+          ],
+          "p": 0.27697607147391756,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "uncovered_frac",
+          "n_runs": 104,
+          "n_events": 9,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.9801119723621643,
+          "se": 0.43056400659238797,
+          "odds_ratio": 2.664754604092556,
+          "ci95": [
+            1.1459362934640227,
+            6.196607211529434
+          ],
+          "p": 0.02282540365230519,
+          "p_holm": 0.15977782556613634,
+          "significant": false
+        },
+        {
+          "feature": "residue_frac",
+          "n_runs": 104,
+          "n_events": 9,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.4830706642745359,
+          "se": 0.4655771140145595,
+          "odds_ratio": 1.6210444508949886,
+          "ci95": [
+            0.6508710663049648,
+            4.037335883887931
+          ],
+          "p": 0.29946847192341874,
+          "p_holm": 1.0,
+          "significant": false
+        }
+      ],
+      "shape": [
+        {
+          "feature": "spread_fail",
+          "n_runs": 104,
+          "n_events": 28,
+          "unit": "present vs absent",
+          "events_if_present": [
+            7,
+            14
+          ],
+          "events_if_absent": [
+            21,
+            90
+          ],
+          "estimable": true,
+          "log_or": 0.6809002654387232,
+          "se": 0.6460390221473438,
+          "odds_ratio": 1.9756555462652328,
+          "ci95": [
+            0.5569315424890553,
+            7.008428396862224
+          ],
+          "p": 0.29190053799401683,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "diameter_rel",
+          "n_runs": 104,
+          "n_events": 28,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.10662648721820289,
+          "se": 0.23062678491944769,
+          "odds_ratio": 0.8988613464992108,
+          "ci95": [
+            0.5719826160812098,
+            1.4125459367381572
+          ],
+          "p": 0.6438421841586865,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "offset_rel",
+          "n_runs": 104,
+          "n_events": 28,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.127138526416461,
+          "se": 0.22477517771543926,
+          "odds_ratio": 1.1355743139267327,
+          "ci95": [
+            0.7309481686071585,
+            1.7641866794842678
+          ],
+          "p": 0.5716485281023214,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "circularity",
+          "n_runs": 104,
+          "n_events": 28,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.12557338682055216,
+          "se": 0.22931704952776497,
+          "odds_ratio": 0.8819910355340848,
+          "ci95": [
+            0.5626899320404979,
+            1.382481083216715
+          ],
+          "p": 0.5839684747444251,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "hole_frac",
+          "n_runs": 104,
+          "n_events": 28,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.19619050241882868,
+          "se": 0.29435767135231544,
+          "odds_ratio": 1.2167586787283478,
+          "ci95": [
+            0.6833555854295218,
+            2.166517277136453
+          ],
+          "p": 0.5050891444989007,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "uncovered_frac",
+          "n_runs": 104,
+          "n_events": 28,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.23207424268790958,
+          "se": 0.26864753519869916,
+          "odds_ratio": 1.2612133612224907,
+          "ci95": [
+            0.7449298315799991,
+            2.1353140592481554
+          ],
+          "p": 0.3876640195548362,
+          "p_holm": 1.0,
+          "significant": false
+        },
+        {
+          "feature": "residue_frac",
+          "n_runs": 104,
+          "n_events": 28,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": 0.31024159665893425,
+          "se": 0.37790124903464073,
+          "odds_ratio": 1.3637545528785069,
+          "ci95": [
+            0.6502286289041848,
+            2.8602654479104976
+          ],
+          "p": 0.4116693734796759,
+          "p_holm": 1.0,
+          "significant": false
         }
       ]
+    },
+    "confound_check": {
+      "l_mean": {
+        "robot_share_of_variance": 0.2465212705177238,
+        "robot_means": {
+          "maus-pixi": 75.8820389194088,
+          "maus-quin": 65.5441366598509
+        },
+        "pooled_odds_ratio_per_sd": 1.2693000336590834,
+        "adjusted": {
+          "feature": "l_mean",
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.25495587481495846,
+          "se": 0.23194479009949054,
+          "odds_ratio": 0.7749506920493499,
+          "ci95": [
+            0.4918609079825323,
+            1.2209723630427118
+          ],
+          "p": 0.27167677478740804
+        }
+      },
+      "l_std": {
+        "robot_share_of_variance": 0.0010584552811470568,
+        "robot_means": {
+          "maus-pixi": 9.261105850422279,
+          "maus-quin": 9.47408971106969
+        },
+        "pooled_odds_ratio_per_sd": 0.904388171298488,
+        "adjusted": {
+          "feature": "l_std",
+          "n_runs": 106,
+          "n_events": 35,
+          "unit": "per SD",
+          "estimable": true,
+          "log_or": -0.07041015647056695,
+          "se": 0.2101043829939157,
+          "odds_ratio": 0.9320114709644035,
+          "ci95": [
+            0.6174191315352636,
+            1.4068974180461056
+          ],
+          "p": 0.7375346539433766
+        }
+      }
+    },
+    "power": {
+      "method": "Wald approximation, within robot, Bonferroni alpha 0.05/7, power 0.8",
+      "or_target": 2.0,
+      "any": {
+        "n_runs": 106,
+        "event_variance": 0.1867603405468487,
+        "min_detectable_or_per_sd": 2.2117093920834208,
+        "runs_needed_or_per_sd": 140,
+        "spread_fail_variance": 0.11370097981625506,
+        "min_detectable_or_spread_fail": 10.5278108245486,
+        "runs_needed_or_spread_fail": 1223
+      },
+      "residue": {
+        "n_runs": 104,
+        "event_variance": 0.07171936045175482,
+        "min_detectable_or_per_sd": 3.6442892199284453,
+        "runs_needed_or_per_sd": 362,
+        "spread_fail_variance": 0.11370097981625506,
+        "min_detectable_or_spread_fail": 46.295570764288165,
+        "runs_needed_or_spread_fail": 3184
+      },
+      "shape": {
+        "n_runs": 104,
+        "event_variance": 0.16863652779145732,
+        "min_detectable_or_per_sd": 2.3240822463103905,
+        "runs_needed_or_per_sd": 154,
+        "spread_fail_variance": 0.11370097981625506,
+        "min_detectable_or_spread_fail": 12.19463319539777,
+        "runs_needed_or_spread_fail": 1354
+      }
+    },
+    "model_checks": {
+      "any": {
+        "pooled_cv": {
+          "n_runs": 106,
+          "n_events": 35,
+          "delta_auc_within_robot": {
+            "value": -0.17941335935805686,
+            "ci95": [
+              -0.2901449309468321,
+              -0.06385311007471514
+            ]
+          },
+          "delta_auc_pooled": {
+            "value": -0.0557344064386317,
+            "ci95": [
+              -0.14788906557625314,
+              0.029783782934090938
+            ]
+          },
+          "brier_skill": {
+            "value": -0.10860034283986897,
+            "ci95": [
+              -0.20690751898498716,
+              -0.026354645916265407
+            ]
+          }
+        },
+        "within_robot_cv": {
+          "maus-quin": {
+            "n_runs": 73,
+            "n_events": 15,
+            "auc": {
+              "value": 0.4149425287356322,
+              "ci95": [
+                0.27205222473604823,
+                0.5615147709244745
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.07908284236974672,
+              "ci95": [
+                -0.18060908878949158,
+                0.005189678841362478
+              ]
+            }
+          },
+          "maus-pixi": {
+            "n_runs": 33,
+            "n_events": 20,
+            "auc": {
+              "value": 0.4461538461538462,
+              "ci95": [
+                0.2420119047619048,
+                0.652191879266978
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.1658134584335258,
+              "ci95": [
+                -0.40764991383496535,
+                0.03225505876383611
+              ]
+            }
+          }
+        },
+        "leave_one_robot_out": {
+          "maus-quin": {
+            "n_runs": 73,
+            "n_events": 15,
+            "auc": {
+              "value": 0.4172413793103448,
+              "ci95": [
+                0.26531516821715306,
+                0.5927019177576988
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.31473423965865344,
+              "ci95": [
+                -0.7165401766515671,
+                -0.06359707245046334
+              ]
+            }
+          },
+          "maus-pixi": {
+            "n_runs": 33,
+            "n_events": 20,
+            "auc": {
+              "value": 0.47307692307692306,
+              "ci95": [
+                0.2692095588235294,
+                0.6776882460973369
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.4121378237603619,
+              "ci95": [
+                -0.9355867515259237,
+                0.024914777855977305
+              ]
+            }
+          },
+          "maus-otto": {
+            "n_runs": 7,
+            "n_events": 6,
+            "auc": {
+              "value": 1.0,
+              "ci95": [
+                1.0,
+                1.0
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.6558952764480019,
+              "ci95": [
+                -0.770439654611241,
+                0.33415916074074264
+              ]
+            }
+          }
+        },
+        "permutation_null": {
+          "n_perm": 100,
+          "mean": -0.015447383347513461,
+          "q05_q95": [
+            -0.1795850849974142,
+            0.10018430008508082
+          ]
+        }
+      },
+      "residue": {
+        "pooled_cv": {
+          "n_runs": 104,
+          "n_events": 9,
+          "delta_auc_within_robot": {
+            "value": -0.1877917233268404,
+            "ci95": [
+              -0.3179655067155068,
+              0.3214440993788821
+            ]
+          },
+          "delta_auc_pooled": {
+            "value": 0.011695906432748537,
+            "ci95": [
+              -0.10356161021109479,
+              0.12873053301162554
+            ]
+          },
+          "brier_skill": {
+            "value": 0.1629558541694801,
+            "ci95": [
+              -0.01910644645834858,
+              0.3732781891204783
+            ]
+          }
+        },
+        "within_robot_cv": {
+          "maus-quin": {
+            "n_runs": 71,
+            "n_events": 2,
+            "auc": {
+              "value": 0.34057971014492755,
+              "ci95": [
+                0.22857142857142854,
+                0.4567546583850932
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.007714594651826001,
+              "ci95": [
+                -0.015967090475919765,
+                -0.0028819582013053235
+              ]
+            }
+          },
+          "maus-pixi": {
+            "n_runs": 33,
+            "n_events": 7,
+            "auc": {
+              "value": 0.7417582417582418,
+              "ci95": [
+                0.42592592592592593,
+                0.9907567049808429
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": 0.33187469110630885,
+              "ci95": [
+                0.04597073430731778,
+                0.642577948960513
+              ]
+            }
+          }
+        },
+        "leave_one_robot_out": {
+          "maus-quin": {
+            "n_runs": 71,
+            "n_events": 2,
+            "auc": {
+              "value": 0.43478260869565216,
+              "ci95": [
+                0.3188405797101449,
+                0.5588235294117647
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.9554971826512426,
+              "ci95": [
+                -2.4932429466346355,
+                -0.20090026346727874
+              ]
+            }
+          },
+          "maus-pixi": {
+            "n_runs": 33,
+            "n_events": 7,
+            "auc": {
+              "value": 0.1923076923076923,
+              "ci95": [
+                0.0,
+                0.45604395604395603
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.6228436108223225,
+              "ci95": [
+                -1.1694157393330329,
+                -0.29126540425091224
+              ]
+            }
+          },
+          "maus-otto": {
+            "n_runs": 7,
+            "n_events": 5,
+            "auc": {
+              "value": 0.4,
+              "ci95": [
+                0.0,
+                0.8333333333333334
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -2.1364416314995816,
+              "ci95": [
+                -4.738486634617628,
+                0.005136892509016223
+              ]
+            }
+          }
+        }
+      },
+      "shape": {
+        "pooled_cv": {
+          "n_runs": 104,
+          "n_events": 28,
+          "delta_auc_within_robot": {
+            "value": -0.2549306698203757,
+            "ci95": [
+              -0.3673238566988567,
+              -0.11619802706763963
+            ]
+          },
+          "delta_auc_pooled": {
+            "value": -0.08012218045112784,
+            "ci95": [
+              -0.17928447678447673,
+              0.011720940615171326
+            ]
+          },
+          "brier_skill": {
+            "value": -0.1717435425154572,
+            "ci95": [
+              -0.30327277116721313,
+              -0.07133269113119453
+            ]
+          }
+        },
+        "within_robot_cv": {
+          "maus-quin": {
+            "n_runs": 71,
+            "n_events": 11,
+            "auc": {
+              "value": 0.3924242424242424,
+              "ci95": [
+                0.22737824675324678,
+                0.5610001140868767
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.16024529002688648,
+              "ci95": [
+                -0.3486261575589482,
+                -0.037292218360116224
+              ]
+            }
+          },
+          "maus-pixi": {
+            "n_runs": 33,
+            "n_events": 17,
+            "auc": {
+              "value": 0.5477941176470589,
+              "ci95": [
+                0.34552290957705395,
+                0.75
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.1253728188547265,
+              "ci95": [
+                -0.4007735962790645,
+                0.11326381486859409
+              ]
+            }
+          }
+        },
+        "leave_one_robot_out": {
+          "maus-quin": {
+            "n_runs": 71,
+            "n_events": 11,
+            "auc": {
+              "value": 0.343939393939394,
+              "ci95": [
+                0.18650793650793657,
+                0.536114593378334
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.28465639027847245,
+              "ci95": [
+                -0.6109915115139867,
+                -0.07582218014423409
+              ]
+            }
+          },
+          "maus-pixi": {
+            "n_runs": 33,
+            "n_events": 17,
+            "auc": {
+              "value": 0.3970588235294118,
+              "ci95": [
+                0.21052631578947367,
+                0.6066307773109244
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.5306475811123981,
+              "ci95": [
+                -1.0120012722101352,
+                -0.02445633806644639
+              ]
+            }
+          },
+          "maus-otto": {
+            "n_runs": 7,
+            "n_events": 2,
+            "auc": {
+              "value": 0.4,
+              "ci95": [
+                0.0,
+                0.8
+              ]
+            },
+            "brier_skill_vs_mean": {
+              "value": -0.3129994189871941,
+              "ci95": [
+                -1.0107625008313148,
+                0.2697018593510597
+              ]
+            }
+          }
+        }
+      }
+    },
+    "shared_holdout": {
+      "label": "one robot (maus-pixi)",
+      "report": {
+        "n_runs": 20,
+        "n_fail": 8,
+        "base_rate": 0.4,
+        "base_rate_ci": [
+          0.21880653127178018,
+          0.6134185007652458
+        ],
+        "top_frac": 0.25,
+        "ci_level": 0.95,
+        "n_boot_used": 2000,
+        "roc_auc": {
+          "value": 0.3958333333333333,
+          "ci": [
+            0.09523809523809523,
+            0.7466666666666668
+          ]
+        },
+        "average_precision": {
+          "value": 0.4209125755565384,
+          "ci": [
+            0.2025689223057644,
+            0.7893322795625425
+          ]
+        },
+        "ap_lift": {
+          "value": 1.052281438891346,
+          "ci": [
+            0.7642909417394853,
+            2.276993264411026
+          ]
+        },
+        "top_lift": {
+          "value": 1.0,
+          "ci": [
+            0.0,
+            2.285714285714286
+          ]
+        },
+        "brier_skill": {
+          "value": -0.6337469716614568,
+          "ci": [
+            -1.7686387142147477,
+            -0.13573714571673817
+          ]
+        }
+      }
     }
   }
 }
