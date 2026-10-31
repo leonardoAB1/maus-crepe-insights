@@ -1,195 +1,119 @@
-"""Train the fold-risk model and export ONNX.
+"""Fold risk: robot-adjusted insight, power, model checks and ONNX export.
 
 pixi run -e ml python models/fold-risk/train.py [--data-dir ../data]
 
-Reads data/training/frames.parquet, data/vision.parquet and, when present,
-data/training/frame_embeddings.parquet. Writes model.onnx and model.json next
-to this file. The shipped model uses the spread overlay scores and the
-robot's spread verdict. Two comparisons are scored on the same holdout and
-recorded in the card: the verdict alone, and scores plus the spread frame
-embedding.
+Reads data/training/frames.parquet and data/vision.parquet. Writes
+model.onnx and model.json next to this file and the effect plot to
+assets/fold-risk-effects.png (aggregates only). See
+documentation/analysis/fold-risk.md.
 """
 
 from __future__ import annotations
 
 import argparse
-import tempfile
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import onnxruntime as ort
 import pandas as pd
-from sklearn.compose import ColumnTransformer
-from sklearn.decomposition import PCA
-from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import RepeatedStratifiedKFold, cross_val_score
-from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from maus_classify import fold_cv, fold_effects
+from maus_classify.fold_effects import PRIMARY, ROBOT
 from maus_classify.fold_risk import (
     FAIL,
-    SCORE_FEATURES,
-    VERDICT_FEATURE,
-    embedding_columns,
+    MECHANISMS,
     fold_risk_table,
     lift_report,
-    robot_breakdown,
-    signal_verdict,
-    verdict_baseline,
 )
-from maus_classify.harness import (
-    ONNX_INPUT,
-    ONNX_PROBA,
-    train_and_evaluate,
-)
-from maus_classify.split import TEST, TRAIN
+from maus_classify.harness import ONNX_INPUT, ONNX_PROBA, train_and_evaluate
+from maus_classify.split import TEST
 from maus_export.analysis import find_data_dir
 from maus_export.doe_analyze import dump_json
 
 HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[2]
+FIGURE = REPO / "assets" / "fold-risk-effects.png"
 NAME = "fold-risk"
-FEATURES = SCORE_FEATURES + [VERDICT_FEATURE]
-C = 1.0  # L2 strength; default, not tuned on 94 train runs
+# Robots in the fit. maus-otto has 7 runs (6 fold failures) and is reported
+# only, as the issue asks.
+FIT_ROBOTS = ["maus-quin", "maus-pixi"]
+REPORT_ROBOTS = ["maus-otto"]
+C = 1.0
 MAX_ITER = 1000
-EMBED_COMPONENTS = 8
-PERM_REPEATS = 200
-CV_SPLITS = 5
-CV_REPEATS = 20
-SEED = 0
+N_PERM = 100
+PERM_REPEATS = 5
+DEPLOYABLE = "deployable"
+RESEARCH = "research only"
 
 
-def scores_model() -> Pipeline:
+def model() -> Any:
     return make_pipeline(
         StandardScaler(), LogisticRegression(C=C, max_iter=MAX_ITER)
     )
 
 
-def embedding_model(n_scores: int, n_embed: int) -> Pipeline:
-    scores = list(range(n_scores))
-    embed = list(range(n_scores, n_scores + n_embed))
-    prep = ColumnTransformer(
-        [
-            ("scores", StandardScaler(), scores),
-            (
-                "embed",
-                make_pipeline(
-                    StandardScaler(),
-                    PCA(n_components=EMBED_COMPONENTS, random_state=SEED),
-                ),
-                embed,
-            ),
-        ]
-    )
-    return Pipeline(
-        [("prep", prep), ("lr", LogisticRegression(C=C, max_iter=MAX_ITER))]
-    )
+def robot_counts(table: pd.DataFrame) -> list[dict[str, Any]]:
+    rows = []
+    for robot, g in table.groupby(ROBOT):
+        rows.append(
+            {
+                "robot": str(robot),
+                "in_fit": robot in FIT_ROBOTS,
+                "n_runs": len(g),
+                "first_utc": g["ts_utc"].min().isoformat(),
+                "last_utc": g["ts_utc"].max().isoformat(),
+                "spread_fail": int(g[fold_effects.SPREAD_FAIL].sum()),
+                **{f"{m}_fail": int(g[t].sum()) for m, t in MECHANISMS.items()},
+                "excluded_no_crepe": int(g[MECHANISMS["shape"]].isna().sum()),
+            }
+        )
+    return rows
 
 
-def holdout_proba(path: Path, X: np.ndarray, classes: list[str]) -> np.ndarray:
-    """Failure probability from the exported graph, as it will be served."""
-    sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
-    proba = sess.run([ONNX_PROBA], {ONNX_INPUT: X.astype(np.float32)})[0]
-    return proba[:, classes.index(FAIL)]
+def permutation_null(table: pd.DataFrame, target: str) -> dict[str, Any]:
+    """Within-robot delta AUC when labels are shuffled inside each robot."""
+    rows = table[table[ROBOT].isin(FIT_ROBOTS) & table[target].notna()]
+    rows = rows.copy()
+    rng = np.random.default_rng(0)
+    vals = []
+    for i in range(N_PERM):
+        rows["_perm"] = rows.groupby(ROBOT)[target].transform(
+            lambda s: rng.permutation(s.to_numpy())
+        )
+        pm, _ = fold_cv.oof_predictions(
+            rows, "_perm", PRIMARY, n_repeats=PERM_REPEATS, seed=i
+        )
+        auc = fold_cv.within_auc(
+            rows["_perm"].to_numpy(float), pm, rows[ROBOT].to_numpy()
+        )
+        vals.append(auc - 0.5)
+    v = np.asarray(vals)
+    return {
+        "n_perm": N_PERM,
+        "mean": float(v.mean()),
+        "q05_q95": [float(np.quantile(v, 0.05)), float(np.quantile(v, 0.95))],
+    }
 
 
-def fit(
-    table: pd.DataFrame,
-    features: list[str],
-    estimator: Pipeline,
-    out_dir: Path,
-    description: str,
-) -> tuple[dict[str, Any], np.ndarray]:
-    card = train_and_evaluate(
-        estimator,
-        table[features].to_numpy(float),
-        table["label"].to_numpy(),
-        table["split"].to_numpy(),
-        table.index.to_numpy(),
-        name=NAME,
-        feature_names=features,
-        out_dir=out_dir,
-        timestamps=table["ts_utc"].to_numpy(),
-        description=description,
-    )
+def shared_holdout(table: pd.DataFrame, card: dict[str, Any]) -> dict:
     test = table[table["split"] == TEST]
+    sess = ort.InferenceSession(
+        str(HERE / "model.onnx"), providers=["CPUExecutionProvider"]
+    )
+    proba = sess.run(
+        [ONNX_PROBA],
+        {ONNX_INPUT: test[PRIMARY].to_numpy(np.float32)},
+    )[0]
     classes = card["outputs"][1]["classes"]
-    p = holdout_proba(
-        out_dir / "model.onnx", test[features].to_numpy(float), classes
-    )
-    return card, p
-
-
-def importance(table: pd.DataFrame) -> dict[str, Any]:
-    """Standardized coefficients (train fit) and holdout permutation drop in
-    ROC AUC. Both are noisy at this sample size."""
-    train = table[table["split"] == TRAIN]
-    test = table[table["split"] == TEST]
-    model = scores_model().fit(
-        train[FEATURES].to_numpy(float), train["fold_fail"].to_numpy()
-    )
-    coef = model[-1].coef_[0]
-    perm = permutation_importance(
-        model,
-        test[FEATURES].to_numpy(float),
-        test["fold_fail"].to_numpy(),
-        scoring="roc_auc",
-        n_repeats=PERM_REPEATS,
-        random_state=SEED,
-    )
-    rows = [
-        {
-            "feature": f,
-            "std_coef": float(coef[i]),
-            "perm_auc_drop_mean": float(perm.importances_mean[i]),
-            "perm_auc_drop_std": float(perm.importances_std[i]),
-        }
-        for i, f in enumerate(FEATURES)
-    ]
-    rows.sort(key=lambda r: -abs(r["std_coef"]))
+    p = proba[:, classes.index(FAIL)]
+    robots = sorted(test[ROBOT].astype(str).unique())
     return {
-        "note": "std_coef: log-odds of fold failure per train SD; "
-        "positive raises risk",
-        "features": rows,
-    }
-
-
-def _cv_auc(rows: pd.DataFrame, features: list[str]) -> dict[str, Any]:
-    cv = RepeatedStratifiedKFold(
-        n_splits=CV_SPLITS, n_repeats=CV_REPEATS, random_state=SEED
-    )
-    auc = cross_val_score(
-        scores_model(),
-        rows[features].to_numpy(float),
-        rows["fold_fail"].to_numpy(),
-        scoring="roc_auc",
-        cv=cv,
-    )
-    return {
-        "n_runs": len(rows),
-        "n_fail": int(rows["fold_fail"].sum()),
-        "roc_auc_mean": float(auc.mean()),
-        "roc_auc_std": float(auc.std()),
-    }
-
-
-def train_cv(table: pd.DataFrame) -> dict[str, Any]:
-    """Repeated stratified CV ROC AUC on train runs only (one row per run).
-    Across robots it can learn the robot instead of the crepe, so it is
-    repeated within the largest train robot."""
-    train = table[table["split"] == TRAIN]
-    largest = train["robot"].value_counts().idxmax()
-    one = train[train["robot"] == largest]
-    lightless = [f for f in FEATURES if not f.startswith("l_")]
-    return {
-        "scheme": f"{CV_REPEATS}x{CV_SPLITS}-fold stratified, train runs",
-        "all_robots": _cv_auc(train, FEATURES),
-        "largest_robot": {
-            "all_features": _cv_auc(one, FEATURES),
-            "verdict_only": _cv_auc(one, [VERDICT_FEATURE]),
-            "without_lightness": _cv_auc(one, lightless),
-        },
+        "label": f"one robot ({', '.join(robots)})",
+        "report": lift_report(test["fold_fail"].to_numpy(float), p),
     }
 
 
@@ -201,76 +125,73 @@ def main() -> None:
 
     frames = pd.read_parquet(data_dir / "training" / "frames.parquet")
     vision = pd.read_parquet(data_dir / "vision.parquet")
-    table = fold_risk_table(frames, vision)
-    test = table[table["split"] == TEST]
-    y_test = test["fold_fail"].to_numpy(float)
+    table = fold_effects.add_spread_fail(fold_risk_table(frames, vision))
+    all_robots = FIT_ROBOTS + REPORT_ROBOTS
 
-    card, p_model = fit(
-        table,
-        FEATURES,
-        scores_model(),
-        HERE,
-        "Risk that fold1 or fold2 fails, from the last spread check: "
-        "overlay scores and the robot's spread verdict. Weak labels "
-        "(robot verdicts). Small sample, see fold_risk.sample.",
-    )
-    report = lift_report(y_test, p_model)
-    baseline = lift_report(y_test, verdict_baseline(table))
-    comparisons: dict[str, Any] = {
-        "spread_verdict_only": {
-            "what": "train fold-fail rate by robot spread verdict",
-            "holdout": baseline,
-        }
-    }
-
-    emb_path = data_dir / "training" / "frame_embeddings.parquet"
-    if emb_path.is_file():
-        emb_table = fold_risk_table(frames, vision, pd.read_parquet(emb_path))
-        emb_feats = FEATURES + embedding_columns(emb_table)
-        emb_test = emb_table[emb_table["split"] == TEST]
-        with tempfile.TemporaryDirectory() as tmp:
-            _, p_emb = fit(
-                emb_table,
-                emb_feats,
-                embedding_model(len(FEATURES), len(emb_feats) - len(FEATURES)),
-                Path(tmp),
-                "comparison only",
-            )
-        comparisons["scores_plus_embedding"] = {
-            "what": f"scores + PCA({EMBED_COMPONENTS}) of the spread frame "
-            "embedding (models/frame-embedder)",
-            "n_runs": len(emb_table),
-            "holdout": lift_report(
-                emb_test["fold_fail"].to_numpy(float), p_emb
+    eff = fold_effects.effects(table, FIT_ROBOTS)
+    fold_effects.plot_effects(eff, FIGURE)
+    checks = {
+        mech: {
+            "pooled_cv": fold_cv.pooled_cv(table, target, PRIMARY, FIT_ROBOTS),
+            "within_robot_cv": fold_cv.within_robot_cv(
+                table, target, PRIMARY, FIT_ROBOTS
+            ),
+            "leave_one_robot_out": fold_cv.leave_one_robot_out(
+                table, target, PRIMARY, all_robots
             ),
         }
+        for mech, target in MECHANISMS.items()
+    }
+    checks["any"]["permutation_null"] = permutation_null(
+        table, MECHANISMS["any"]
+    )
+    delta = checks["any"]["pooled_cv"]["delta_auc_within_robot"]
+    verdict = DEPLOYABLE if delta["ci95"][0] > 0 else RESEARCH
 
+    card = train_and_evaluate(
+        model(),
+        table[PRIMARY].to_numpy(float),
+        table["label"].to_numpy(),
+        table["split"].to_numpy(),
+        table.index.to_numpy(),
+        name=NAME,
+        feature_names=PRIMARY,
+        out_dir=HERE,
+        timestamps=table["ts_utc"].to_numpy(),
+        description=f"{verdict.upper()}. Risk that fold1 or fold2 fails, "
+        "from the last spread check (robot verdict and overlay scores). "
+        "Weak labels (robot verdicts). See fold_risk.verdict.",
+    )
     card["fold_risk"] = {
-        "target": "any fold1 or fold2 attempt in the run not ok "
-        "(robot verdict, weak label)",
-        "positive_class": FAIL,
-        "sample": {
-            "n_runs": len(table),
-            "n_fail": int(table["fold_fail"].sum()),
-            TRAIN: int((table["split"] == TRAIN).sum()),
-            TEST: len(test),
-            "test_fail": int(y_test.sum()),
-            "note": "small sample: holdout intervals are wide",
+        "verdict": verdict,
+        "verdict_rule": "deployable only if the 95% CI of within-robot "
+        "delta AUC over robot-only (any fold failure) is above 0",
+        "target": {
+            "any": "any fold1 or fold2 attempt not ok",
+            "residue": "a fold error 'batter left on the plate'",
+            "shape": "a fold error 'not a half fold', 'not a quarter fold' "
+            "or 'wrong fold shape'",
+            "excluded": "runs with 'no crepe detected' are left out of "
+            "residue and shape",
         },
-        "holdout": report,
-        "verdict": signal_verdict(report),
-        "comparisons": comparisons,
-        "robots": robot_breakdown(table),
-        "train_cv": train_cv(table),
-        "importance": importance(table),
+        "features": PRIMARY,
+        "fit_robots": FIT_ROBOTS,
+        "report_only_robots": REPORT_ROBOTS,
+        "robots": robot_counts(table),
+        "pooled_spread_verdict": fold_effects.pooled_verdict(
+            table, MECHANISMS["any"]
+        ),
+        "effects": eff,
+        "confound_check": fold_effects.confound_check(table, FIT_ROBOTS),
+        "power": fold_effects.power_analysis(table, FIT_ROBOTS),
+        "model_checks": checks,
+        "shared_holdout": shared_holdout(table, card),
     }
     dump_json(card, HERE / "model.json")
-    auc = report["roc_auc"]
     print(
-        f"{len(table)} runs ({len(test)} test, {int(y_test.sum())} fail). "
-        f"Holdout ROC AUC {auc['value']:.2f} "
-        f"[{auc['ci'][0]:.2f}, {auc['ci'][1]:.2f}]: "
-        f"{card['fold_risk']['verdict']}"
+        f"{len(table)} runs. Within-robot delta AUC "
+        f"{delta['value']:+.2f} [{delta['ci95'][0]:+.2f}, "
+        f"{delta['ci95'][1]:+.2f}] -> {verdict}"
     )
 
 
