@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import anyio
@@ -10,6 +11,12 @@ import anyio
 from .fetch import DEFAULT_FROM, DEFAULT_TO, fetch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Coordinate spaces and the default score threshold live in label_deviation,
+# which needs numpy, OpenCV and pandas. They are repeated here so every CLI
+# command does not pay that import cost; label_deviation validates them again.
+LABEL_SPACES = ("rectified_upstream", "native")
+DEFAULT_SCORE_THRESHOLD = 0.35
 
 
 def main() -> None:
@@ -109,6 +116,41 @@ def main() -> None:
     )
     em.add_argument("--model", type=Path, default=None, help="model.onnx")
     em.add_argument("--batch-size", type=int, default=None)
+    ls = sub.add_parser(
+        "label-states", help="print the unified crepe-state vocabulary"
+    )
+    ls.add_argument(
+        "--out", type=Path, default=None, help="write the JSON here as well"
+    )
+    ld = sub.add_parser(
+        "label-deviation",
+        help="deviation between human masks and model predictions",
+    )
+    ld.add_argument(
+        "--labels", type=Path, required=True, help="labeling mask export"
+    )
+    ld.add_argument(
+        "--predictions", type=Path, required=True, help="prediction index"
+    )
+    ld.add_argument("--out", type=Path, required=True, help="report folder")
+    ld.add_argument("--space", choices=LABEL_SPACES, default=LABEL_SPACES[0])
+    ld.add_argument(
+        "--prediction-space", choices=LABEL_SPACES, default=LABEL_SPACES[0]
+    )
+    ld.add_argument("--pilot", type=Path, default=None)
+    ld.add_argument("--transforms", type=Path, default=None)
+    ld.add_argument(
+        "--score-threshold", type=float, default=DEFAULT_SCORE_THRESHOLD
+    )
+    ld.add_argument("--worst", type=int, default=25)
+    fd = sub.add_parser(
+        "finetune-dataset",
+        help="weighted, run-grouped dataset from a deviation report",
+    )
+    fd.add_argument("--deviation", type=Path, required=True)
+    fd.add_argument("--labels", type=Path, required=True)
+    fd.add_argument("--predictions", type=Path, default=None)
+    fd.add_argument("--out", type=Path, required=True)
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -237,6 +279,41 @@ def main() -> None:
             args.spread or DEFAULT_SPREAD_RUN,
             args.fold or DEFAULT_FOLD_RUN,
         )
+    if args.cmd == "label-states":
+        from .crepe_states import state_table
+
+        table = state_table()
+        if args.out is not None:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(table, indent=2) + "\n")
+        print(json.dumps(table, indent=2))
+    if args.cmd == "label-deviation":
+        from .label_deviation import run_comparison
+
+        out: Path = args.out
+        report = run_comparison(
+            labels_directory=args.labels,
+            prediction_index=args.predictions,
+            output=out,
+            space=args.space,
+            prediction_space=args.prediction_space,
+            pilot=args.pilot,
+            transforms=args.transforms,
+            score_threshold=args.score_threshold,
+            worst_frames=args.worst,
+        )
+        print(json.dumps(report, indent=2, allow_nan=False))
+    if args.cmd == "finetune-dataset":
+        from .finetune_dataset import build_dataset, usage_summary
+
+        dataset_out: Path = args.out
+        manifest = build_dataset(
+            deviation_directory=args.deviation,
+            labels_directory=args.labels,
+            predictions_directory=args.predictions,
+            output=dataset_out,
+        )
+        print(usage_summary(manifest))
 
 
 if __name__ == "__main__":
