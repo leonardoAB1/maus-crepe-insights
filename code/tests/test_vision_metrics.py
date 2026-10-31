@@ -151,3 +151,24 @@ def test_build_vision_table(tmp_path: Path) -> None:
         300 / ZONE_R, rel=TOL
     )
     assert (tmp_path / "vision.parquet").is_file()
+
+
+def test_largest_enclosed_piece_wins_over_slivers() -> None:
+    # A small closed loop off the crepe must not be taken as the crepe
+    r = 250
+    img = blank()
+    cv2.circle(img, CENTRE, r, BATTER, -1)
+    cv2.circle(img, CENTRE, r, GREEN, 2)
+    cv2.circle(img, (CENTRE[0], CENTRE[1] - 320), 40, GREEN, 2)
+    cv2.circle(img, CENTRE, ZONE_R, BLUE, 2)
+    m = spread_metrics(jpeg(img))
+    assert m["diameter_rel"] == pytest.approx(r / ZONE_R, rel=TOL)
+
+
+def test_tiny_crepe_is_not_mistaken_for_the_plate() -> None:
+    img = blank()
+    cv2.circle(img, CENTRE, 30, BATTER, -1)
+    cv2.circle(img, CENTRE, 30, GREEN, 2)
+    cv2.circle(img, CENTRE, ZONE_R, BLUE, 2)
+    m = fold_metrics(jpeg(img))
+    assert m["area_rel"] < (40 / ZONE_R) ** 2

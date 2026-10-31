@@ -48,8 +48,11 @@ MIN_ZONE_POINTS = 50
 WALL_KERNEL = 3
 # Border pixels this close to the zone edge count as touching it
 EDGE_BAND_PX = 4
-# Pieces smaller than this share of the zone are slivers, not a crepe
-MIN_REGION_FRAC = 0.02
+# Pieces smaller than this share of the zone are noise, not a crepe
+MIN_REGION_FRAC = 0.001
+# The bare plate hugs the zone edge for about half its border; the crepe
+# touches it far less, even when it runs off the zone
+MAX_EDGE_FRAC = 0.42
 BRIDGE_PX = 9
 # Erode the crepe mask before reading pixel colour so the outline is skipped
 COLOUR_ERODE = 7
@@ -131,17 +134,21 @@ def filled_outline(
     )
     near_edge = ~disc(shape, cx, cy, r - EDGE_BAND_PX)
     min_area = MIN_REGION_FRAC * np.pi * r**2
-    best, best_frac = None, None
+    scored = []  # (edge fraction, area, piece)
     for i in range(1, n):  # label 0 is the wall
-        if stats[i, cv2.CC_STAT_AREA] < min_area:
+        area = int(stats[i, cv2.CC_STAT_AREA])
+        if area < min_area:
             continue
         piece = (labels == i).astype(np.uint8)
         border = piece.astype(bool) & ~(cv2.erode(piece, kernel) > 0)
         frac = (border & near_edge).sum() / max(border.sum(), 1)
-        if best_frac is None or frac < best_frac:
-            best, best_frac = piece, frac
-    if best is None:
+        scored.append((frac, area, piece))
+    # Slivers between a jagged outline and the fitted circle also stay off
+    # the edge, so among the pieces that do, the crepe is the largest.
+    inner = [s for s in scored if s[0] <= MAX_EDGE_FRAC]
+    if not inner:
         return None
+    best = max(inner, key=lambda s: s[1])[2]
     return cv2.dilate(best, kernel) > 0
 
 
