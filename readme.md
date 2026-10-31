@@ -4,6 +4,29 @@ Our BaselHack 2026 project on the **Maus Robotics** challenge. Maus builds auton
 Every run is logged with phases, machine logs, on-robot vision checks (with images), recipe parameters and video.
 We turn that data into insight: why runs fail, which settings and conditions matter, and how to catch problems early.
 
+## The challenge: three tasks
+
+Maus's brief, "Recognize Crêpes": build a vision model that turns one camera frame of the hotplate into
+decisions for the spread, fold 1, fold 2 and push-off checks.
+
+| # | Task | Question | Output |
+|---|------|----------|--------|
+| 1 | **Spread quality** | Is the batter even and round? Find thin spots, holes and ragged edges | Crêpe mask, diameter, quality score |
+| 2 | **Position & orientation** | Where exactly is the crêpe on the rotating hotplate? | Centre (x, y) and angle, precise enough for the spatula |
+| 3 | **Fold detection** | Flat, folded in half, in quarters or into a triangle? | Fold class + confidence, edge angle to align with the plate |
+
+What makes it hard: steam, varying browning, shiny steel, a rotating plate, overlapping edges, changing
+room light, and it must run in real time.
+
+How results are scored:
+
+- **Level 1, works on Maus data:** model + notebook scored on frames from the API, compared with the
+  robot's own verdicts
+- **Level 2, works in real time:** under ~300 ms per frame on a Raspberry Pi 5 CPU, robust to steam and
+  light changes
+- **Bonus:** auto-labelling from run videos, a spread score that predicts a failed fold, detecting the
+  crêpe while the plate rotates
+
 ## How it works
 
 **The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
