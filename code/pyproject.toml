@@ -80,6 +80,8 @@ analyze = "maus-export analyze"
 doe-analyze = "maus-export doe-analyze"
 doe-figures = "maus-export doe-figures"
 embed = "maus-export embed"
+fold-class = "maus-classify fold-class"
+fold-class-example = "maus-classify fold-class-example"
 notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]
