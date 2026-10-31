@@ -41,8 +41,9 @@ Outputs keep the input width and height:
 
 Keep these files private. The preview is for review, not a replacement training
 input. No resizing, warping, output-to-label import or automatic acceptance is
-performed. Loading suggestions into a separate Label Studio refinement queue
-is a follow-up step; this prototype deliberately leaves manual projects intact.
+performed by the single-image command. To add editable predictions to untouched
+set-1 tasks, use the explicit opt-in prefill described below. Saved manual work
+is protected rather than replaced.
 
 ## What it does
 
@@ -90,3 +91,63 @@ ground truth. The synthetic example in `assets/pixel-mask-example.png` includes
 a deliberately dark stain that becomes a false hole, showing why review matters.
 
 ![Synthetic example: a dark stain becomes a false hole](../assets/pixel-mask-example.png)
+
+## Prefill untouched set-1 mask tasks
+
+The opt-in prefill creates editable Label Studio **predictions**, not accepted
+annotations. It is restricted to the original set-1 mask project. Phase tasks,
+source images, task data and all human annotations/drafts remain unchanged.
+Tasks with any annotation (including skips), draft, lock or existing prediction
+are skipped. Protection is checked both before processing and immediately before
+each insert. A task opened/edited while masks are being prepared is left alone.
+
+From this feature's worktree, set `SOURCE` to its canonical repository root and
+`WORKSPACE` to the existing set-1 workspace. Prepare a new private job:
+
+```bash
+pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
+  pixel-mask-tasks --workspace "$WORKSPACE" \
+  --output "$DATA/pixel-masks/set-1-prefill-v1"
+```
+
+This uses the prototype's explicit `(360, 100, 640, 620)` ROI and 10,000-pixel
+minimum component area. Those are not adaptive camera parameters. Check that
+they fit the original frames before applying to another camera/dataset.
+Empty results are recorded but not imported or declared `no_crepe`.
+
+Inspect the job counts and optionally dry-run the import:
+
+```bash
+pixi run --locked --manifest-path "$SOURCE/code/labeling/pixi.toml" \
+  prefill-pixels --workspace "$WORKSPACE" \
+  --suggestions "$DATA/pixel-masks/set-1-prefill-v1"
+
+pixi run --locked --manifest-path "$SOURCE/code/labeling/pixi.toml" \
+  prefill-pixels --workspace "$WORKSPACE" \
+  --suggestions "$DATA/pixel-masks/set-1-prefill-v1" --apply
+```
+
+`--apply` makes a consistent local SQLite backup under `app/backups/` before
+inserting predictions. Keep it private: it contains account/session data and
+must never be pushed to the labels repository. Saved masks are never replaced.
+Rerunning a job skips existing predictions rather than duplicating/replacing
+them. Locks are protected conservatively, even if a user only opened a task.
+
+The mask project is explicitly marked as allowing only
+`pixel-colour-components-v1` predictions and selects that version for display.
+Unknown prediction sources remain forbidden, as do all phase-project
+predictions. Restart the app using this checkout's `label-set` command or a
+merged revision containing this feature. An older launcher will correctly
+refuse the new project settings; do not delete annotations or predictions to
+bypass that safeguard.
+
+Refresh the mask project. On untouched tasks with nonempty suggestions, edit
+the green material/red hole regions using the brush and eraser. No human review
+choice is preselected: choose `crepe_present` or `no_crepe` yourself, then
+**Submit**. Wrong suggestions can be cleared. The normal mask-export validation
+still applies, including disjoint classes and an explicit review state.
+
+Predictions alone are not training targets or completed work. Keep the
+prediction source/assistance provenance when reviewing future human exports;
+accepted assisted annotations are not the same as independent manual labels.
+The prefill does not push any annotations to a repository.
