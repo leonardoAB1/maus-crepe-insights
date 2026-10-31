@@ -64,15 +64,17 @@ def main() -> None:
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
     sub.add_parser("training", help="export candidate run-start dataset")
-    fold_frames = sub.add_parser(
-        "fold-frames", help="extract rectified fold check frames"
-    )
-    fold_frames.add_argument(
-        "--data-dir",
-        type=Path,
-        default=argparse.SUPPRESS,
-        help="input and private output directory",
-    )
+    for name, help_text in (
+        ("fold-frames", "extract rectified fold check frames"),
+        ("fold-segment", "segment fold check frames"),
+    ):
+        fold_command = sub.add_parser(name, help=help_text)
+        fold_command.add_argument(
+            "--data-dir",
+            type=Path,
+            default=argparse.SUPPRESS,
+            help="input and private output directory",
+        )
     sub.add_parser("vision-targets", help="join run-start and vision targets")
     sub.add_parser("audit", help="audit training and vision coverage")
     sub.add_parser(
@@ -151,6 +153,10 @@ def main() -> None:
         from .fold_dataset import extract_frames
 
         print(extract_frames(data_dir))
+    if args.cmd == "fold-segment":
+        from .fold_segment import segment_dataset
+
+        print(segment_dataset(data_dir))
     if args.cmd == "training":
         from .training_dataset import (
             TrainingInputError,
