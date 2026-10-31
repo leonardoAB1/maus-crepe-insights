@@ -136,6 +136,13 @@ flowchart LR
 ```
 <!-- /diagram -->
 
+**What the vision scores measure.** The robot's check overlays already mark the crêpe outline, holes,
+residue and the ideal fold shape. `pixi run vision` reads those marks back as numbers per run (diameter,
+centre offset, hole area, fold overlap, fold-2/fold-1 area ratio, browning), so failures become measurable
+instead of only pass/fail. Columns in [documentation/pipeline.md](documentation/pipeline.md#vision-score-columns).
+
+![Annotated spread and fold checks with the measured vision scores](assets/vision-scores-example.jpg)
+
 ## Team
 Leonardo Acha (leonardoAB1) · Qbyte248 · AetherDim · salarehman · Timon Tscheulin (timonTscheulin) · WhyAge36
 
@@ -166,6 +173,9 @@ pixi run mcap
 
 # 3. Flat table for analysis: data/runs.csv + data/runs.parquet
 pixi run table
+
+# 4. Vision scores from the check overlays (needs --media): data/vision.parquet
+pixi run vision
 
 # or everything at once
 pixi run export all --media
