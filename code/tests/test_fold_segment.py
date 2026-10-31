@@ -18,7 +18,7 @@ def test_segment_dataset_and_no_self_flat_reference(
     (root / "frames").mkdir(parents=True)
     empty = np.full((200, 200, 3), 25, np.uint8)
     flat = empty.copy()
-    cv2.circle(flat, (100, 100), 60, (230, 230, 230), -1)
+    cv2.circle(flat, (100, 100), 72, (230, 230, 230), -1)
     for name, frame in (("empty", empty), ("flat", flat)):
         assert cv2.imwrite(str(root / "frames" / f"{name}.jpg"), frame)
     rows = [

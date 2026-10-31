@@ -148,16 +148,24 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
                 for ref in flat_refs.get(int(row["run_id"]), [])
                 if ref["frame_id"] != row["frame_id"]
             ]
-            choices.sort(
-                key=lambda ref: (
-                    not (pd.notna(ref["check_ok"]) and bool(ref["check_ok"])),
-                    ref["frame_id"],
+            best = None
+            if choices:
+                # The largest filled area is the most complete flat
+                # crepe estimate; a check frame may be occluded or
+                # captured while the crepe is still spreading.
+                choices.sort(key=lambda ref: ref["frame_id"])
+                best = max(
+                    choices,
+                    key=lambda ref: (
+                        ref["area"],
+                        bool(
+                            pd.notna(ref["check_ok"])
+                            and bool(ref["check_ok"])
+                        ),
+                    ),
                 )
-            )
-            flat_area = choices[0]["area"] if choices else None
-            row["flat_reference_id"] = (
-                choices[0]["frame_id"] if choices else None
-            )
+            row["flat_reference_id"] = best["frame_id"] if best else None
+            flat_area = best["area"] if best else None
             row["predicted_state"] = classify_state(
                 row["area"], row["plate_area"], row["edge_count"], flat_area
             )

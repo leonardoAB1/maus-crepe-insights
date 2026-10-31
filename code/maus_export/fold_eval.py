@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .fold_state import FLAT_PLATE_FRACTION
+
 STATES = ("empty", "flat", "half", "quarter")
 SPREAD_METRICS = (
     "diameter_fraction",
@@ -73,9 +75,8 @@ def evaluate(data_dir: Path) -> dict[str, int]:
     lines = [
         "# Fold segmentation evaluation",
         "",
-        "Private local report. Thresholds are evaluated on the same export on",
-        "which the reference approach was tuned. This is not held-out",
-        "validation.",
+        "Private local report. The rectified-frame thresholds were fitted on",
+        "this same export. This is not held-out validation.",
         "",
         f"- Frames: {len(features)}; usable: {len(usable)}.",
         f"- Passed checks: {count}; agreement: {correct / count:.1%}."
@@ -122,8 +123,8 @@ def evaluate(data_dir: Path) -> dict[str, int]:
                 "",
                 f"Passed half checks classified flat: {as_flat}/{len(half)}.",
                 f"Their median plate fraction is {median_area:.3f}; the",
-                "fixed flat threshold is 0.24. Rectification changes area",
-                "fractions, so thresholds from oblique frames need validation.",
+                f"flat threshold is {FLAT_PLATE_FRACTION}. Validate the",
+                "thresholds on held-out data before deployment.",
             ]
         )
     lines.extend(

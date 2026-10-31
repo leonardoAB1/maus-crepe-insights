@@ -9,13 +9,17 @@ from maus_export.fold_state import classify_state
     ("area", "edges", "reference", "expected"),
     [
         (0, 0, None, "empty"),
-        (24, 1, None, "flat"),
+        (49, 0, None, "flat"),
+        (48.9, 2, None, "half"),
         (15, 1, 20, "flat"),
-        (20, 0, 100, "flat"),
-        (14, 1, 50, "half"),
-        (13.9, 1, 50, "quarter"),
-        (11, 1, None, "half"),
-        (10.9, 1, None, "quarter"),
+        (35, 1, 50, "half"),
+        (32.5, 1, 100, "half"),
+        (27.9, 1, 100, "half"),
+        (20, 1, 50, "half"),
+        (15, 1, 100, "quarter"),
+        (10, 1, 40, "quarter"),
+        (21, 1, None, "half"),
+        (20.9, 0, 100, "quarter"),
     ],
 )
 def test_state_rule(

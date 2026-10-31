@@ -1,4 +1,10 @@
-"""Area-based fold-state rule, independent of robot check verdicts."""
+"""Area-based fold-state rule for rectified frames.
+
+The thresholds describe the top-down rectified view, where a full crepe
+covers roughly 0.7 of the plate, a half fold about 0.3 and a quarter fold
+about 0.17. They were fitted on the local rectified export and need
+validation on held-out data before deployment.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +13,10 @@ from typing import Literal
 
 FoldState = Literal["empty", "flat", "half", "quarter"]
 STATE_ORDER: tuple[FoldState, ...] = ("empty", "flat", "half", "quarter")
-FLAT_PLATE_FRACTION = 0.24
+FLAT_PLATE_FRACTION = 0.49
 FLAT_REFERENCE_FRACTION = 0.75
-FLAT_NO_EDGE_FRACTION = 0.20
-HALF_REFERENCE_FRACTION = 0.28
-HALF_PLATE_FRACTION = 0.11
+HALF_REFERENCE_FRACTION = 0.32
+HALF_PLATE_FRACTION = 0.21
 
 
 def classify_state(
@@ -23,7 +28,9 @@ def classify_state(
     """Classify a measured mask; zero area denotes no detected crepe.
 
     The caller must not use the frame under evaluation as its flat reference.
-    Areas must use the same coordinate system and plate mask.
+    Areas must use the same coordinate system and plate mask. Straight edges
+    do not influence the decision on rectified frames, where flat crepes
+    often expose a fold edge and half folds often expose none.
     """
     if (
         not math.isfinite(area)
@@ -45,8 +52,8 @@ def classify_state(
         return "flat"
     if relative is not None and relative >= FLAT_REFERENCE_FRACTION:
         return "flat"
-    if straight_edges == 0 and fraction >= FLAT_NO_EDGE_FRACTION:
-        return "flat"
-    if relative is not None:
-        return "half" if relative >= HALF_REFERENCE_FRACTION else "quarter"
-    return "half" if fraction >= HALF_PLATE_FRACTION else "quarter"
+    if relative is not None and relative >= HALF_REFERENCE_FRACTION:
+        return "half"
+    if fraction >= HALF_PLATE_FRACTION:
+        return "half"
+    return "quarter"
