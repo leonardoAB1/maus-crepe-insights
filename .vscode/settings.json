@@ -1,0 +1,43 @@
+{
+  // Pixi ml environment: our package, scikit-learn, jupyter, matplotlib.
+  // Windows path; on macOS or Linux pick code/.pixi/envs/ml/bin/python
+  // once with "Python: Select Interpreter". Run `pixi install -e ml` in
+  // code/ first.
+  "python.defaultInterpreterPath": "${workspaceFolder}/code/.pixi/envs/ml/python.exe",
+  "python.analysis.extraPaths": ["${workspaceFolder}/code"],
+
+  // Tests live in code/tests and run from code/
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.cwd": "${workspaceFolder}/code",
+  "python.testing.pytestArgs": ["tests"],
+
+  // Ruff is the formatter and linter; 80 columns everywhere
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.rulers": [80]
+  },
+  "notebook.formatOnSave.enabled": true,
+  "notebook.defaultFormatter": "charliermarsh.ruff",
+  "[markdown]": {
+    "editor.rulers": [80]
+  },
+
+  // Notebooks run from their own folder; the data is found by
+  // maus_export.analysis.find_data_dir (also from worktrees)
+  "jupyter.notebookFileRoot": "${fileDirname}",
+
+  // Keep environments, exports and other worktrees out of search
+  "search.exclude": {
+    "**/.pixi": true,
+    "data": true,
+    "worktrees": true
+  },
+  "files.watcherExclude": {
+    "**/.pixi/**": true,
+    "data/**": true,
+    "worktrees/**": true
+  },
+  "python.analysis.exclude": ["**/.pixi", "data", "worktrees"]
+}
