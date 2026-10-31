@@ -44,12 +44,20 @@ class Example:
     confidence: float
     robot: str
     note: str = ""
+    # Whether the model agrees with the label (green caption). None falls
+    # back to comparing truth and predicted text, fine for plain labels
+    agree: bool | None = None
+    # Names the number in the caption, e.g. "P(fail)"; empty means it is
+    # the model's confidence in its answer
+    score_name: str = ""
 
 
 def _caption(ex: Example) -> str:
     lines = [
         f"robot: {ex.truth}",
-        f"model: {ex.predicted} ({ex.confidence:.2f})",
+        f"model: {ex.predicted} "
+        f"({f'{ex.score_name} ' if ex.score_name else ''}"
+        f"{ex.confidence:.2f})",
         ex.robot,
     ]
     if ex.note:
@@ -64,6 +72,7 @@ def example_grid(
     subtitle: str = "",
     crop: Callable[[np.ndarray], np.ndarray] | None = None,
     cols: int = COLS,
+    dpi: int = DPI,
 ) -> Path:
     """Write a captioned grid of examples to `out` (.jpg or .png).
 
@@ -89,7 +98,11 @@ def example_grid(
     for ax, ex in zip(axes.flat, examples, strict=False):
         img = crop(ex.image) if crop else ex.image
         ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        agree = ex.truth.split()[0] == ex.predicted
+        agree = (
+            ex.agree
+            if ex.agree is not None
+            else ex.truth.split()[0] == ex.predicted
+        )
         ax.set_title(
             _caption(ex),
             loc="left",
@@ -117,7 +130,7 @@ def example_grid(
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(
-        out, dpi=DPI, facecolor=SURFACE, pil_kwargs={"quality": JPEG_QUALITY}
+        out, dpi=dpi, facecolor=SURFACE, pil_kwargs={"quality": JPEG_QUALITY}
     )
     plt.close(fig)
     return out

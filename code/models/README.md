@@ -14,6 +14,8 @@ run with `onnxruntime`.
 - Large weights (> 50 MB) are not committed; attach them to a GitHub release and link them in `model.json`.
 - Every export is checked by running the same sample through the original model and `onnxruntime`
   and comparing the outputs.
+- Every model PR includes an example result image from `assets/` that shows at least one failure or
+  known limitation (draw it with `maus_classify.figures.example_grid`).
 
 ## Robots
 Models must generalize across robots. Each robot ran in its own time window, so robot also stands

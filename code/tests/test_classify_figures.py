@@ -47,3 +47,37 @@ def test_example_grid_writes_jpeg(tmp_path: Path) -> None:
 def test_example_grid_needs_examples(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         example_grid([], tmp_path / "x.jpg", "t")
+
+
+def test_agree_overrides_text_comparison(tmp_path: Path, monkeypatch) -> None:
+    from maus_classify import figures
+
+    colours = []
+    real = figures.plt.Axes.set_title
+
+    def spy(self, *args, **kwargs):
+        colours.append(kwargs.get("color"))
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(figures.plt.Axes, "set_title", spy)
+    tiles = [
+        example("fail (missed)", "pass"),  # text fallback: red
+        Example(
+            np.zeros(SHAPE, np.uint8),
+            "fail (missed)",
+            "fail",
+            0.9,
+            "robot-a",
+            agree=True,
+        ),  # explicit: green
+        Example(
+            np.zeros(SHAPE, np.uint8),
+            "pass",
+            "pass",
+            0.9,
+            "robot-a",
+            agree=False,
+        ),  # explicit: red
+    ]
+    example_grid(tiles, tmp_path / "g.jpg", "t")
+    assert colours == [MISS, MATCH, MISS]

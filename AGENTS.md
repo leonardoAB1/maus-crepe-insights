@@ -110,7 +110,8 @@ worktrees/         # git worktrees, gitignored
    `fix/7-token-refresh`) in a new worktree of its own (see Worktree convention)
 3. Commit in small logical steps using Conventional Commits
 4. Push and open a PR that references the issue (`Closes #N`). Fill in what changed, why, and how
-   it was tested (offline tests, live dashboard run, or both)
+   it was tested (offline tests, live dashboard run, or both). A PR that adds or changes a model
+   includes an example result image from `assets/` that shows at least one failure or known limitation
 5. Reviews are encouraged but not required during the hackathon (0 approvals). The `ci`
    workflow runs ruff and pytest on every PR and must pass before merging
 6. **Squash merge** into `main` (the only merge strategy). GitHub deletes the branch after merge
