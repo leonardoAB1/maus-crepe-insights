@@ -14,6 +14,8 @@ Browse the guides by subject:
 - [Candidate run-start dataset](training/training-dataset.md)
 - [Training data audit](training/training-audit.md)
 - [Vision-target dataset](training/vision-targets.md)
+- [Private phase labeling](phase-labeling-pilot.md)
+- [Crêpe material and hole masks](mask-labeling.md)
 
 ## Analysis
 

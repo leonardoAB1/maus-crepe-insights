@@ -16,4 +16,5 @@ label-studio = "==1.23.2"
 prepare = "python ../maus_export/phase_pilot.py"
 start = "python workflow.py start"
 setup = "python workflow.py setup"
-test = { cmd = "python -m pytest ../tests/test_labeling_workflow.py ../tests/test_phase_pilot.py -q", env = { PYTHONPATH = ".." } }
+export-masks = "python mask_export.py"
+test = { cmd = "python -m pytest ../tests/test_labeling_workflow.py ../tests/test_phase_pilot.py ../tests/test_mask_labeling.py -q", env = { PYTHONPATH = ".." } }

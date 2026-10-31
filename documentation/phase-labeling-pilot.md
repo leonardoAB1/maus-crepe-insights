@@ -17,8 +17,9 @@ Spelling and spaces are intentional. There is no `unclear` choice. These are
 human visual labels, **not** operational robot phases. No automatic mapping is
 made. The owner still needs to agree annotation criteria, particularly `ugly`,
 before using labels as a training target. This workflow invents neither those
-criteria nor geometry semantics. Geometry, outlines, holes and masks are future
-work.
+criteria nor geometry semantics. Visible crêpe material and hole masks use a
+separate [mask-labeling project](mask-labeling.md) on the same rectified images.
+Physical geometry measurements remain future work.
 
 ## Supported environment
 
