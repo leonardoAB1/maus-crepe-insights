@@ -146,6 +146,10 @@ instead of only pass/fail. See the
 
 ![Annotated spread and fold checks with the measured vision scores](assets/vision-scores-example.jpg)
 
+The classical fold-segmentation pipeline samples cached run videos at robot
+check moments, segments the plate and crêpe, estimates fold geometry and writes
+aggregate metrics. See the [fold segmentation guide](documentation/fold-segmentation.md).
+
 ## Team
 [leonardoAB1](https://github.com/leonardoAB1) · [Qbyte248](https://github.com/Qbyte248) · [AetherDim](https://github.com/AetherDim) · [salarehman](https://github.com/salarehman) · [timonTscheulin](https://github.com/timonTscheulin) · [WhyAge36](https://github.com/WhyAge36)
 

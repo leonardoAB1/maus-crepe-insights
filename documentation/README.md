@@ -7,6 +7,7 @@ Browse the guides by subject:
 - [Dashboard data and handling](data/data.md)
 - [MCAP topics and schemas](data/mcap.md)
 - [Data pipeline and data model](data/pipeline.md)
+- [Fold segmentation](fold-segmentation.md)
 
 ## Training
 

@@ -58,6 +58,8 @@ but are not returned.
 - [crepe-stages.md](../system/crepe-stages.md): stage machine, stage timings,
   where runs end
 - [pipeline.md](pipeline.md): our data pipeline and the run data model
+- [fold-segmentation.md](../fold-segmentation.md): fold-state video pipeline,
+  local artifact schema and aggregate metrics
 
 ## Handling
 The repo is public. Raw exports (`data/`, `*.mcap`, images, videos) are gitignored and must stay local.
