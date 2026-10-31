@@ -55,6 +55,7 @@ def synthetic(seed: int = 0) -> tuple[pd.DataFrame, ...]:
                         "ok": ok,
                         "is_last_attempt": k == len(verdicts),
                         "split": split,
+                        "robot": "quin" if i < N_RUNS // 2 else "pixi",
                     }
                 )
                 e = rng.normal(size=DIM).astype(np.float32)
@@ -106,6 +107,11 @@ def test_spread_head_beats_majority_and_exports(tmp_path):
     assert 0 <= test["agreement"] <= 1
     assert card["label"]["positive"] == FAIL
     assert card["embedder_sha256"] == ["abc"]
+    assert card["data"]["test"]["robots"] == ["pixi"]
+    assert "pixi only" in card["data"]["holdout_note"]
+    recall = card["intervals"]["metrics"]["recall_fail"]
+    assert recall["ci95"][0] <= recall["value"] <= recall["ci95"][1]
+    assert set(card["leave_one_robot_out"]) == {"pixi", "quin"}
 
     saved = json.loads((tmp_path / "model.json").read_text("utf-8"))
     assert saved["verdict"] == card["verdict"]

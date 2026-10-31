@@ -219,6 +219,8 @@ def train_check(
         feature_names=features,
         out_dir=out_dir,
         timestamps=rows["ts_utc"].to_numpy(),
+        robots=rows["robot"].to_numpy() if "robot" in rows else None,
+        positive=FAIL,
         description=(
             f"Robot pass/fail verdict for the {check} check frame, from the "
             f"frame embedding. {WEAK_LABELS}"
@@ -278,13 +280,21 @@ def train_check(
 def summary_table(cards: dict[str, dict[str, Any]]) -> str:
     """Markdown table of holdout scores per check, aggregates only."""
     head = (
-        "| check | test frames | fail share | balanced acc | macro F1 "
-        "| agreement | majority BA | overlay BA |\n"
-        "|---|---|---|---|---|---|---|---|\n"
+        "| check | test frames | fail share | balanced acc [95% CI] "
+        "| fail recall [95% CI] | macro F1 | agreement | majority BA "
+        "| overlay BA |\n"
+        "|---|---|---|---|---|---|---|---|---|\n"
     )
 
     def ba(scores: dict[str, Any] | None) -> str:
         return f"{scores['balanced_accuracy']:.2f}" if scores else "-"
+
+    def with_ci(card: dict[str, Any], key: str) -> str:
+        entry = card.get("intervals", {}).get("metrics", {}).get(key)
+        if entry is None:
+            return "-"
+        lo, hi = entry["ci95"]
+        return f"{entry['value']:.2f} [{lo:.2f}, {hi:.2f}]"
 
     lines = []
     for check, card in cards.items():
@@ -297,7 +307,8 @@ def summary_table(cards: dict[str, dict[str, Any]]) -> str:
             check,
             str(total),
             share,
-            f"{m['balanced_accuracy']:.2f}",
+            with_ci(card, "balanced_accuracy"),
+            with_ci(card, f"recall_{FAIL}"),
             f"{m['f1_macro']:.2f}",
             f"{m['agreement']:.2f}",
             ba(base["majority"]),

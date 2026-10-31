@@ -10,7 +10,10 @@ Needs the ml environment: `pixi run -e ml ...`.
 
 from __future__ import annotations
 
+import math
 import subprocess
+import warnings
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +29,10 @@ from sklearn.metrics import (
     confusion_matrix,
     f1_score,
     precision_recall_fscore_support,
+    recall_score,
+    roc_auc_score,
 )
+from sklearn.pipeline import Pipeline
 
 from maus_export.doe_analyze import dump_json
 
@@ -38,6 +44,11 @@ ONNX_PROBA = "probabilities"
 OPSET = 17
 ATOL = 1e-4  # float32 graph vs float64 sklearn
 CAL_BINS = 10
+N_BOOT = 1000
+CI_LEVEL = 0.95
+SEED = 0
+N_FOLDS = 5
+MIN_CLASSES = 2
 
 
 class HarnessError(ValueError):
@@ -132,6 +143,261 @@ def metrics(
     }
 
 
+def ci95(values: Any) -> list[float]:
+    """Central CI_LEVEL interval of the finite values, NaN when none."""
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    if not len(v):
+        return [math.nan, math.nan]
+    tail = (1 - CI_LEVEL) / 2
+    return [float(np.quantile(v, tail)), float(np.quantile(v, 1 - tail))]
+
+
+def run_bootstrap(
+    stat: Callable[[np.ndarray], dict[str, float]],
+    groups: np.ndarray,
+    *,
+    strata: np.ndarray | None = None,
+    n_boot: int = N_BOOT,
+    seed: int = SEED,
+) -> dict[str, dict[str, Any]]:
+    """Point value and interval of each statistic, resampling whole runs.
+
+    `stat(idx)` scores the rows `idx` and returns named floats. `groups`
+    holds the run id of each row. With `strata` (one value per row, constant
+    within a run, e.g. the robot) runs are resampled within each stratum, so
+    every draw keeps the robot mix.
+    """
+    groups = np.asarray(groups)
+    runs = pd.unique(groups)
+    rows_of = {g: np.flatnonzero(groups == g) for g in runs}
+    if strata is None:
+        pools = [runs]
+    else:
+        strata = np.asarray(strata)
+        of_run = np.array([strata[rows_of[g][0]] for g in runs])
+        pools = [runs[of_run == s] for s in pd.unique(of_run)]
+    point = stat(np.arange(len(groups)))
+    rng = np.random.default_rng(seed)
+    draws: dict[str, list[float]] = {k: [] for k in point}
+    for _ in range(n_boot):
+        picked = np.concatenate([rng.choice(p, len(p)) for p in pools])
+        idx = np.concatenate([rows_of[g] for g in picked])
+        for k, v in stat(idx).items():
+            draws[k].append(v)
+    return {
+        k: {"value": float(point[k]), "ci95": ci95(draws[k])} for k in point
+    }
+
+
+def holdout_intervals(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    groups: np.ndarray,
+    *,
+    strata: np.ndarray | None = None,
+    positive: str | None = None,
+    n_boot: int = N_BOOT,
+    seed: int = SEED,
+) -> dict[str, Any]:
+    """Run-bootstrap intervals for balanced accuracy, macro F1 and, given
+    a positive class, its recall. A draw missing a class scores NaN for the
+    metrics that need it, and NaN draws are left out of the interval."""
+    y_true = np.asarray(y_true).astype(str)
+    y_pred = np.asarray(y_pred).astype(str)
+    labels = sorted(set(y_true) | set(y_pred))
+
+    def stat(idx: np.ndarray) -> dict[str, float]:
+        t, p = y_true[idx], y_pred[idx]
+        out = {"balanced_accuracy": math.nan, "f1_macro": math.nan}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if len(set(t)) >= MIN_CLASSES:
+                out["balanced_accuracy"] = balanced_accuracy_score(t, p)
+                out["f1_macro"] = f1_score(
+                    t, p, labels=labels, average="macro", zero_division=0
+                )
+            if positive is not None:
+                out[f"recall_{positive}"] = (
+                    recall_score(t, p, labels=[positive], average="macro")
+                    if (t == positive).any()
+                    else math.nan
+                )
+        return out
+
+    return {
+        "method": "bootstrap of runs"
+        + (" within robot" if strata is not None else ""),
+        "level": CI_LEVEL,
+        "n_boot": n_boot,
+        "n_runs": int(len(pd.unique(np.asarray(groups)))),
+        "metrics": run_bootstrap(
+            stat, groups, strata=strata, n_boot=n_boot, seed=seed
+        ),
+    }
+
+
+def _quiet_metrics(
+    y_true: np.ndarray, y_pred: np.ndarray, proba: np.ndarray, classes: list
+) -> dict[str, Any]:
+    """metrics() on subsets that may hold one class only."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return metrics(y_true, y_pred, proba, classes)
+
+
+def per_robot_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    proba: np.ndarray,
+    robots: np.ndarray,
+    classes: list,
+) -> dict[str, Any]:
+    """metrics() for the rows of each robot."""
+    robots = np.asarray(robots).astype(str)
+    return {
+        r: _quiet_metrics(
+            y_true[robots == r],
+            y_pred[robots == r],
+            proba[robots == r],
+            classes,
+        )
+        for r in sorted(set(robots))
+    }
+
+
+def _fit(
+    estimator: ClassifierMixin,
+    X: np.ndarray,
+    y: np.ndarray,
+    sample_weight: np.ndarray | None = None,
+) -> ClassifierMixin:
+    """Fit a fresh clone, routing sample weights to a pipeline's last step."""
+    model = clone(estimator)
+    if sample_weight is None:
+        return model.fit(X, y)
+    if isinstance(model, Pipeline):
+        key = f"{model.steps[-1][0]}__sample_weight"
+        return model.fit(X, y, **{key: sample_weight})
+    return model.fit(X, y, sample_weight=sample_weight)
+
+
+def leave_one_robot_out(
+    estimator: ClassifierMixin,
+    X: np.ndarray,
+    y: np.ndarray,
+    robots: np.ndarray,
+    *,
+    groups: np.ndarray | None = None,
+    positive: str | None = None,
+    score: Callable[[np.ndarray, np.ndarray, list[str]], dict[str, Any]]
+    | None = None,
+    n_boot: int = N_BOOT,
+) -> dict[str, Any]:
+    """Train on every other robot, score the held-out one. A transfer check
+    that ignores the time split; a robot is skipped when its train side has
+    one class only.
+
+    With `positive`, adds its ROC AUC when the held-out robot has both
+    classes. `score(y_true, proba, classes)` adds extra named scores."""
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y).astype(str)
+    robots = np.asarray(robots).astype(str)
+    out: dict[str, Any] = {}
+    for r in sorted(set(robots)):
+        test = robots == r
+        train = ~test
+        if len(set(y[train])) < MIN_CLASSES:
+            out[r] = {"n": int(test.sum()), "skipped": "one class in train"}
+            continue
+        model = _fit(estimator, X[train], y[train])
+        classes = [str(c) for c in model.classes_]
+        pred = model.predict(X[test]).astype(str)
+        proba = model.predict_proba(X[test])
+        scores = _quiet_metrics(y[test], pred, proba, classes)
+        scores["n_train"] = int(train.sum())
+        if positive in classes and len(set(y[test])) >= MIN_CLASSES:
+            scores[f"roc_auc_{positive}"] = float(
+                roc_auc_score(
+                    y[test] == positive, proba[:, classes.index(positive)]
+                )
+            )
+        if score is not None:
+            scores.update(score(y[test], proba, classes))
+        if groups is not None:
+            scores["intervals"] = holdout_intervals(
+                y[test],
+                pred,
+                np.asarray(groups)[test],
+                positive=positive,
+                n_boot=n_boot,
+            )
+        out[r] = scores
+    return out
+
+
+def run_starts(groups: np.ndarray, timestamps: np.ndarray) -> pd.Series:
+    """Earliest timestamp of each run, indexed by run id."""
+    ts = pd.to_datetime(pd.Series(np.asarray(timestamps)), utc=True)
+    return ts.groupby(np.asarray(groups)).min()
+
+
+def time_group_folds(
+    starts: pd.Series, n_folds: int = N_FOLDS
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Expanding-window folds over runs ordered by start time.
+
+    Distinct start times are cut into `n_folds + 1` consecutive blocks, so
+    runs with tied start times always share a block. Fold k fits on blocks
+    0..k and validates on block k + 1. Returns (fit run ids, validation run
+    ids) per fold; the first block is never validated.
+    """
+    times = np.sort(starts.dropna().unique())
+    if len(times) < n_folds + 1:
+        raise HarnessError("too few distinct run start times for the folds")
+    blocks = np.array_split(times, n_folds + 1)
+    block_of = {t: b for b, chunk in enumerate(blocks) for t in chunk}
+    block = starts.map(block_of).to_numpy()
+    ids = starts.index.to_numpy()
+    return [(ids[block <= k], ids[block == k + 1]) for k in range(n_folds)]
+
+
+def cross_val_proba(
+    estimator: ClassifierMixin,
+    X: np.ndarray,
+    y: np.ndarray,
+    groups: np.ndarray,
+    timestamps: np.ndarray,
+    *,
+    sample_weight: np.ndarray | None = None,
+    n_folds: int = N_FOLDS,
+) -> tuple[np.ndarray, list[str]]:
+    """Out-of-fold class probabilities from time-ordered, run-grouped folds.
+
+    Pass train rows only; the holdout stays untouched for the final score.
+    Rows in the first time block, or in a fold whose fit side has one class,
+    get NaN. Returns (probabilities, classes) with columns in class order.
+    """
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y).astype(str)
+    groups = np.asarray(groups)
+    classes = sorted(set(y))
+    proba = np.full((len(y), len(classes)), np.nan)
+    for fit_runs, val_runs in time_group_folds(
+        run_starts(groups, timestamps), n_folds
+    ):
+        fit, val = np.isin(groups, fit_runs), np.isin(groups, val_runs)
+        if len(set(y[fit])) < MIN_CLASSES or not val.any():
+            continue
+        w = None if sample_weight is None else np.asarray(sample_weight)[fit]
+        model = _fit(estimator, X[fit], y[fit], w)
+        cols = [classes.index(str(c)) for c in model.classes_]
+        rows = np.flatnonzero(val)
+        proba[rows] = 0.0  # classes the fold never saw get probability 0
+        proba[np.ix_(rows, cols)] = model.predict_proba(X[val])
+    return proba, classes
+
+
 def _data_range(
     mask: np.ndarray, groups: np.ndarray, timestamps: np.ndarray | None
 ) -> dict[str, Any]:
@@ -203,9 +469,17 @@ def train_and_evaluate(
     out_dir: Path,
     timestamps: np.ndarray | None = None,
     description: str = "",
+    robots: np.ndarray | None = None,
+    positive: str | None = None,
+    n_boot: int = N_BOOT,
 ) -> dict[str, Any]:
     """Fit on train rows, score on test rows, export and check ONNX, write
-    `model.onnx` and `model.json` in `out_dir`. Returns the model card."""
+    `model.onnx` and `model.json` in `out_dir`. Returns the model card.
+
+    The card always carries run-bootstrap intervals for the holdout. With
+    `robots` (one per row) it also names the robots each side covers and
+    adds per-robot holdout metrics and a leave-one-robot-out check. With
+    `positive` the intervals include that class's recall."""
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y).astype(str)
     split = np.asarray(split)
@@ -254,5 +528,38 @@ def train_and_evaluate(
         "onnx": {"opset": OPSET, "parity_atol": ATOL, "parity": "ok"},
         "commit": _commit(),
     }
+    strata = None
+    if robots is not None:
+        robots = np.asarray(robots).astype(str)
+        if len(robots) != len(y):
+            raise HarnessError("one robot per row is required")
+        strata = robots[test]
+        for side, mask in ((TRAIN, train), (TEST, test)):
+            card["data"][side]["robots"] = sorted(set(robots[mask]))
+        covered = ", ".join(card["data"][TEST]["robots"])
+        card["data"]["holdout_note"] = (
+            f"The holdout covers robot(s) {covered} only. Robots ran in "
+            f"separate time windows, so robot also stands for era."
+        )
+        card["metrics"]["per_robot"] = {
+            TEST: per_robot_metrics(y[test], pred, proba, strata, classes)
+        }
+        card["leave_one_robot_out"] = leave_one_robot_out(
+            estimator,
+            X,
+            y,
+            robots,
+            groups=groups,
+            positive=positive,
+            n_boot=n_boot,
+        )
+    card["intervals"] = holdout_intervals(
+        y[test],
+        pred,
+        groups[test],
+        strata=strata,
+        positive=positive,
+        n_boot=n_boot,
+    )
     dump_json(card, out_dir / "model.json")
     return card
