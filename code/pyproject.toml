@@ -20,6 +20,8 @@ ml = [
     "onnx>=1.17",
     "onnxruntime>=1.20",
     "skl2onnx>=1.18",
+    "torch>=2.14",
+    "torchvision>=0.29",
 ]
 
 [dependency-groups]
@@ -69,11 +71,14 @@ onnx = ">=1.17"
 onnxruntime = ">=1.20"
 skl2onnx = ">=1.18"
 jupyterlab = ">=4.6.5,<5"
+pytorch-cpu = ">=2.14.1,<3"
+torchvision = ">=0.29.2,<0.30"
 
 [tool.pixi.feature.ml.tasks]
 analyze = "maus-export analyze"
 doe-analyze = "maus-export doe-analyze"
 doe-figures = "maus-export doe-figures"
+embed = "maus-export embed"
 notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]
