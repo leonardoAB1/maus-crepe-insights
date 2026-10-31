@@ -78,6 +78,12 @@ intervals are descriptive only.
 - **Weights:** robot-balanced weights won cross validation for spread
   (0.88 vs 0.85) and tied for push_off. They lost for fold1 and fold2, so
   those use class weights. The choice is in each card under `weighting`.
+- **Arm in view:** all 158 holdout frames were checked by hand for an arm,
+  spatula, hand or lid over the pan. Only one fold2 frame shows one (a
+  person's hand), and no robot arm appears. Without it, fold2 is 0.62 and the
+  other checks are unchanged, so these heads are not detecting an arm on
+  this holdout. maus-quin's fixed grey housing appears in every quin frame,
+  pass or fail, so it cannot carry the verdict within that robot.
 - With 4 to 5 fold failures in the holdout, fold recall intervals span
   almost 0 to 1. More pixi and otto runs are the main way to tighten them.
   Fold recall work continues in #103.
