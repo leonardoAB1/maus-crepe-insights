@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .fold_frames import check_events, phase_clock_origin, video_time
+from .fold_frames import check_starts, phase_clock_origin, video_time
 
 CHUNK_SIZE = 1024 * 1024
 PAGE = Path(__file__).with_name("fold_dashboard.html")
@@ -28,10 +28,41 @@ def run_details(data_dir: Path, run_id: int) -> dict:
             "name": event.name,
             "ok": event.check_ok,
             "expected": event.state,
+            "observation": None,
+            "observed_at": None,
+            "observation_status": "not_evaluated",
         }
-        for event in check_events(run["logs"])
+        for event in check_starts(run["logs"])
     ]
-    return {"id": run_id, "events": events, "timeline": timeline}
+    observations_path = root / "observations.csv"
+    if observations_path.is_file():
+        with observations_path.open(newline="") as file:
+            observations = list(csv.DictReader(file))
+        for event, observation in zip(events, observations, strict=True):
+            if (
+                observation["check"] != event["name"]
+                or abs(float(observation["start"]) - event["time"]) > 1e-6
+            ):
+                raise ValueError("Observation does not match the cached log")
+            event["observation"] = observation["observation"] or None
+            event["observed_at"] = (
+                float(observation["observed_at"])
+                if observation["observed_at"]
+                else None
+            )
+            event["observation_status"] = observation["status"]
+    phases = [
+        {"time": float(phase["elapsed_sec"]), "name": "fold_carefully"}
+        for phase in run["phases"]
+        if phase.get("phase") == "fold_carefully"
+        and phase.get("elapsed_sec") is not None
+    ]
+    return {
+        "id": run_id,
+        "events": events,
+        "phases": phases,
+        "timeline": timeline,
+    }
 
 
 def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
