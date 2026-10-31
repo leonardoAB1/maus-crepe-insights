@@ -130,4 +130,5 @@ robot), since no millimetre scale is published for the plate.
 | `vision.spread.l_mean`, `l_std` | CIE L* of the batter, holes excluded |
 | `vision.fold1.iou`, `vision.fold2.iou` | overlap of the crepe with the robot's ideal fold shape |
 | `vision.fold1.area_rel`, `vision.fold2.area_rel` | folded crepe area / zone area |
+| `vision.fold2.area_ratio` | fold-2 area / fold-1 area: about 0.5 for a good quarter fold, about 1 when the second fold did nothing |
 | `vision.fold1.l_mean`, `l_std` (and fold2) | browning: CIE L* mean and spread of the crepe |

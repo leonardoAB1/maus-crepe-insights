@@ -279,6 +279,11 @@ def run_metrics(run: dict[str, Any], media_dir: Path) -> dict[str, Any]:
             continue
         for key, value in METRICS[name](img).items():
             row[f"{PREFIX}{name}.{key}"] = value
+    # A good second fold halves the folded area; about 1 means it did nothing
+    first = row.get(f"{PREFIX}fold1.area_rel")
+    second = row.get(f"{PREFIX}fold2.area_rel")
+    if first and second is not None:
+        row[f"{PREFIX}fold2.area_ratio"] = second / first
     return row
 
 

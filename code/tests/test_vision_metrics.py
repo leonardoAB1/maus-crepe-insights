@@ -172,3 +172,37 @@ def test_tiny_crepe_is_not_mistaken_for_the_plate() -> None:
     cv2.circle(img, CENTRE, ZONE_R, BLUE, 2)
     m = fold_metrics(jpeg(img))
     assert m["area_rel"] < (40 / ZONE_R) ** 2
+
+
+def disc_overlay(start_deg: int) -> np.ndarray:
+    """Folded crepe as a disc sector from start_deg to 360 degrees."""
+    img = blank()
+    r = 250
+    cv2.ellipse(img, CENTRE, (r, r), 0, start_deg, 360, BATTER, -1)
+    cv2.ellipse(img, CENTRE, (r, r), 0, start_deg, 360, GREEN, 2)
+    end = (CENTRE[0] + r, CENTRE[1])
+    cv2.line(img, CENTRE, end, GREEN, 2)
+    rad = np.deg2rad(start_deg)
+    start = (int(CENTRE[0] + r * np.cos(rad)), int(CENTRE[1] + r * np.sin(rad)))
+    cv2.line(img, CENTRE, start, GREEN, 2)
+    cv2.circle(img, CENTRE, ZONE_R, BLUE, 2)
+    return jpeg(img)
+
+
+def test_fold2_area_ratio(tmp_path: Path) -> None:
+    media = tmp_path / "raw" / "media" / "9"
+    runs = tmp_path / "raw" / "runs"
+    media.mkdir(parents=True)
+    runs.mkdir(parents=True)
+    cv2.imwrite(str(media / "f1.jpg"), disc_overlay(180))  # half
+    cv2.imwrite(str(media / "f2.jpg"), disc_overlay(270))  # quarter
+    run = {
+        "id": 9,
+        "visionChecks": [
+            {"phase": "fold1", "ok": True, "overlay": "f1.jpg"},
+            {"phase": "fold2", "ok": True, "overlay": "f2.jpg"},
+        ],
+    }
+    (runs / "9.json").write_text(json.dumps(run), encoding="utf-8")
+    df = build_vision_table(tmp_path)
+    assert df.at[0, "vision.fold2.area_ratio"] == pytest.approx(0.5, rel=0.1)
