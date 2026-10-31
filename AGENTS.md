@@ -73,6 +73,8 @@ worktrees/         # git worktrees, gitignored
 - Raw dashboard data, check images, videos, MCAP files and derived tables stay in `data/` and are
   never committed. Do not paste real run data, contacts or supplier details into issues, PRs or
   docs beyond aggregate numbers
+- Exception: a few curated, annotated example images may be committed under `assets/` for the
+  README and pitch, and shown in PR descriptions. Never bulk images, raw frames, run logs or video
 - Tokens live in `~/.maus-export/` or the `MAUS_TOKEN` env var. Never commit secrets or `.env`
 - Dashboard tools that write (`*_save`, `*_delete`) are off-limits unless the user asks for that
   write in the current session. Reading is fine
