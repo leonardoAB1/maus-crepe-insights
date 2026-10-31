@@ -334,3 +334,26 @@ def test_card_deployable_and_write_card(tmp_path):
     nested = tmp_path / "a" / "b.json"
     write_card({"x": 1}, nested)
     assert nested.read_text(encoding="utf-8") == '{\n  "x": 1\n}\n'
+
+
+def test_per_robot_figure_renders_from_a_card(tmp_path):
+    from maus_classify.robot_figures import save_per_robot_figure
+
+    X, y, groups, ts, robots = separable(90)
+    split = np.where(groups % 5 == 4, "test", "train")
+    card = train_and_evaluate(
+        LogisticRegression(max_iter=500),
+        X,
+        y,
+        split,
+        groups,
+        name="dummy",
+        feature_names=["a", "b", "c"],
+        out_dir=tmp_path,
+        robots=robots,
+        n_boot=N_BOOT,
+        n_perm=N_PERM,
+    )
+    path = tmp_path / "robots.png"
+    save_per_robot_figure({"dummy": card, "copy": card}, path)
+    assert path.stat().st_size > 0
