@@ -1,0 +1,273 @@
+{
+  "check": "spread",
+  "rows": "failed frames of this check with an embedding",
+  "design": "multi-label: one binary head per reason class",
+  "class_map": {
+    "crepe too small": "too_small",
+    "large hole in the centre": "hole",
+    "large hole off-center": "hole",
+    "batter left on the plate": "residue",
+    "no crepe in the plate": "no_crepe"
+  },
+  "min_support": 8,
+  "support": {
+    "hole": {
+      "train": 7,
+      "test": 7
+    },
+    "no_crepe": {
+      "train": 1,
+      "test": 1
+    },
+    "other": {
+      "train": 0,
+      "test": 0
+    },
+    "residue": {
+      "train": 7,
+      "test": 2
+    },
+    "too_small": {
+      "train": 13,
+      "test": 5
+    }
+  },
+  "robots": {
+    "train": {
+      "maus-pixi": 12,
+      "maus-quin": 7,
+      "maus-otto": 6
+    },
+    "test": {
+      "maus-pixi": 13
+    }
+  },
+  "modelled": [
+    "too_small"
+  ],
+  "not_modelled": [
+    "hole",
+    "no_crepe",
+    "residue"
+  ],
+  "heads": {
+    "too_small": {
+      "verdict": "deployable",
+      "holdout": {
+        "n": 13,
+        "balanced_accuracy": 0.6375,
+        "f1_macro": 0.6388888888888888,
+        "per_class": {
+          "not_too_small": {
+            "precision": 0.7,
+            "recall": 0.875,
+            "f1": 0.7777777777777778,
+            "support": 8
+          },
+          "too_small": {
+            "precision": 0.6666666666666666,
+            "recall": 0.4,
+            "f1": 0.5,
+            "support": 5
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "not_too_small",
+            "too_small"
+          ],
+          "rows_true_cols_pred": [
+            [
+              7,
+              1
+            ],
+            [
+              3,
+              2
+            ]
+          ]
+        },
+        "calibration": {
+          "per_class": {
+            "not_too_small": {
+              "brier": 0.18450230136723397,
+              "ece": 0.21668451107465303,
+              "bins": {
+                "mean_predicted": [
+                  0.22280991077423096,
+                  0.5322511196136475,
+                  0.653477668762207,
+                  0.7743040521939596,
+                  0.8342220783233643,
+                  0.9550626079241434
+                ],
+                "fraction_positive": [
+                  0.3333333333333333,
+                  0.0,
+                  0.5,
+                  1.0,
+                  0.0,
+                  1.0
+                ]
+              }
+            },
+            "too_small": {
+              "brier": 0.18450229530420942,
+              "ece": 0.21668451021497068,
+              "bins": {
+                "mean_predicted": [
+                  0.04493738027910391,
+                  0.16577795147895813,
+                  0.22569594780604044,
+                  0.34652233123779297,
+                  0.46774885058403015,
+                  0.777190089225769
+                ],
+                "fraction_positive": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  0.5,
+                  1.0,
+                  0.6666666666666666
+                ]
+              }
+            }
+          },
+          "brier_mean": 0.18450229833572168
+        }
+      },
+      "holdout_auc": 0.8,
+      "train_cv_auc": 0.903846153846154,
+      "null": {
+        "cv_auc": 0.903846153846154,
+        "n_perm": 1000,
+        "null_q05_q95": [
+          0.5448717948717949,
+          0.858974358974359
+        ],
+        "p_one_sided": 0.017982017982017984,
+        "beats_null": true
+      },
+      "majority_baseline": {
+        "n": 13,
+        "balanced_accuracy": 0.5,
+        "f1_macro": 0.2777777777777778,
+        "per_class": {
+          "not_too_small": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 8
+          },
+          "too_small": {
+            "precision": 0.38461538461538464,
+            "recall": 1.0,
+            "f1": 0.5555555555555556,
+            "support": 5
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "not_too_small",
+            "too_small"
+          ],
+          "rows_true_cols_pred": [
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              5
+            ]
+          ]
+        },
+        "calibration": {
+          "per_class": {
+            "not_too_small": {
+              "brier": 0.6153846153846154,
+              "ece": 0.6153846153846154,
+              "bins": {
+                "mean_predicted": [
+                  0.0
+                ],
+                "fraction_positive": [
+                  0.6153846153846154
+                ]
+              }
+            },
+            "too_small": {
+              "brier": 0.6153846153846154,
+              "ece": 0.6153846153846154,
+              "bins": {
+                "mean_predicted": [
+                  1.0
+                ],
+                "fraction_positive": [
+                  0.38461538461538464
+                ]
+              }
+            }
+          },
+          "brier_mean": 0.6153846153846154
+        }
+      }
+    }
+  },
+  "abstain": {
+    "threshold": 0.7,
+    "chosen_by": "best train-CV set F1 (run-grouped), ties to higher",
+    "train_cv_set_f1": {
+      "0.5": 0.84,
+      "0.55": 0.8,
+      "0.6": 0.8,
+      "0.65": 0.84,
+      "0.7": 0.84,
+      "0.75": 0.8,
+      "0.8": 0.76,
+      "0.85": 0.76,
+      "0.9": 0.76,
+      "0.95": 0.68
+    }
+  },
+  "holdout": {
+    "n": 13,
+    "set_f1": 0.6923076923076923,
+    "abstained": 10,
+    "per_class": {
+      "too_small": {
+        "support": 5,
+        "predicted": 3,
+        "precision": 0.6666666666666666,
+        "recall": 0.4
+      },
+      "other": {
+        "support": 8,
+        "predicted": 10,
+        "precision": 0.7,
+        "recall": 0.875
+      }
+    }
+  },
+  "holdout_majority": {
+    "n": 13,
+    "set_f1": 0.38461538461538464,
+    "abstained": 0,
+    "per_class": {
+      "too_small": {
+        "support": 5,
+        "predicted": 13,
+        "precision": 0.38461538461538464,
+        "recall": 1.0
+      },
+      "other": {
+        "support": 8,
+        "predicted": 0,
+        "precision": null,
+        "recall": 0.0
+      }
+    }
+  },
+  "verdict": "deployable heads: too_small"
+}
