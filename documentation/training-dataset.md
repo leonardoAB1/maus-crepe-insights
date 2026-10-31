@@ -118,3 +118,8 @@ not establish causality. Test and customer populations, robot changes, selection
 and dashboard access windows can bias results. Evaluate temporal and robot
 shift, class imbalance, coverage, and missingness before interpreting scores.
 No guarantee of quality ground truth or deployment readiness is implied.
+
+For local aggregate join integrity, feature missingness and vision-target
+coverage, see the [training data audit](training-audit.md). Its coverage
+breakdowns help identify selection bias, but do not establish that scored runs
+are representative or that candidate features were available at run start.
