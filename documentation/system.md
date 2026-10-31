@@ -7,6 +7,7 @@ providers are named by role only.
 
 ## Hardware and control architecture
 
+<!-- diagram: system -->
 ```mermaid
 flowchart LR
     kiosk[Kiosk tablet]
@@ -37,6 +38,7 @@ flowchart LR
 
     style pi fill:#f3d9cf,stroke:#c8553d
 ```
+<!-- /diagram -->
 
 | Block | Role |
 |---|---|

@@ -1,0 +1,11 @@
+flowchart LR
+    robot[Robots] --> dash[Maus dashboard]
+    dash -->|fetch| raw[Raw JSON]
+    raw -->|mcap| mcap[MCAP files]
+    raw -->|table| table[Runs table]
+    mcap --> fox[Foxglove]
+    table --> train[Training]
+    raw --> train
+    train --> onnx[ONNX model]
+    onnx --> pi[Pi 5 runtime]
+    table --> insight[Failure analysis]

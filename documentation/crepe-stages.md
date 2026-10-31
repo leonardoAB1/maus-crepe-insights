@@ -10,34 +10,70 @@ phase on its own (for example `init -> plate_load` 164 times).
 
 ## Stage machine
 
-Every run starts at `init` and a full cycle runs these stages in order.
-A run can end early, as `canceled` or `aborted`, at any stage. Orange
-stages have a vision check.
+Every run starts at `init`, then a full cycle moves through four groups
+of stages and ends in one of four states (`terminal_status`).
 
+<!-- diagram: crepe-stages -->
 ```mermaid
-flowchart TB
-    init([Init]) --> prepare[Prepare]
-    prepare --> plate[Check plate]
-    prepare --> oil[Oil]
-    plate --> oil
-    oil --> spread[Spread batter]
-    spread --> cook[Cook]
-    cook --> topping[Add topping]
-    topping --> fold[Fold carefully]
-    fold --> push[Push off]
-    push --> handover[Plate handover]
-    handover --> wipe[Wipe spatula]
-    wipe --> discard[Discard crepe]
-    discard --> load([Plate load])
-
-    classDef check fill:#f3d9cf,stroke:#c8553d
-    class plate,cook,fold,push,discard,load check
+stateDiagram-v2
+    direction LR
+    [*] --> Prep
+    state Prep {
+        state "Check plate" as plate
+        [*] --> Prepare
+        Prepare --> plate
+        Prepare --> Oil
+        plate --> Oil
+        Oil --> [*]
+    }
+    Prep --> Bake
+    state Bake {
+        state "Spread batter" as spread
+        state "Add topping" as topping
+        [*] --> spread
+        spread --> Cook
+        Cook --> topping
+        topping --> [*]
+    }
+    Bake --> Serve
+    state Serve {
+        state "Push off" as push
+        [*] --> Fold
+        Fold --> push
+        push --> push: not aligned
+        push --> Handover
+        Handover --> [*]
+    }
+    Serve --> Reset
+    state Reset {
+        state "Wipe spatula" as wipe
+        state "Discard crepe" as discard
+        state "Plate load" as load
+        [*] --> wipe
+        wipe --> discard
+        discard --> load
+        load --> [*]
+    }
+    state "Not succeeded" as NotOk
+    Reset --> Succeeded: checks ok
+    Reset --> NotOk: check failed
+    Bake --> Canceled: order canceled
+    Prep --> Aborted: fault
 ```
+<!-- /diagram -->
 
-- `Check plate` only exists in newer runs.
+- **Outcome is decided at the end.** A failed `spread` or `fold` check
+  does not stop the run: the robot still serves and resets, then the run
+  ends `not_succeeded`.
+- **Early exits** can happen at any stage. The diagram shows where they
+  cluster: most cancels are during Bake (47 of 66), aborts are faults.
+- **Push off loops**: the robot rotates the plate and checks again until
+  the crepe is aligned.
+- `Check plate` (`check_serving_plate`) only exists in newer runs.
 - `Spread batter` is `spread_batter_concentric` (268 runs) or
   `spread_batter` (174 runs).
-- `Fold carefully` is **one** phase; both folds happen inside it.
+- `Fold` is the single phase `fold_carefully`; both folds happen inside
+  it.
 - `Discard crepe` runs in every full cycle, including successful ones. It
   is a clean-up move, not a thrown-away crepe.
 - Rare variants: `clear_batter_nozzle` after `prepare` (4 runs),
@@ -113,6 +149,7 @@ The 430 runs that started a crepe (reached a spread or `cook` stage).
 The `not_succeeded` split uses the first failed check other than
 `push_off`; most of those runs predate vision checks.
 
+<!-- diagram: where-runs-end -->
 ```mermaid
 sankey-beta
 
@@ -130,6 +167,7 @@ Not succeeded,Fold 1 failed,4
 Not succeeded,Plate checks failed,6
 Not succeeded,No check data,116
 ```
+<!-- /diagram -->
 
 Takeaways for the challenge:
 

@@ -5,6 +5,7 @@
 How run data flows from the robots to our analysis. Everything after the
 dashboard runs locally; outputs land in the gitignored `data/` folder.
 
+<!-- diagram: pipeline -->
 ```mermaid
 flowchart LR
     robot[Robots] --> dash[Maus dashboard]
@@ -18,6 +19,7 @@ flowchart LR
     onnx --> pi[Pi 5 runtime]
     table --> insight[Failure analysis]
 ```
+<!-- /diagram -->
 
 | Step | Command / place | Output |
 |---|---|---|
