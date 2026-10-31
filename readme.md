@@ -177,8 +177,13 @@ pixi run table
 # 4. Vision scores from the check overlays (needs --media): data/vision.parquet
 pixi run vision
 
-# or everything at once
+# 5. Candidate run-start inputs and terminal status: data/training/run_start.parquet
+pixi run export training
+
+# Or fetch, mcap, table and vision together:
 pixi run export all --media
+# The all command excludes training; run it separately:
+pixi run export training
 ```
 
 Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
@@ -200,6 +205,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Robot system](documentation/system.md)
 - [Crêpe stages and where runs fail](documentation/crepe-stages.md)
 - [Data pipeline and data model](documentation/pipeline.md)
+- [Candidate run-start training dataset](documentation/training-dataset.md)
 
 ## License
 MIT - see [license.txt](license.txt).
