@@ -38,11 +38,16 @@ but are not returned.
 ## Quirks to know
 - **Time zones:** `tsStart`/`tsEnd` are UTC, while log/phase/check timestamps are naive robot-local time
   (Europe/Zurich, so +1 h in winter and +2 h in summer). The exporter measures the offset per run.
-- **Manual labels are empty:** `successSpread/Topping/Fold/Handover`, `comments` and `batch` were null in all the
-  runs we sampled. The ground truth is `terminal_status` plus the robot's own vision checks.
+- **Manual labels:** `successSpread/Topping/Fold/Handover`, `comments` and
+  `batch` were null in earlier sampled runs. In one private 2026-10-31 snapshot
+  of 828 runs, each of the four success fields had only one or two non-null
+  values. `terminal_status` and robot vision checks are operational proxies,
+  not independently verified quality ground truth.
 - **Many cancels:** customer runs are often `canceled`, and test runs make up about 76% of the data.
-- **Warnings buried in the logs** make good features, e.g. `hotplate demand is ON but duet reports the SSR OFF`,
-  `rpm_from_gps: target_gps ... greater than gps_max`, and `fold.spatula_gate_enabled is false`.
+- **Log warnings** are retrospective diagnostics, not run-start inputs unless
+  their timing and availability are verified. Examples include `hotplate
+  demand is ON but duet reports the SSR OFF`, `rpm_from_gps: target_gps ...
+  greater than gps_max`, and `fold.spatula_gate_enabled is false`.
 - **Robot settings** (`robot_list`): topping→pump-port map, prices (6–7 per crêpe), and inventory capacity /
   grams per crêpe (batter 113 g, apple 20 g, chocolate 13 g, raspberry 15 g, 60 plates).
 

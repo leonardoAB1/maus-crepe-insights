@@ -72,6 +72,8 @@ jupyterlab = ">=4.6.5,<5"
 
 [tool.pixi.feature.ml.tasks]
 analyze = "maus-export analyze"
+doe-analyze = "maus-export doe-analyze"
+doe-figures = "maus-export doe-figures"
 notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]
@@ -85,6 +87,7 @@ mcap = "maus-export mcap"
 table = "maus-export table"
 vision = "maus-export vision"
 example = "maus-export example"
+doe = "maus-export doe-design"
 docs = "maus-docs"
 docs-check = "maus-docs --check"
 test = "pytest"

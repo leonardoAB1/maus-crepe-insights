@@ -64,6 +64,8 @@ def main() -> None:
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
     sub.add_parser("training", help="export candidate run-start dataset")
+    sub.add_parser("vision-targets", help="join run-start and vision targets")
+    sub.add_parser("audit", help="audit training and vision coverage")
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
@@ -84,6 +86,24 @@ def main() -> None:
     an.add_argument(
         "--boot", type=int, default=None, help="bootstrap draws (default 500)"
     )
+    dd = sub.add_parser(
+        "doe-design", help="DSD run sheet for Maus -> data/doe/"
+    )
+    dd.add_argument("--robot", required=True, help="robot that runs it")
+    dd.add_argument("--topping", default="plain")
+    dd.add_argument("--seed", type=int, default=0, help="run order seed")
+    dd.add_argument("--fake", type=int, default=2, help="unused design columns")
+    dd.add_argument(
+        "--centre", type=int, default=3, help="centre runs in total"
+    )
+    da = sub.add_parser(
+        "doe-analyze", help="effects from a filled run sheet (ml env)"
+    )
+    da.add_argument("sheet", type=Path, help="run sheet with run ids")
+    df = sub.add_parser(
+        "doe-figures", help="redraw the doe figures in assets/ (ml env)"
+    )
+    df.add_argument("--assets", type=Path, default=REPO_ROOT / "assets")
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -131,6 +151,34 @@ def main() -> None:
                 1,
                 f"{failed} ({type(exc).__name__}). Check raw input locally.\n",
             )
+    if args.cmd == "vision-targets":
+        from .vision_targets import VisionTargetsError, build_vision_targets
+
+        try:
+            build_vision_targets(data_dir)
+        except VisionTargetsError as exc:
+            p.exit(
+                1,
+                "Vision-target export failed; previous output is stale: "
+                f"{exc}.\n",
+            )
+        except Exception as exc:
+            p.exit(
+                1,
+                "Vision-target export failed; previous output is stale "
+                f"({type(exc).__name__}). Check inputs locally.\n",
+            )
+    if args.cmd == "audit":
+        from .training_audit import build_training_audit
+
+        try:
+            build_training_audit(data_dir)
+        except Exception as exc:
+            p.exit(
+                1,
+                "Training audit failed; previous output is stale "
+                f"({type(exc).__name__}). Check inputs locally.\n",
+            )
     if args.cmd in ("vision", "all"):
         from .vision_metrics import build_vision_table
 
@@ -139,6 +187,26 @@ def main() -> None:
         from .analysis import N_BOOT, run_analysis
 
         run_analysis(data_dir, n_boot=args.boot or N_BOOT)
+    if args.cmd == "doe-design":
+        from .doe import build_run_sheet
+
+        build_run_sheet(
+            data_dir,
+            args.robot,
+            args.topping,
+            args.seed,
+            args.fake,
+            args.centre,
+        )
+    if args.cmd == "doe-analyze":
+        from .doe_analyze import analyze
+
+        analyze(data_dir, args.sheet)
+    if args.cmd == "doe-figures":
+        from .doe_figures import example_figures
+
+        for path in example_figures(data_dir, args.assets):
+            print(path)
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,
