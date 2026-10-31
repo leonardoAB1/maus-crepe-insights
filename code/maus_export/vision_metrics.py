@@ -56,6 +56,11 @@ MAX_EDGE_FRAC = 0.42
 BRIDGE_PX = 9
 # Erode the crepe mask before reading pixel colour so the outline is skipped
 COLOUR_ERODE = 7
+# Bare plate is dark (CIE L* mostly below 33); raw batter stays above ~45
+BARE_L_MAX = 35
+# Opening kernel and minimum size that drop bubble specks from bare plate
+SPECK_KERNEL = 5
+MIN_GAP_FRAC = 0.0005  # of the zone area
 
 
 def colour_mask(hsv: np.ndarray, name: str) -> np.ndarray:
@@ -188,6 +193,25 @@ def lightness(img: np.ndarray, region: np.ndarray) -> tuple[float, float]:
     return float(lum.mean()), float(lum.std())
 
 
+def bare_plate(
+    img: np.ndarray, hsv: np.ndarray, crepe: np.ndarray, zone_r: float
+) -> np.ndarray:
+    """Plate showing through inside the crepe outline: dark pixels plus the
+    robot's red hole marks (red paint hides how dark the plate is). The
+    robot only marks some gaps, so this catches the rest."""
+    kernel = np.ones((COLOUR_ERODE, COLOUR_ERODE), np.uint8)
+    inner = cv2.erode(crepe.astype(np.uint8), kernel) > 0
+    lum = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)[..., 0].astype(float)
+    dark = lum * 100 / 255 < BARE_L_MAX
+    bare = ((dark | colour_mask(hsv, "red")) & inner).astype(np.uint8)
+    speck = np.ones((SPECK_KERNEL, SPECK_KERNEL), np.uint8)
+    bare = cv2.morphologyEx(bare, cv2.MORPH_OPEN, speck)
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(bare)
+    min_area = MIN_GAP_FRAC * np.pi * zone_r**2
+    big = [i for i in range(1, n) if stats[i, cv2.CC_STAT_AREA] >= min_area]
+    return np.isin(labels, big)
+
+
 def _prepare(img: np.ndarray) -> tuple[np.ndarray, Any, np.ndarray] | None:
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     zone = zone_of(hsv)
@@ -217,7 +241,9 @@ def spread_metrics(img: np.ndarray) -> dict[str, float | None]:
         out["circularity"] = circularity(crepe)
         holes = colour_mask(hsv, "red") & crepe
         out["hole_frac"] = float(holes.sum()) / area if area else None
-        out["l_mean"], out["l_std"] = lightness(img, crepe & ~holes)
+        bare = bare_plate(img, hsv, crepe, zr)
+        out["uncovered_frac"] = float(bare.sum()) / area if area else None
+        out["l_mean"], out["l_std"] = lightness(img, crepe & ~holes & ~bare)
 
     circle = fit_circle(colour_mask(hsv, "cyan") & inside)
     if circle is not None:
