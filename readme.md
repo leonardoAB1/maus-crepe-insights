@@ -194,6 +194,36 @@ Designed experiment for Maus: `pixi run doe --robot <robot>` writes a run sheet 
 `pixi run -e ml doe-analyze <sheet>` reads it back once the runs are done.
 See [documentation/doe.md](documentation/doe.md).
 
+Seen from above, this is a run-to-run feedback loop: the batch measures how
+each recipe setting moves the crêpe quality, read through camera, logs and
+sensors.
+
+<!-- diagram: doe-control-loop -->
+```mermaid
+flowchart LR
+    r([Quality target r]) --> cmp((compare))
+    cmp -->|gap e| ctrl[DoE analysis]
+    ctrl -->|u: 6 settings| fw
+    subgraph plant [Crepe robot, the plant]
+        fw[Robot firmware] -->|motion, heat| proc[Dispense to fold]
+    end
+    d[Disturbances d] -.-> proc
+    proc --> cam[Hotplate camera]
+    proc --> logs[Phase logs]
+    proc --> env[Sensor boards]
+    cam -->|images| vis[Vision scores]
+    logs -->|events| stat[Status, timing]
+    env -->|temp, humidity| dm[Measured d]
+    vis --> y[Outputs y]
+    stat --> y
+    y -->|once per batch| cmp
+    dm -.->|covariates| ctrl
+
+    style ctrl fill:#2a78d6,stroke:#1c5cab,color:#ffffff
+    style y fill:#cde2fb,stroke:#2a78d6,color:#0b0b0b
+```
+<!-- /diagram -->
+
 ![Example DoE result on a simulated batch: which setting to change and which way](assets/doe-results-example.png)
 
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
