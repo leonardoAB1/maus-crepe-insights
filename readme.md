@@ -38,7 +38,7 @@ flowchart LR
     dash -->|reads| worker
     dash -->|live control| pi
 
-    style pi fill:#f3d9cf,stroke:#c8553d
+    style pi fill:#c8553d,stroke:#8a3324,color:#ffffff
 ```
 <!-- /diagram -->
 
