@@ -110,7 +110,7 @@
       <video id="video" controls preload="metadata" muted></video>
       <canvas id="overlay"></canvas>
     </div>
-    <p class="label">Fold states in this clip. Click to jump.</p>
+    <p class="label" id="where">Fold states in this clip. Click to jump.</p>
     <div id="timeline"></div>
   </div>
 
@@ -122,7 +122,9 @@
       </div>
       <div class="rows">
         <div class="row"><span>model says</span><span id="prediction_state">-</span></div>
-        <div class="row"><span>deviation</span><span id="deviation">-</span></div>
+        <div class="row" title="0 is a match, higher is worse">
+          <span>deviation</span><span id="deviation">-</span>
+        </div>
         <div class="row"><span>check</span><span id="check">-</span></div>
         <div class="row"><span>recorded</span><span id="verdict">-</span></div>
       </div>
@@ -175,7 +177,7 @@ const els = {
   prediction_state: el('prediction_state'), deviation: el('deviation'),
   check: el('check'), verdict: el('verdict'), phase_context: el('phase_context'),
   notes: el('notes'), error: el('error'), producer: el('producer'),
-  hero: el('hero'),
+  hero: el('hero'), where: el('where'),
   producer_note: el('producer_note'), timeline: el('timeline'),
   donut: el('donut'), donut_legend: el('donut_legend'),
   show_material: el('show_material'), show_holes: el('show_holes')
@@ -311,6 +313,9 @@ async function refresh(force = false) {
   const payload = await layersFor(frame, producer);
   const playhead = document.getElementById('playhead');
   if (playhead) playhead.style.left = `${(frame / status.frames) * 100}%`;
+  els.where.textContent =
+    `Fold states in this clip - frame ${frame} of ${status.frames}. `
+    + `Click to jump.`;
   els.error.textContent = payload.error || '';
   const state = payload.state || 'unknown';
   els.state.textContent = state;
