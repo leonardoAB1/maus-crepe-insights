@@ -159,7 +159,7 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "607bfd636816f4143c748dc54f265fd7cdf524d7",
+  "commit": "869431de037bf6deac7f6bdbe304163068038f5d",
   "fold_risk": {
     "target": "any fold1 or fold2 attempt in the run not ok (robot verdict, weak label)",
     "positive_class": "fail",
