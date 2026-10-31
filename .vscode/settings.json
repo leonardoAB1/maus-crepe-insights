@@ -18,6 +18,9 @@
     "editor.formatOnSave": true,
     "editor.rulers": [80]
   },
+  // Use the ruff from the pixi environment so the editor matches
+  // `pixi run lint` and CI
+  "ruff.importStrategy": "fromEnvironment",
   "notebook.formatOnSave.enabled": true,
   "notebook.defaultFormatter": "charliermarsh.ruff",
   "[markdown]": {
