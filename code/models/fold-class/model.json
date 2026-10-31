@@ -768,7 +768,7 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "e30438752fdd4283bda623e8f6b7a28e860e4856",
+  "commit": "3375f90ba1064346b146829968ba3426120a2c37",
   "labels": {
     "column": "frames.fold_class",
     "rule": "spread ok -> flat, fold1 ok -> half, fold2 ok -> quarter",
@@ -863,8 +863,8 @@
     }
   },
   "caveats": {
-    "triangle_fold": "Unsupported. No frame in the data shows a triangle fold, so the head can only answer flat, half or quarter. Human fold labels from the labelling workstream (#87) are the path to add it.",
-    "label_leakage": "Weak labels: the class equals the check that took the frame (spread, fold1, fold2). The head may learn check-specific camera timing or plate state instead of the fold shape. See sanity_checks: push_off frames show a quarter fold from a check the head never trained on.",
+    "triangle_fold": "Unsupported. No frame in the data shows a triangle fold, so the head can only answer flat, half or quarter. Human fold labels from the labelling workstream (#87) are the path to add it, but its visual taxonomy (crepe-visual-v2) has no triangle label yet; the follow-up (#106) depends on adding one.",
+    "label_leakage": "Weak labels: the class equals the check that took the frame (spread, fold1, fold2). The head may learn check-specific camera timing or plate state instead of the fold shape. See sanity_checks: push_off frames show a quarter fold from a check the head never trained on. The stronger check against human labels on video frames is tracked in #104.",
     "no_crepe": "There is no 'no crepe' class. Empty pans (plate_clean frames) come out as quarter with near-certain confidence, so quarter partly means 'little crepe visible'. High confidence is not a presence check: only run the head on frames known to show a crepe (spread and fold checks).",
     "failed_checks": "Failed spread/fold checks are excluded from training because their true state is unknown."
   },
