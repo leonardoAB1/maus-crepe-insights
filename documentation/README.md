@@ -17,6 +17,7 @@ Browse the guides by subject:
 - [Classification data coverage by robot and time](training/classification-data.md)
 - [Private phase labeling](phase-labeling-pilot.md)
 - [Crêpe material and hole masks](mask-labeling.md)
+- [Simple pixel-mask suggestions](pixel-masks.md)
 - [Two-person labeling handoff](labeling-collaboration.md)
 
 ## Analysis
