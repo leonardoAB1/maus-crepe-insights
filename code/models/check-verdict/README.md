@@ -5,6 +5,12 @@ One small classifier per vision check (`spread`, `fold1`, `fold2`,
 camera frame. These are the predictions that Level 1 scores against the
 robot.
 
+![check-verdict examples](../../../assets/check-verdict-example.jpg)
+
+One typical holdout pass and fail per check (median P(fail)) and the fold
+failure the head was most sure was a pass. Rebuild with
+`pixi run -e ml model-examples`.
+
 ## How it works
 
 1. `frame-embedder` turns the frame into a 576-value embedding.
