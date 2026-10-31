@@ -165,8 +165,8 @@ Requires [pixi](https://pixi.sh) and a Maus dashboard account.
 cd code
 pixi install
 
-# 1. Download runs (opens a browser to sign in the first time; tokens are cached in ~/.maus-export/)
-pixi run fetch --limit 10 --media    # drop --limit for all runs; add --video for mp4s
+# 1. Download runs; the first sign-in opens a browser.
+pixi run fetch --limit 10 --media  # add --video only if mp4s are needed
 
 # 2. Convert to ROS 2 MCAP (one file per run in data/mcap/) and open them in Foxglove
 pixi run mcap
@@ -181,11 +181,23 @@ pixi run vision
 #    data/training/run_start.parquet
 pixi run export training
 
+# 6. Run-start candidates and post-run vision targets
+pixi run export vision-targets
+
 # Or fetch, mcap, table and vision together:
 pixi run export all --media
+# The all command excludes both training datasets; run them separately:
+pixi run export training
+pixi run export vision-targets
 ```
 
 Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
+
+Removing `--limit` does not remove the fetch date defaults or account
+permission restrictions. Cached runs can also extend beyond the latest
+fetch. A successful fetch may still have missing media. For the complete
+private, account-specific fetch-to-vision-target workflow, see the
+[collaborator runbook](documentation/vision-targets.md).
 
 Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
 See [documentation/analysis.md](documentation/analysis.md).
@@ -215,6 +227,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Which settings matter (history analysis)](documentation/analysis.md)
 - [Data pipeline and data model](documentation/pipeline.md)
 - [Candidate run-start training dataset](documentation/training-dataset.md)
+- [Vision-target training dataset](documentation/vision-targets.md)
 
 ## License
 MIT - see [license.txt](license.txt).
