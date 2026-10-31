@@ -66,6 +66,17 @@ def main() -> None:
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
+    ex = sub.add_parser(
+        "example", help="draw the annotated vision example figure"
+    )
+    ex.add_argument("--spread", type=int, help="run id for the spread panel")
+    ex.add_argument("--fold", type=int, help="run id for the fold-2 panel")
+    ex.add_argument(
+        "--out",
+        type=Path,
+        default=Path("../assets/vision-scores-example.jpg"),
+        help="output image (.jpg or .png)",
+    )
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -99,6 +110,19 @@ def main() -> None:
         from .vision_metrics import build_vision_table
 
         build_vision_table(data_dir)
+    if args.cmd == "example":
+        from .figures import (
+            DEFAULT_FOLD_RUN,
+            DEFAULT_SPREAD_RUN,
+            vision_example,
+        )
+
+        vision_example(
+            data_dir,
+            args.out,
+            args.spread or DEFAULT_SPREAD_RUN,
+            args.fold or DEFAULT_FOLD_RUN,
+        )
 
 
 if __name__ == "__main__":
