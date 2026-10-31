@@ -18,6 +18,7 @@ from users.models import User
 
 source = Path(globals()["SOURCE"])
 pilot = Path(globals()["PILOT"])
+number = globals()["SET"]
 sys.path.insert(0, str(source))
 from labeling.pixel_predictions import install_predictions  # noqa: E402
 
@@ -55,6 +56,8 @@ plan = workflow["build_plan"](pilot, kind="masks")
     json.dumps(
         {
             "projects": {"masks": {"project_id": project.id}},
+            "pilot_sha256": plan["digest"],
+            "assignment": plan["assignment"],
         }
     )
 )
@@ -103,12 +106,33 @@ for task in tasks:
         }
     )
 )
-dry = install_predictions(pilot.parent, folder)
+try:
+    install_predictions(pilot.parent, folder, set_number=3 - number)
+except ValueError:
+    pass
+else:
+    raise AssertionError("cross-set import must fail")
+job_path = folder / "manifest.json"
+job = json.loads(job_path.read_text())
+job["scope"] = "sample"
+job_path.write_text(json.dumps(job))
+try:
+    install_predictions(pilot.parent, folder, set_number=number, apply=True)
+except ValueError:
+    pass
+else:
+    raise AssertionError("sample jobs must not be applied")
+assert not Prediction.objects.exists()
+job["scope"] = "full"
+job_path.write_text(json.dumps(job))
+dry = install_predictions(pilot.parent, folder, set_number=number)
 assert dry["eligible"] == 3 and dry["protected"] == 4 and dry["created"] == 0
 assert not Prediction.objects.exists()
 # Work saved after generation/dry-run must win over any proposed pixels.
 late = AnnotationDraft.objects.create(task=tasks[5], user=user, result=[])
-applied = install_predictions(pilot.parent, folder, apply=True)
+applied = install_predictions(
+    pilot.parent, folder, set_number=number, apply=True
+)
 assert applied["created"] == 2 and applied["protected"] == 5
 assert set(Prediction.objects.values_list("task_id", flat=True)) == {
     tasks[4].id,
@@ -133,7 +157,7 @@ for prediction in Prediction.objects.all():
         )
         assert np.array_equal(decoded, expected)
 assert setup(pilot, user.email, kind="masks")["created"] is False
-again = install_predictions(pilot.parent, folder, apply=True)
+again = install_predictions(pilot.parent, folder, set_number=number, apply=True)
 assert again["created"] == 0 and again["existing"] == 2
 assert Prediction.objects.count() == 2
 project.refresh_from_db()

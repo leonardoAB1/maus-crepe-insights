@@ -264,6 +264,31 @@ def validate_pixel_result(result: list, size: list[int]) -> None:
             raise ValueError("invalid pixel brush prediction")
 
 
+def prefill_context(workspace: Path, set_number: int) -> tuple[dict, dict]:
+    """Require explicit ownership and the unchanged bootstrapped workspace."""
+    if type(set_number) is not int or set_number not in {1, 2}:
+        raise ValueError("Select set 1 or set 2 explicitly")
+    workspace = workspace.absolute()
+    if workspace != workspace.resolve(strict=True):
+        raise ValueError("Use the canonical workspace path, not a symlink")
+    state_path = workspace / "workspace.json"
+    if not state_path.exists():
+        raise ValueError(
+            "Start label-set and complete local signup/import first"
+        )
+    state = json.loads(state_path.read_text())
+    plan = build_plan(workspace / "pilot", kind="masks")
+    if (
+        plan.get("assignment", {}).get("set_number") != set_number
+        or state.get("assignment") != plan["assignment"]
+        or state.get("pilot_sha256") != plan["digest"]
+        or state.get("app_path", str(workspace / "app"))
+        != str(workspace / "app")
+    ):
+        raise ValueError("Wrong set, changed pilot or moved app workspace")
+    return state, plan
+
+
 def _validate_manifest(pilot: Path, manifest: dict) -> None:
     from PIL import Image
 

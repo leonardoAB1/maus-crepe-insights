@@ -1,5 +1,10 @@
 # Two-person labeling: set 1 and set 2
 
+For optional pre-masking in either set, use the
+[preview-first mask-assistance guide](mask-assist.md). It includes the newer
+feature checkout and exact collaborator/agent commands; existing annotation
+workspaces are reused, not replaced.
+
 This is the complete handoff runbook for the dataset owner, the collaborator
 and an agent helping either person. Read the repository's [AGENTS.md](../AGENTS.md)
 first. Those remain the project rules; this guide explains the labeling workflow.
