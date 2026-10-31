@@ -20,18 +20,32 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .to_table import PARAM_PREFIX
+from .to_table import PARAM_PREFIX, RENAMED_PARAMETERS
 
-# Shortlist from #25: fan powers and radius offsets moved together in the
-# history, the design varies them independently
+# Settings the current robot software reads and that were varied before:
+# four recipe settings, then two machine geometry settings (from the #25
+# shortlist) that operators did tune but Maus should confirm per run.
+# The radius offsets and inner fan power from the first shortlist no longer
+# exist in the current parameter set (see documentation/doe.md).
 DEFAULT_FACTORS = (
     "dispense.batter.fan_power",
-    "dispense.batter.concentric_inner_fan_power",
+    "dispense.batter.concentric_outer_fan_tail_deg",
+    "dispense.batter.concentric_inner_flowrate_g_s",
+    "dispense.batter.concentric_fan_inset_mm",
     "machine.y_center",
     "machine.z_scrape_start",
-    "dispense.batter.concentric_inner_radius_offset_mm",
-    "dispense.batter.concentric_outer_radius_offset_mm",
 )
+RECIPE, MACHINE = "recipe", "machine"
+MACHINE_PREFIX = "machine."
+# Where a factor's levels come from
+SUCCEEDED, NEAR_SUCCESS, RAN = "succeeded", "near success", "ran"
+# When one value alone ever succeeded: step this share of the run range
+# around it
+NARROW_SHARE = 0.2
+HOT_PLATE_MIN_C = 150  # same cut as the history analysis
+SUCCESS_STATUS = "succeeded"
+RECENT_RUNS = 50  # latest runs that define the current parameter set
+CURRENT_SHARE = 0.5  # a setting is current if set in this share of them
 # Two unused (fake) columns make the squared terms better estimable and give
 # a 17-run design for 6 factors
 DEFAULT_FAKE = 2
@@ -55,6 +69,12 @@ class Factor:
     low: float
     high: float
     decimals: int = DEFAULT_DECIMALS
+    source: str = ""  # SUCCEEDED or RAN, empty when read back from a sheet
+
+    @property
+    def kind(self) -> str:
+        """RECIPE or MACHINE (geometry the operator can also tune)."""
+        return setting_kind(self.name)
 
     @property
     def column(self) -> str:
@@ -156,28 +176,95 @@ def design_report(design: np.ndarray) -> dict[str, Any]:
 # --- levels ----------------------------------------------------------------
 
 
+def setting_kind(name: str) -> str:
+    """Recipe setting or machine geometry, from the key prefix."""
+    return MACHINE if name.startswith(MACHINE_PREFIX) else RECIPE
+
+
+def current_settings(runs: pd.DataFrame) -> set[str]:
+    """Settings the robots' software uses today: set in most of the latest
+    runs. Keys dropped in a parameter change are missing there."""
+    recent = runs.sort_values("id").tail(RECENT_RUNS)
+    cols = [c for c in recent.columns if c.startswith(PARAM_PREFIX)]
+    share = recent[cols].notna().mean()
+    return {
+        c.removeprefix(PARAM_PREFIX)
+        for c in share[share >= CURRENT_SHARE].index
+    }
+
+
+def _values(runs: pd.DataFrame, cols: list[str]) -> pd.Series:
+    """All values of a setting, under its current and old names."""
+    return pd.concat(
+        [pd.to_numeric(runs[c], errors="coerce") for c in cols if c in runs]
+        or [pd.Series(dtype=float)]
+    ).dropna()
+
+
+def _successes(runs: pd.DataFrame) -> pd.DataFrame:
+    """Hot full cycles that succeeded."""
+    if not {"status", "hotplate_temp", "is_full_cycle"} <= set(runs):
+        return runs.iloc[0:0]
+    ok = (
+        (runs["status"] == SUCCESS_STATUS)
+        & (runs["hotplate_temp"].fillna(0) >= HOT_PLATE_MIN_C)
+        & runs["is_full_cycle"].fillna(False).astype(bool)
+    )
+    return runs[ok]
+
+
+def _levels(seen: pd.Series, won: pd.Series) -> tuple[float, float, str]:
+    """Low, high and source when the shortlist gives no usable range."""
+    if won.nunique() > 1:
+        return won.min(), won.max(), SUCCEEDED
+    if won.nunique() == 1:
+        step = NARROW_SHARE * (seen.max() - seen.min())
+        v = won.iloc[0]
+        lo, hi = max(v - step, seen.min()), min(v + step, seen.max())
+        return lo, hi, NEAR_SUCCESS
+    return seen.min(), seen.max(), RAN
+
+
 def factors_from_history(
     runs: pd.DataFrame,
     shortlist: dict[str, Any] | None,
     names: tuple[str, ...] = DEFAULT_FACTORS,
 ) -> list[Factor]:
-    """Levels per factor: the success range from the #25 shortlist, else the
-    full range already run. Every level must lie inside what was run."""
+    """Levels per factor, safest first:
+    1. the success range from the #25 shortlist, if it spans two values
+    2. the range of values with a successful hot full cycle
+    3. one value alone succeeded: a small step around it
+    4. nothing succeeded: the full range already run
+    Every factor must still exist in the current parameter set, and every
+    level must lie inside what was run."""
     safe: dict[str, list[float]] = {}
     for item in (shortlist or {}).get("shortlist", []):
         safe.update(item.get("safe_range", {}))
+    current = current_settings(runs)
+    good = _successes(runs)
     factors = []
     for name in names:
-        col = PARAM_PREFIX + name
-        if col not in runs:
+        cols = [
+            PARAM_PREFIX + n
+            for n in (name, *RENAMED_PARAMETERS.get(name, ()))
+            if PARAM_PREFIX + n in runs
+        ]
+        if not cols:
             raise ValueError(f"{name} never set in the run history")
-        seen = pd.to_numeric(runs[col], errors="coerce").dropna()
-        lo, hi = safe.get(name, (seen.min(), seen.max()))
+        if name not in current:
+            raise ValueError(
+                f"{name} is no longer in the robots' parameter set"
+            )
+        seen = _values(runs, cols)
+        lo, hi = safe.get(name, (None, None))
+        source = SUCCEEDED
+        if lo is None or lo >= hi:
+            lo, hi, source = _levels(seen, _values(good, cols))
         if lo >= hi:
             raise ValueError(f"{name} only ever ran at one value")
         if lo < seen.min() or hi > seen.max():
             raise ValueError(f"{name} range [{lo}, {hi}] was never run")
-        factors.append(Factor(name, float(lo), float(hi)))
+        factors.append(Factor(name, float(lo), float(hi), source=source))
     return factors
 
 
@@ -261,7 +348,10 @@ def summary(design: np.ndarray, factors: list[Factor], path: Path) -> str:
     lines = [f"{rep['runs']} runs, {rep['factors']} factors -> {path}"]
     for f in factors:
         mid = f.decode(np.array(0))
-        lines.append(f"  {f.name}: {f.low:g} / {mid:g} / {f.high:g}")
+        lines.append(
+            f"  {f.name} ({f.kind}, levels: {f.source}): "
+            f"{f.low:g} / {mid:g} / {f.high:g}"
+        )
     lines.append(
         f"max |corr| main-main {rep['max_corr_main']:.3f}, "
         f"main-square {rep['max_corr_main_square']:.3f}, "

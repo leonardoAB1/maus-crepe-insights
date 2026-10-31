@@ -18,6 +18,7 @@ from .analysis import OUTCOMES
 from .doe import (
     CODED_SUFFIX,
     DEFAULT_FACTORS,
+    MACHINE,
     RUN_ID,
     Factor,
     dsd,
@@ -56,11 +57,18 @@ DESIGN_SIZE = (15, 7.6)
 EFFECTS_SIZE = (13, 6.4)
 SIM_SEED = 1  # a draw where only the planted effects pass the cut
 SIM_OUTCOME = "spread_diameter"
-# Simulated batch, coded scale: fan power raises the spread size, y center
-# lowers it, the inner radius offset has a sweet spot, the rest do nothing
-SIM_BASE, SIM_FAN, SIM_YC, SIM_CURVE, SIM_NOISE = 0.8, 0.05, -0.03, -0.04, 0.01
+# Simulated batch, coded scale: fan power raises the spread size, inner
+# flowrate lowers it, y center has a sweet spot, the rest do nothing
+SIM_BASE, SIM_FAN, SIM_FLOW, SIM_CURVE, SIM_NOISE = (
+    0.8,
+    0.05,
+    -0.03,
+    -0.04,
+    0.01,
+)
 SIM_FIRST_RUN = 1000
 SIM_ROBOT = "sim"
+UNITS = {"_mm": "mm", "_deg": "deg", "_g_s": "g/s"}  # key suffix -> unit
 
 plt.rcParams.update(
     {
@@ -78,7 +86,10 @@ plt.rcParams.update(
 def label(name: str) -> str:
     """Short readable setting name."""
     leaf = name.rsplit(".", 1)[-1].removeprefix("concentric_")
-    return leaf.removesuffix("_mm").replace("_", " ")
+    for suffix, unit in UNITS.items():
+        if leaf.endswith(suffix):
+            return f"{leaf.removesuffix(suffix).replace('_', ' ')} ({unit})"
+    return leaf.replace("_", " ")
 
 
 def simulated_factors() -> list[Factor]:
@@ -99,7 +110,7 @@ def simulated_batch(
     y = (
         SIM_BASE
         + SIM_FAN * x[:, 0]
-        + SIM_YC * x[:, 2]
+        + SIM_FLOW * x[:, 2]
         + SIM_CURVE * x[:, 4] ** 2
         + rng.normal(0, SIM_NOISE, len(x))
     )
@@ -135,7 +146,10 @@ def design_figure(
     """Run sheet grid with the setting values, and the correlation map."""
     x = np.asarray(design, dtype=float)
     n, m = x.shape
-    labels = [label(f.name) for f in factors]
+    labels = [
+        label(f.name) + (" (machine)" if f.kind == MACHINE else "")
+        for f in factors
+    ]
     values = np.column_stack([f.decode(x[:, j]) for j, f in enumerate(factors)])
     fig, (ax1, ax2) = plt.subplots(
         1, 2, figsize=DESIGN_SIZE, width_ratios=[1.3, 1.25]

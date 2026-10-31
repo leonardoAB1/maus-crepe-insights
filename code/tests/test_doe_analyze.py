@@ -19,7 +19,7 @@ from maus_export.doe_analyze import (  # noqa: E402
     to_onnx,
 )
 from maus_export.doe_figures import (  # noqa: E402
-    SIM_YC,
+    SIM_FLOW,
     simulated_batch,
     simulated_factors,
 )
@@ -47,7 +47,7 @@ def test_planted_surface_is_recovered() -> None:
     assert yc["coef"] < 0 and yc["p"] < ALPHA
     assert curve["coef"] < 0 and curve["p"] < ALPHA
     idle = term(effects, MAIN, FACTORS[3].name)
-    assert abs(idle["coef"]) < abs(SIM_YC) / 2
+    assert abs(idle["coef"]) < abs(SIM_FLOW) / 2
 
 
 def test_constant_outcomes_are_skipped() -> None:
