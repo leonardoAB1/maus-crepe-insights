@@ -136,6 +136,7 @@ def fit(
             "p": p,
             "better": outcome.better,
             "n_runs": len(y),
+            "df": df,
             "r2": r2,
         }
     )
@@ -238,6 +239,7 @@ def analyze_sheet(
         "doe_id": str(sheet["doe_id"].iloc[0]),
         "factors": factors,
         "run_ids": [int(i) for i in frame[RUN_ID]],
+        "frame": frame,
         "effects": effects,
         "mismatches": mismatches,
     }
@@ -259,6 +261,10 @@ def analyze(data_dir: Path, sheet_path: Path) -> dict[str, Any]:
     result["effects"].to_parquet(
         out / f"{result['doe_id']}-effects.parquet", index=False
     )
+    from .doe_figures import effects_figure
+
+    for name in result["effects"]["outcome"].unique():
+        effects_figure(result, name, out / f"{result['doe_id']}-{name}.png")
     print(summary(result))
     return result
 

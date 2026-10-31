@@ -7,13 +7,7 @@ import pytest
 
 pytest.importorskip("scipy")  # analysis runs in the ml environment
 
-from maus_export.doe import (  # noqa: E402
-    CODED_SUFFIX,
-    RUN_ID,
-    Factor,
-    dsd,
-    run_sheet,
-)
+from maus_export.doe import RUN_ID  # noqa: E402
 from maus_export.doe_analyze import (  # noqa: E402
     ALPHA,
     MAIN,
@@ -24,47 +18,14 @@ from maus_export.doe_analyze import (  # noqa: E402
     predict,
     to_onnx,
 )
+from maus_export.doe_figures import (  # noqa: E402
+    SIM_YC,
+    simulated_batch,
+    simulated_factors,
+)
 
-FACTORS = [
-    Factor("dispense.batter.fan_power", 0.85, 1.0),
-    Factor("dispense.batter.concentric_inner_fan_power", 0.82, 0.97),
-    Factor("machine.y_center", -46.0, -42.0),
-    Factor("machine.z_scrape_start", 38.9, 41.5),
-    Factor("dispense.batter.concentric_inner_radius_offset_mm", 2.0, 25.0),
-    Factor("dispense.batter.concentric_outer_radius_offset_mm", -10.0, 10.0),
-]
-DIAMETER = "vision.spread.diameter_rel"
-# Planted surface on the coded scale: fan raises the diameter, y_center
-# lowers it, inner radius offset is curved, the rest do nothing
-BASE, FAN_EFFECT, YC_EFFECT, CURVE = 0.8, 0.05, -0.03, -0.04
-NOISE = 0.005
-FIRST_RUN = 1000
-
-
-def filled_sheet(seed: int = 0) -> tuple[pd.DataFrame, pd.DataFrame]:
-    sheet = run_sheet(dsd(len(FACTORS)), FACTORS, "r1", seed=seed)
-    sheet[RUN_ID] = np.arange(FIRST_RUN, FIRST_RUN + len(sheet))
-    x = sheet[[f.name + CODED_SUFFIX for f in FACTORS]].to_numpy(float)
-    rng = np.random.default_rng(seed)
-    y = (
-        BASE
-        + FAN_EFFECT * x[:, 0]
-        + YC_EFFECT * x[:, 2]
-        + CURVE * x[:, 4] ** 2
-        + rng.normal(0, NOISE, len(x))
-    )
-    runs = pd.DataFrame(
-        {
-            "id": sheet[RUN_ID],
-            "robot": "r1",
-            "topping": "plain",
-            "status": "succeeded",
-            "check.spread.ok": True,
-            **{f.column: sheet[f.name] for f in FACTORS},
-        }
-    )
-    vision = pd.DataFrame({"id": sheet[RUN_ID], DIAMETER: y})
-    return sheet, runs, vision
+FACTORS = simulated_factors()
+filled_sheet = simulated_batch
 
 
 def term(effects: pd.DataFrame, kind: str, factor: str) -> pd.Series:
@@ -86,7 +47,7 @@ def test_planted_surface_is_recovered() -> None:
     assert yc["coef"] < 0 and yc["p"] < ALPHA
     assert curve["coef"] < 0 and curve["p"] < ALPHA
     idle = term(effects, MAIN, FACTORS[3].name)
-    assert abs(idle["coef"]) < abs(YC_EFFECT) / 2
+    assert abs(idle["coef"]) < abs(SIM_YC) / 2
 
 
 def test_constant_outcomes_are_skipped() -> None:

@@ -98,6 +98,10 @@ def main() -> None:
         "doe-analyze", help="effects from a filled run sheet (ml env)"
     )
     da.add_argument("sheet", type=Path, help="run sheet with run ids")
+    df = sub.add_parser(
+        "doe-figures", help="redraw the doe figures in assets/ (ml env)"
+    )
+    df.add_argument("--assets", type=Path, default=REPO_ROOT / "assets")
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -168,6 +172,11 @@ def main() -> None:
         from .doe_analyze import analyze
 
         analyze(data_dir, args.sheet)
+    if args.cmd == "doe-figures":
+        from .doe_figures import example_figures
+
+        for path in example_figures(data_dir, args.assets):
+            print(path)
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,

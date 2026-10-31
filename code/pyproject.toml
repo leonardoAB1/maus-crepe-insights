@@ -73,6 +73,7 @@ jupyterlab = ">=4.6.5,<5"
 [tool.pixi.feature.ml.tasks]
 analyze = "maus-export analyze"
 doe-analyze = "maus-export doe-analyze"
+doe-figures = "maus-export doe-figures"
 notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]
