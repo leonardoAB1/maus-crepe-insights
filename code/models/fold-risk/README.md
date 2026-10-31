@@ -10,10 +10,12 @@ failure in the current data. The analysis, plot and power numbers are in
 - `model.json`: model card. The `fold_risk` section holds:
   - the verdict and the rule behind it
   - per-robot counts
-  - robot-adjusted odds ratios per mechanism, Holm corrected
+  - robot-adjusted Firth odds ratios with profile intervals, Holm
+    corrected within each mechanism (Wald kept for comparison)
   - the brightness confound check
   - the power analysis
-  - within-robot CV, leave-one-robot-out and a permutation null
+  - within-robot CV, leave-one-robot-out and a 1,000-shuffle permutation
+    test per mechanism
   - the shared holdout, labelled as one robot
 - `train.py`: rebuilds both files and `assets/fold-risk-effects.png`
 
@@ -31,8 +33,8 @@ failure in the current data. The analysis, plot and power numbers are in
   labels).
 - **Robot first:** each robot ran in its own time window, so every effect and
   every model check is computed within robot.
-  - Effects come from `maus_classify.fold_effects`: logistic regression with a
-    robot fixed effect.
+  - Effects come from `maus_classify.fold_effects`: Firth logistic
+    regression (`maus_classify.firth`) with a robot fixed effect.
   - Model checks come from `maus_classify.fold_cv`: robot-only baseline,
     within-robot delta AUC, leave-one-robot-out.
   - maus-otto (7 runs) is left out of the fits and scored as an out-of-sample
@@ -40,8 +42,9 @@ failure in the current data. The analysis, plot and power numbers are in
 - **Shipped model:** `StandardScaler` and L2 logistic regression, trained and
   exported through `maus_classify.harness.train_and_evaluate` (onnxruntime
   parity check included).
-- **Verdict rule:** "deployable" only if the 95% interval of within-robot
-  delta AUC over robot-only is above 0.
+- **Verdict rule:** "deployable" only if within-robot delta AUC over
+  robot-only beats labels shuffled within robot (one-sided permutation
+  p < 0.05).
 
 ## Rebuild
 

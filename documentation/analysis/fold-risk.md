@@ -45,11 +45,11 @@ robots therefore looks predictive when the robots are pooled.
   28 of 92 passed spreads (30%).
 - Most failed spreads come from maus-otto and maus-pixi, the robots that fail
   folds anyway. Within one robot the gap mostly disappears. Adjusted for
-  robot, the odds ratio for a failed spread is 1.68, with a 95% interval of
-  0.49 to 5.74.
+  robot, the odds ratio for a failed spread is 1.67, with a 95% interval of
+  0.50 to 5.53.
 - Brightness shows the same trap. Robot explains 25% of the variance in mean
   lightness (pixi images are brighter), and pooled, brighter spreads look
-  riskier. Adjusted for robot, the odds ratio per SD is 0.77 [0.49, 1.22].
+  riskier. Adjusted for robot, the odds ratio per SD is 0.78 [0.50, 1.22].
   Lightness is a robot proxy and is used only as this check.
 
 A single time-ordered holdout cannot fix this, because the latest runs are all
@@ -57,33 +57,48 @@ one robot (see [frames](../frames.md)).
 
 ## Robot-adjusted effects (primary result)
 
-The fits are logistic regressions with a robot fixed effect, one feature at a
-time, on maus-quin and maus-pixi. maus-otto has too few runs to fit and is used
+The fits are Firth-penalized logistic regressions with a robot fixed effect,
+one feature at a time, on maus-quin and maus-pixi. Firth with profile
+likelihood intervals and likelihood ratio p-values is used because residue has
+only 9 events (about 4 per parameter). There, plain Wald intervals are too
+narrow and biased away from 1. maus-otto has too few runs to fit and is used
 only as an out-of-sample robot below. Continuous features are scaled by their
-within-robot SD. Holm corrects across the seven features of each mechanism.
+within-robot SD.
+
+**Holm runs within each mechanism (7 tests), not across all 21.** Correcting
+across all 21 would only make the result more conservative.
 
 ![Robot-adjusted odds ratios per feature and mechanism](../../assets/fold-risk-effects.png)
 
 | Feature | Any (35 of 106) | Residue (9 of 104) | Shape (28 of 104) |
 |---|---|---|---|
-| Spread failed (yes vs no) | 1.68 [0.49, 5.74] | 0.96 [0.16, 5.72] | 1.98 [0.56, 7.01] |
-| Diameter | 0.74 [0.47, 1.16] | 0.79 [0.43, 1.45] | 0.90 [0.57, 1.41] |
-| Offset | 1.36 [0.86, 2.15] | 1.54 [0.90, 2.64] | 1.14 [0.73, 1.76] |
-| Circularity | 0.94 [0.61, 1.45] | 0.55 [0.29, 1.02] | 0.88 [0.56, 1.38] |
-| Holes | 1.16 [0.67, 2.00] | 1.50 [0.72, 3.11] | 1.22 [0.68, 2.17] |
-| Uncovered area | 1.68 [0.76, 3.70] | 2.66 [1.15, 6.20] | 1.26 [0.74, 2.14] |
-| Residue | 1.24 [0.66, 2.34] | 1.62 [0.65, 4.04] | 1.36 [0.65, 2.86] |
+| Spread failed (yes vs no) | 1.67 [0.50, 5.53] | 1.08 [0.17, 5.20] | 1.96 [0.56, 6.70] |
+| Diameter | 0.78 [0.47, 1.10] | 0.79 [0.45, 1.44] | 0.90 [0.58, 1.40] |
+| Offset | 1.31 [0.87, 2.13] | 1.44 [0.95, 2.61] | 1.11 [0.75, 1.76] |
+| Circularity | 0.95 [0.61, 1.42] | 0.60 [0.30, 0.97] | 0.90 [0.57, 1.35] |
+| Holes | 1.04 [0.78, 1.69] | 1.27 [0.94, 2.70] | 1.09 [0.81, 1.83] |
+| Uncovered area | 1.37 [0.97, 3.50] | 2.47 [1.12, 5.56] | 1.15 [0.82, 2.14] |
+| Residue | 1.08 [0.79, 2.36] | 1.30 [0.94, 4.01] | 1.14 [0.83, 2.81] |
 
-Each cell is the odds ratio per within-robot SD with its 95% interval
-(unadjusted). Number of fold failures and runs in the headers.
+Each cell is the Firth odds ratio per within-robot SD with its 95% profile
+interval, before multiple-testing correction. The column headers give fold
+failures and runs. The Wald estimates are kept in `model.json` for comparison.
 
-- **No effect survives Holm correction** in any mechanism (smallest Holm
-  p = 0.16).
-- The strongest lead is **uncovered area on residue failures**, with OR 2.66
-  per SD and unadjusted p = 0.023. It rests on 9 residue failures, so treat it
-  as a hypothesis to test with new runs, not a finding. The direction is
-  plausible: batter that did not cover the plate at spread time is still there
-  at fold time.
+- **No effect survives Holm correction** in any mechanism. The smallest Holm p
+  is 0.076.
+- The strongest lead is **uncovered area on residue failures**: OR 2.47 per SD
+  [1.12, 5.56], p = 0.011, Holm p = 0.076. Under Wald it was 2.66
+  [1.15, 6.20]. Firth shrinks it a little but keeps the interval above 1. It
+  rests on 9 residue failures, so it is a hypothesis to test with new runs,
+  not a finding. The direction is plausible: batter that did not cover the
+  plate at spread time is still there at fold time.
+- Circularity on residue (OR 0.60 [0.30, 0.97]) is the only other interval
+  that excludes 1 before correction.
+- **Skewed scores:** holes, residue and uncovered area each have a few runs 8
+  to 10 within-robot SDs from the mean. Per-SD odds ratios for these features
+  lean on those few runs, which is also why Firth moves them more than the
+  others. A transformed scale (log or rank) would be a sensible
+  pre-registered choice for a follow-up.
 
 ## Power analysis
 
@@ -111,27 +126,36 @@ and within-robot variance only.
 
 The model is the same seven features, scaled, with L2 logistic regression.
 Every check compares against a robot-only baseline (each robot's fold-failure
-rate), and the intervals bootstrap runs within each robot.
+rate).
 
-| Check (any fold failure) | Result [95% CI] |
+The test is a permutation test. Pooled out-of-fold AUC on small, signal-free
+data is biased below zero. A bootstrap of fixed out-of-fold predictions also
+ignores the variance of refitting, so its interval is too narrow. The test
+therefore shuffles labels within each robot and reruns the same CV 1,000 times.
+
+| Check | Result |
 |---|---|
-| Within-robot delta AUC over robot-only, pooled CV (20x5) | -0.18 [-0.29, -0.06] |
-| Brier skill over robot-only | -0.11 [-0.21, -0.03] |
-| CV inside maus-quin only, AUC | 0.41 [0.27, 0.56] |
-| CV inside maus-pixi only, AUC | 0.45 [0.24, 0.65] |
-| Leave maus-quin out, AUC | 0.42 [0.27, 0.59] |
-| Leave maus-pixi out, AUC | 0.47 [0.27, 0.68] |
+| Within-robot delta AUC over robot-only, any (CV 5x5) | -0.13 |
+| Same with labels shuffled within robot (1,000 shuffles), 5% to 95% | -0.20 to +0.11 (mean -0.03) |
+| One-sided permutation p, any / residue / shape | 0.84 / 0.67 / 0.96 |
+| CV inside maus-quin only, AUC [95% CI] | 0.41 [0.27, 0.56] |
+| CV inside maus-pixi only, AUC [95% CI] | 0.45 [0.24, 0.65] |
+| Leave maus-quin out, AUC [95% CI] | 0.42 [0.27, 0.59] |
+| Leave maus-pixi out, AUC [95% CI] | 0.47 [0.27, 0.68] |
 | Leave maus-otto out, AUC | 1.00 (only 1 run without a fold failure, not informative) |
-| Shared holdout, one robot (maus-pixi, 20 runs) | 0.40 [0.10, 0.75] |
+| Shared holdout, one robot (maus-pixi, 20 runs), AUC [95% CI] | 0.40 [0.10, 0.75] |
 
-- Inside a robot the model ranks no better than chance. With labels shuffled
-  within robot, delta AUC falls between -0.18 and +0.10 (5% to 95%, 100
-  shuffles), so the observed -0.18 is at the low edge of noise. That means no
-  signal, not a reverse signal.
-- Residue and shape give the same picture (full numbers in `model.json`).
-- **Card verdict: research only.** The rule is "deployable" only if the delta
-  AUC interval is above 0. The ONNX export exists so the analysis can be
-  reproduced and rerun on more data, not to run on the robot.
+- **No signal, not a reverse signal.** The observed delta AUC sits inside
+  the shuffled-label range, and the model does not beat chance inside any
+  robot or on an unseen robot. Residue and shape give the same picture.
+- The per-robot and leave-one-robot-out intervals bootstrap runs over fixed
+  predictions. They show the spread, not a test. `model.json` keeps a
+  bootstrap of the pooled delta under the key `resample_ci95`, with that
+  caveat attached.
+- **Card verdict: research only.** The rule is "deployable" only if
+  within-robot delta AUC beats the shuffled-label null (one-sided p < 0.05).
+  The ONNX export exists so the analysis can be reproduced and rerun on more
+  data, not to run on the robot.
 
 ## What would change the answer
 
