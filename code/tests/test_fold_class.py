@@ -194,7 +194,7 @@ def test_train_fold_class_card(data_dir: Path, tmp_path: Path) -> None:
     assert set(test["per_class"]) == set(CLASSES)
     assert set(test["calibration"]["per_class"]) == set(CLASSES)
     assert test["confidence"]["accuracy"] > 0.9
-    assert card["data"]["robots"]["test"] == [ROBOT]
+    assert card["data"]["test"]["robots"] == [ROBOT]
     by_robot = card["selection"]["cv_by_robot"]
     assert set(by_robot) == {ROBOT}
     assert by_robot[ROBOT]["accuracy"] > 0.9
@@ -211,7 +211,7 @@ def test_train_fold_class_card(data_dir: Path, tmp_path: Path) -> None:
     assert "#87" in caveats["triangle_fold"]
     assert "#103" in caveats["label_leakage"]
     assert "#91" in caveats["scope"]
-    assert ROBOT in caveats["single_robot_holdout"]
+    assert ROBOT in caveats["holdout"]
 
 
 def test_geometry_skipped_without_vision(data_dir: Path, tmp_path) -> None:
