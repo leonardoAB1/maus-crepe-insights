@@ -56,7 +56,7 @@ robots therefore looks predictive when the robots are pooled.
   Lightness is a robot proxy and is used only as this check.
 
 A single time-ordered holdout cannot fix this, because the latest runs are all
-one robot (see [frames](../frames.md)).
+one robot (see [frames](../vision/frames.md)).
 
 ## Robot-adjusted effects (primary result)
 

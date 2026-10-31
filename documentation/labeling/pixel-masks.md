@@ -90,7 +90,7 @@ Inspect previews and refine boundaries and classes before treating any mask as
 ground truth. The synthetic example in `assets/pixel-mask-example.png` includes
 a deliberately dark stain that becomes a false hole, showing why review matters.
 
-![Synthetic example: a dark stain becomes a false hole](../assets/pixel-mask-example.png)
+![Synthetic example: a dark stain becomes a false hole](../../assets/pixel-mask-example.png)
 
 ## Prefill untouched mask tasks in either set
 

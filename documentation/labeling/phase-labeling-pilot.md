@@ -82,7 +82,7 @@ pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
 Authenticate through the exporter's normal OAuth browser flow using **your own
 Maus account**. Tokens remain in `~/.maus-export/`; never paste them into chat,
 a public issue or Git. Maus access is independent of GitHub repository access.
-See [data access](data/data.md) for the exporter's broader workflow.
+See [data access](../data/data.md) for the exporter's broader workflow.
 
 Choose a date window with at least 50 accessible runs, including tests. Fetch
 above downloads all visible runs/videos in that window; video storage can be

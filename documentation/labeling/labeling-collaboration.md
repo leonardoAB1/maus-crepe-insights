@@ -6,7 +6,7 @@ feature checkout and exact collaborator/agent commands; existing annotation
 workspaces are reused, not replaced.
 
 This is the complete handoff runbook for the dataset owner, the collaborator
-and an agent helping either person. Read the repository's [AGENTS.md](../AGENTS.md)
+and an agent helping either person. Read the repository's [AGENTS.md](../../AGENTS.md)
 first. Those remain the project rules; this guide explains the labeling workflow.
 
 ## Read this before doing anything

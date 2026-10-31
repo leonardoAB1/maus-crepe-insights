@@ -22,7 +22,7 @@ Nothing becomes a human annotation until you review it and click Submit.
 - Reruns skip existing predictions. There is deliberately no force-overwrite
   or automatic lock/draft deletion option.
 
-Read [AGENTS.md](../AGENTS.md) first. This guide supplements the operating
+Read [AGENTS.md](../../AGENTS.md) first. This guide supplements the operating
 workflow; it is not a second agent rulebook.
 
 ## 1. Get the feature without disturbing your data
