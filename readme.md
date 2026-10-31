@@ -29,8 +29,8 @@ it.
   [code/models](code/models/README.md)
 - Why runs fail: [crêpe stages](documentation/system/crepe-stages.md)
 - Labeling:
-  [private phase pilot](documentation/phase-labeling-pilot.md) and
-  [material and hole masks](documentation/mask-labeling.md)
+  [private phase pilot](documentation/labeling/phase-labeling-pilot.md) and
+  [material and hole masks](documentation/labeling/mask-labeling.md)
 - Fine-tuning against predictions: [project status](documentation/status.md)
 
 ## Where the project stands
@@ -331,11 +331,11 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Candidate run-start dataset](documentation/training/training-dataset.md)
 - [Data preparation handoff](documentation/training/data-preparation-handoff.md)
 - [Vision-target training dataset](documentation/training/vision-targets.md)
-- [Frame-level check dataset](documentation/frames.md)
-- [Frame embeddings](documentation/frame-embeddings.md)
-- [Private phase-labeling pilot](documentation/phase-labeling-pilot.md)
-- [Camera rectification](documentation/rectification.md)
-- [Per-robot correction](documentation/robot-correction.md)
+- [Frame-level check dataset](documentation/vision/frames.md)
+- [Frame embeddings](documentation/vision/frame-embeddings.md)
+- [Private phase-labeling pilot](documentation/labeling/phase-labeling-pilot.md)
+- [Camera rectification](documentation/vision/rectification.md)
+- [Per-robot correction](documentation/vision/robot-correction.md)
 
 ## License
 PolyForm Noncommercial 1.0.0 - see [license.txt](license.txt).

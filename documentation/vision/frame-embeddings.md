@@ -2,7 +2,7 @@
 
 `data/training/frame_embeddings.parquet` caches one frozen-CNN embedding per
 raw check frame, so classifier heads can train in seconds on a CPU. The model
-is [`code/models/frame-embedder/`](../code/models/frame-embedder/README.md).
+is [`code/models/frame-embedder/`](../../code/models/frame-embedder/README.md).
 
 ## Build
 

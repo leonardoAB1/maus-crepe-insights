@@ -45,4 +45,4 @@ pixi run -e ml embed   # cache -> data/training/frame_embeddings.parquet
 ```
 
 `export.py` fails if torch and onnxruntime differ by more than `1e-4`. See
-[frame embeddings](../../../documentation/frame-embeddings.md) for the cache.
+[frame embeddings](../../../documentation/vision/frame-embeddings.md) for the cache.
