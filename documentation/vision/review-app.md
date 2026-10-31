@@ -20,19 +20,20 @@ are.
 
 ## The page
 
-Kept deliberately small: three cards, big text, and the masks drawn on the
-video. More layers can be added without touching what is there.
+One screen, nothing scrolls: a title bar, the video, and a control deck in one
+line under it.
 
-- **The video** with a canvas overlay. Only the masks are drawn on it: material
-  in a translucent green, holes in red, the colours the labeling project uses.
-- **Right now**: the fold state in large type, then the model state, the
-  deviation score, the check and its recorded verdict, with the phase sequence
-  and the producer's notes as small print underneath.
-- **States in this clip**: a ring of the states in the recorded frames with the
-  share of each, so a run reads at a glance.
-- **Layers**: which producer answers, and whether material and holes are drawn.
-- **The timeline**, under the video: one coloured segment per recorded frame,
-  click to jump.
+- **The title bar**: the fold-state colours as a legend, and the frame counter
+  in large type.
+- **The video** in the middle, in a framed viewport, with a canvas overlay. Only
+  the masks are drawn on it: material in a translucent green, holes in red, the
+  colours the labeling project uses.
+- **The control deck**, one line, left to right: the deviation score per frame
+  as a strip with the review threshold, the fold states as a track with the
+  playhead, then the readouts (state, model, deviation, check, recorded), then
+  the producer and the mask switches.
+- The track is clickable: click anywhere to jump there. The title bar and the
+  deck name what the colours and the numbers are, so nothing needs a lookup.
 
 The page is re-read on every request, so an edit to `viewer.html` shows up on a
 refresh without restarting the app.
