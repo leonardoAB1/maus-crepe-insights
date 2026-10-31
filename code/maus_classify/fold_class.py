@@ -14,6 +14,7 @@ Needs the ml environment: `pixi run -e ml fold-class`.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -465,7 +466,8 @@ def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
     sess = ort.InferenceSession(
         str(model_dir / "model.onnx"), providers=["CPUExecutionProvider"]
     )
-    classes = list(CLASSES)  # sklearn order, as in model.json
+    card = json.loads((model_dir / "model.json").read_text(encoding="utf-8"))
+    classes = card["outputs"][1]["classes"]
 
     def scored(rows: pd.DataFrame) -> pd.DataFrame:
         proba = predict(sess, rows[cols].to_numpy())
@@ -474,14 +476,17 @@ def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
             confidence=proba.max(axis=1),
         )
 
-    def tile(row: pd.Series, truth: str, note: str = "") -> Example:
+    def tile(
+        row: pd.Series, label: str, note: str = "", truth: str = ""
+    ) -> Example:
         return Example(
             image=load_frame(data_dir / row["frame_path"]),
-            truth=truth,
+            truth=truth or label,
             predicted=row["predicted"],
             confidence=float(row["confidence"]),
             robot=str(row["robot"]),
             note=note,
+            agree=row["predicted"] == label,
         )
 
     test = scored(df[(df["split"] == TEST) & df["label"].notna()])
@@ -500,8 +505,9 @@ def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
             tiles.append(
                 tile(
                     row,
-                    f"{case['expected']} (fold2 did nothing)",
+                    case["expected"],
                     "known FAIL: sideways half",
+                    f"{case['expected']} (fold2 did nothing)",
                 )
             )
     errors = test[test["predicted"] != test["label"]]
