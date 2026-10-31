@@ -45,33 +45,39 @@ These are weak labels:
 Failed checks have no label and are left out. The holdout is the
 chronological, run-grouped split fixed in the frame table.
 
-## Results (holdout, latest 20% of runs)
+## Results (holdout, latest 20% of runs within each robot)
 
-| class | frames | accuracy |
+The holdout mixes all three robots with data (quin, otto, pixi); see the
+per-robot split in [documentation/frames.md](../../../documentation/frames.md).
+
+| class | frames | recall |
 |---|---|---|
-| empty | 30 | 1.00 |
-| flat | 16 | 0.94 |
-| half | 13 | 0.92 |
-| quarter | 14 | 1.00 |
+| empty | 34 | 1.00 |
+| flat | 22 | 1.00 |
+| half | 28 | 0.96 |
+| quarter | 26 | 1.00 |
 
-- **Accuracy:** 71 of 73 correct (0.97). Mean top-class confidence is also
-  0.97.
-- **Calibration:** per-class expected calibration error is 0.035 or less.
-- **Holdout scope:** all holdout runs come from one robot (pixi); the other
-  robots are only in train.
+- **Accuracy:** 109 of 110 correct. Balanced accuracy 0.99 (95% run
+  bootstrap 0.97 to 1.00).
+- **Beats the null:** p = 0.001 against 1,000 refits on train labels
+  shuffled within each robot.
+- **Per robot (holdout):** otto 1.00, pixi 0.97, quin 1.00.
+- **Leave one robot out:** otto 1.00, pixi 0.89, quin 0.73. Every robot beats
+  the majority baseline, so the card says it generalizes. A model trained
+  without quin drops the most, because quin is most of the data.
+- **Calibration:** mean Brier score 0.002.
 
-Training CV per robot (run-grouped, out-of-fold, train rows only). Every
-robot is in train, so this is not a leave-one-robot-out test:
+Training CV per robot (run-grouped, out-of-fold, train rows only):
 
 | robot | frames | accuracy | log loss |
 |---|---|---|---|
-| quin | 360 | 1.00 | 0.01 |
-| pixi | 55 | 0.95 | 0.18 |
-| otto | 14 | 1.00 | 0.05 |
+| quin | 295 | 1.00 | 0.02 |
+| pixi | 89 | 0.96 | 0.14 |
+| otto | 8 | 1.00 | 0.02 |
 
-Training is mostly quin. pixi is harder and has few half and quarter frames
-in train. Cross-robot generalization is unproven until the per-robot split
-and leave-one-robot-out metrics (#102) land.
+The label comes from which check took the frame, so a high score can partly
+mean "recognizes the check pose" rather than "reads the fold". The leakage
+check is part of #104.
 
 ## Sanity checks (frames the head never saw a label for)
 

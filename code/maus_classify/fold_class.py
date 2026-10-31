@@ -26,10 +26,8 @@ from sklearn.model_selection import GroupKFold, cross_val_predict
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from maus_export.doe_analyze import dump_json
-
 from .check_verdict import embedding_columns
-from .harness import ONNX_INPUT, ONNX_PROBA, train_and_evaluate
+from .harness import ONNX_INPUT, ONNX_PROBA, train_and_evaluate, write_card
 from .split import TEST, TRAIN
 
 NAME = "fold-class"
@@ -380,6 +378,7 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
         feature_names=cols,
         out_dir=out_dir,
         timestamps=labeled["ts_utc"].to_numpy(),
+        robots=labeled["robot"].fillna("unknown").to_numpy(),
         description=(
             "Fold state of the crepe from one raw check frame of a "
             "successful step: empty pan, flat, half or quarter, with "
@@ -405,10 +404,6 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
             for side, mask in ((TRAIN, train), (TEST, test))
         },
     }
-    card["data"]["robots"] = {
-        side: sorted(labeled.loc[mask, "robot"].dropna().unique().tolist())
-        for side, mask in ((TRAIN, train), (TEST, test))
-    }
     card["features"] = {
         "source": "data/training/frame_embeddings.parquet",
         "embedder": "code/models/frame-embedder (preprocess first)",
@@ -432,15 +427,9 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
         y[test], predict(sess, X[test]), classes
     )
     card["sanity_checks"] = sanity_checks(sess, df, vision, cols, classes)
-    card["caveats"] = CAVEATS | {
-        "single_robot_holdout": (
-            "The holdout is the latest runs, which all come from "
-            f"{', '.join(card['data']['robots'][TEST])}; other robots are "
-            "only in train."
-        )
-    }
+    card["caveats"] = CAVEATS | {"holdout": card["data"]["holdout_note"]}
     card["out_of_scope"] = "edge angle for plate alignment"
-    dump_json(card, out_dir / "model.json")
+    write_card(card, out_dir / "model.json")
     return card
 
 

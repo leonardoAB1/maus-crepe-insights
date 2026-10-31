@@ -36,3 +36,40 @@ def holdout_split(
     cutoff = ordered.iloc[len(ordered) - n_test]
     split = (run_starts >= cutoff).map({True: TEST, False: TRAIN})
     return split.rename("split")
+
+
+# Version of the split rule, recorded in frames.parquet and model cards.
+# v1: latest TEST_FRAC of all runs. v2: latest TEST_FRAC within each robot.
+SPLIT_VERSION = "robot-chrono-v2"
+# A robot needs at least this many runs to give any to test
+MIN_RUNS_FOR_TEST = 5
+UNKNOWN_ROBOT = "unknown"
+
+
+def robot_split(
+    run_starts: pd.Series,
+    robots: pd.Series,
+    test_frac: float = TEST_FRAC,
+    min_runs: int = MIN_RUNS_FOR_TEST,
+) -> pd.Series:
+    """Map run id -> "train" / "test", chronological within each robot.
+
+    Each robot's latest `test_frac` of runs form its test part, with ties
+    kept together as in `holdout_split`, so test mixes every robot and is
+    still later data within each one. A robot with fewer than `min_runs`
+    runs stays in train. `robots` is indexed like `run_starts`; a missing
+    robot counts as UNKNOWN_ROBOT.
+    """
+    if not run_starts.index.equals(robots.index):
+        raise ValueError("run_starts and robots need the same run ids")
+    if run_starts.empty:
+        return pd.Series([], dtype=object, name="split")
+    robots = robots.fillna(UNKNOWN_ROBOT).astype(str)
+    parts = []
+    for robot in sorted(robots.unique()):
+        starts = run_starts[robots == robot]
+        if len(starts) < min_runs:
+            parts.append(pd.Series(TRAIN, index=starts.index))
+        else:
+            parts.append(holdout_split(starts, test_frac))
+    return pd.concat(parts).reindex(run_starts.index).rename("split")

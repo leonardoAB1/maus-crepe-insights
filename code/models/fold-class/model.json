@@ -614,63 +614,70 @@
     }
   ],
   "data": {
-    "split": "chronological, run-grouped holdout (frames.split)",
+    "split": "chronological within each robot, run-grouped (frames.split)",
+    "split_version": "robot-chrono-v2",
     "train": {
-      "n_rows": 429,
-      "n_runs": 108,
+      "n_rows": 392,
+      "n_runs": 104,
       "run_id_min": 3115,
-      "run_id_max": 3296,
+      "run_id_max": 3336,
       "ts_utc_min": "2026-10-13T11:25:33+00:00",
-      "ts_utc_max": "2026-10-28T15:48:05+00:00"
-    },
-    "test": {
-      "n_rows": 73,
-      "n_runs": 26,
-      "run_id_min": 3299,
-      "run_id_max": 3350,
-      "ts_utc_min": "2026-10-28T15:56:16+00:00",
-      "ts_utc_max": "2026-10-30T16:56:38+00:00"
-    },
-    "robots": {
-      "train": [
+      "ts_utc_max": "2026-10-30T15:15:06+00:00",
+      "robots": [
         "maus-otto",
         "maus-pixi",
         "maus-quin"
-      ],
-      "test": [
-        "maus-pixi"
       ]
-    }
+    },
+    "test": {
+      "n_rows": 110,
+      "n_runs": 30,
+      "run_id_min": 3200,
+      "run_id_max": 3350,
+      "ts_utc_min": "2026-10-20T07:38:43+00:00",
+      "ts_utc_max": "2026-10-30T16:56:38+00:00",
+      "robots": [
+        "maus-otto",
+        "maus-pixi",
+        "maus-quin"
+      ]
+    },
+    "robots": [
+      "maus-otto",
+      "maus-pixi",
+      "maus-quin"
+    ],
+    "holdout_note": "The holdout covers robot(s) maus-otto, maus-pixi, maus-quin."
   },
   "metrics": {
     "test": {
-      "n": 73,
-      "balanced_accuracy": 0.9651442307692308,
-      "f1_macro": 0.9640840249850262,
+      "n": 110,
+      "balanced_accuracy": 0.9910714285714286,
+      "f1_macro": 0.9907375643224701,
       "per_class": {
         "empty": {
           "precision": 1.0,
           "recall": 1.0,
           "f1": 1.0,
-          "support": 30
+          "support": 34
         },
         "flat": {
           "precision": 1.0,
-          "recall": 0.9375,
-          "f1": 0.967741935483871,
-          "support": 16
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 22
         },
         "half": {
-          "precision": 0.9230769230769231,
-          "recall": 0.9230769230769231,
-          "f1": 0.9230769230769231,
-          "support": 13
+          "precision": 1.0,
+          "recall": 0.9642857142857143,
+          "f1": 0.9818181818181818,
+          "support": 28
         },
         "quarter": {
-          "precision": 0.9333333333333333,
+          "precision": 0.9629629629629629,
           "recall": 1.0,
-          "f1": 0.9655172413793104,
-          "support": 14
+          "f1": 0.9811320754716981,
+          "support": 26
         }
       },
       "confusion_matrix": {
@@ -682,133 +689,533 @@
         ],
         "rows_true_cols_pred": [
           [
-            30,
+            34,
             0,
             0,
             0
           ],
           [
             0,
-            15,
-            1,
+            22,
+            0,
             0
           ],
           [
             0,
             0,
-            12,
+            27,
             1
           ],
           [
             0,
             0,
             0,
-            14
+            26
           ]
         ]
       },
       "calibration": {
         "per_class": {
           "empty": {
-            "brier": 0.00040819240804845753,
-            "ece": 0.012581404158207651,
+            "brier": 0.0004204343239954748,
+            "ece": 0.006655653013678436,
             "bins": {
               "mean_predicted": [
-                0.009555744883136656,
-                0.9830817759037018
+                0.003340523774580409,
+                0.1900094896554947,
+                0.9914244010167963
               ],
               "fraction_positive": [
+                0.0,
                 0.0,
                 1.0
               ]
             }
           },
           "flat": {
-            "brier": 0.012282195823516147,
-            "ece": 0.01297059390783208,
+            "brier": 3.8914025513705195e-06,
+            "ece": 0.001372180785983801,
             "bins": {
               "mean_predicted": [
-                0.0013472476903816327,
-                0.9983336448669433
+                0.001376522617936809,
+                0.9986453218893572
               ],
               "fraction_positive": [
-                0.017241379310344827,
+                0.0,
                 1.0
               ]
             }
           },
           "half": {
-            "brier": 0.010184732531379422,
-            "ece": 0.02830129109756791,
+            "brier": 0.003125432393484408,
+            "ece": 0.016479836886918002,
             "bins": {
               "mean_predicted": [
-                0.00509063892833044,
-                0.3751527667045593,
-                0.5002807974815369,
-                0.7231678366661072,
-                0.9669375094500455
+                0.005368352473683276,
+                0.1103057786822319,
+                0.48506659269332886,
+                0.8715127408504486,
+                0.9801706886291504
               ],
               "fraction_positive": [
                 0.0,
-                1.0,
                 0.0,
+                1.0,
                 1.0,
                 1.0
               ]
             }
           },
           "quarter": {
-            "brier": 0.009271001251769127,
-            "ece": 0.03425639122724533,
+            "brier": 0.003788175215912042,
+            "ece": 0.01972640851004557,
             "bins": {
               "mean_predicted": [
-                0.012540051169984119,
-                0.27592626214027405,
-                0.40889284014701843,
-                0.6174174547195435,
-                0.964554522718702
+                0.007053543300066344,
+                0.12601303681731224,
+                0.5026840567588806,
+                0.695841372013092,
+                0.978412024974823
               ],
               "fraction_positive": [
                 0.0,
                 0.0,
                 0.0,
-                0.0,
+                1.0,
                 1.0
               ]
             }
           }
         },
-        "brier_mean": 0.008036530503678288
+        "brier_mean": 0.0018344833339858238
       },
       "confidence": {
-        "accuracy": 0.9726027397260274,
-        "mean_confidence": 0.9650465250015259,
+        "accuracy": 0.990909090909091,
+        "mean_confidence": 0.9780431389808655,
         "per_true_class_accuracy": {
           "empty": 1.0,
-          "flat": 0.9375,
-          "half": 0.9230769230769231,
+          "flat": 1.0,
+          "half": 0.9642857142857143,
           "quarter": 1.0
         },
         "per_predicted_class": {
           "empty": {
-            "n_predicted": 30,
-            "mean_confidence": 0.9830817580223083,
+            "n_predicted": 34,
+            "mean_confidence": 0.9914243221282959,
             "accuracy": 1.0
           },
           "flat": {
-            "n_predicted": 15,
-            "mean_confidence": 0.9983336925506592,
+            "n_predicted": 22,
+            "mean_confidence": 0.9986451864242554,
             "accuracy": 1.0
           },
           "half": {
-            "n_predicted": 13,
-            "mean_confidence": 0.9122893810272217,
-            "accuracy": 0.9230769230769231
+            "n_predicted": 27,
+            "mean_confidence": 0.9721218943595886,
+            "accuracy": 1.0
           },
           "quarter": {
-            "n_predicted": 15,
-            "mean_confidence": 0.9414120316505432,
-            "accuracy": 0.9333333333333333
+            "n_predicted": 27,
+            "mean_confidence": 0.9503269195556641,
+            "accuracy": 0.9629629629629629
+          }
+        }
+      }
+    },
+    "per_robot": {
+      "test": {
+        "maus-otto": {
+          "n": 6,
+          "balanced_accuracy": 1.0,
+          "f1_macro": 1.0,
+          "per_class": {
+            "empty": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "flat": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 1
+            },
+            "half": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "quarter": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 1
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "empty",
+              "flat",
+              "half",
+              "quarter"
+            ],
+            "rows_true_cols_pred": [
+              [
+                2,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                2,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1
+              ]
+            ]
+          },
+          "calibration": {
+            "per_class": {
+              "empty": {
+                "brier": 0.006201154118965248,
+                "ece": 0.03930840501561761,
+                "bins": {
+                  "mean_predicted": [
+                    0.013668444803139815,
+                    0.1900094896554947,
+                    0.997582197189331
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    0.0,
+                    1.0
+                  ]
+                }
+              },
+              "flat": {
+                "brier": 1.4138948073785825e-05,
+                "ece": 0.002650219985904793,
+                "bins": {
+                  "mean_predicted": [
+                    0.002980481117265299,
+                    0.9990010857582092
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0
+                  ]
+                }
+              },
+              "half": {
+                "brier": 0.002804190150387706,
+                "ece": 0.032928870913262166,
+                "bins": {
+                  "mean_predicted": [
+                    0.0013612271674598257,
+                    0.1103057786822319,
+                    0.9584081172943115
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    0.0,
+                    1.0
+                  ]
+                }
+              },
+              "quarter": {
+                "brier": 0.015539313308032534,
+                "ece": 0.05617149484654267,
+                "bins": {
+                  "mean_predicted": [
+                    0.006574068673216971,
+                    0.695841372013092
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0
+                  ]
+                }
+              }
+            },
+            "brier_mean": 0.0061396991313648185
+          }
+        },
+        "maus-pixi": {
+          "n": 39,
+          "balanced_accuracy": 0.96875,
+          "f1_macro": 0.9701754385964912,
+          "per_class": {
+            "empty": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 14
+            },
+            "flat": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 8
+            },
+            "half": {
+              "precision": 1.0,
+              "recall": 0.875,
+              "f1": 0.9333333333333333,
+              "support": 8
+            },
+            "quarter": {
+              "precision": 0.9,
+              "recall": 1.0,
+              "f1": 0.9473684210526315,
+              "support": 9
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "empty",
+              "flat",
+              "half",
+              "quarter"
+            ],
+            "rows_true_cols_pred": [
+              [
+                14,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                8,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                7,
+                1
+              ],
+              [
+                0,
+                0,
+                0,
+                9
+              ]
+            ]
+          },
+          "calibration": {
+            "per_class": {
+              "empty": {
+                "brier": 0.0001901535460760875,
+                "ece": 0.008179294996154614,
+                "bins": {
+                  "mean_predicted": [
+                    0.007072353922994807,
+                    0.9898439688341958
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0
+                  ]
+                }
+              },
+              "flat": {
+                "brier": 1.472440489709043e-06,
+                "ece": 0.0009409149478858289,
+                "bins": {
+                  "mean_predicted": [
+                    0.0007700215158570979,
+                    0.9983968958258629
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0
+                  ]
+                }
+              },
+              "half": {
+                "brier": 0.007731843392432218,
+                "ece": 0.027557361130722057,
+                "bins": {
+                  "mean_predicted": [
+                    0.006961840417070855,
+                    0.48506659269332886,
+                    0.8636460304260254,
+                    0.9653945664564768
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                }
+              },
+              "quarter": {
+                "brier": 0.007655720461763431,
+                "ece": 0.03155975655103341,
+                "bins": {
+                  "mean_predicted": [
+                    0.009891785533227448,
+                    0.13447730243206024,
+                    0.5026840567588806,
+                    0.9648112389776442
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ]
+                }
+              }
+            },
+            "brier_mean": 0.0038947974601903613
+          }
+        },
+        "maus-quin": {
+          "n": 65,
+          "balanced_accuracy": 1.0,
+          "f1_macro": 1.0,
+          "per_class": {
+            "empty": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 18
+            },
+            "flat": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 13
+            },
+            "half": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 18
+            },
+            "quarter": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 16
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "empty",
+              "flat",
+              "half",
+              "quarter"
+            ],
+            "rows_true_cols_pred": [
+              [
+                18,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                13,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                18,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                16
+              ]
+            ]
+          },
+          "calibration": {
+            "per_class": {
+              "empty": {
+                "brier": 2.499788659605102e-05,
+                "ece": 0.002727319777477533,
+                "bins": {
+                  "mean_predicted": [
+                    0.0006962787363668309,
+                    0.9919694264729818
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0
+                  ]
+                }
+              },
+              "flat": {
+                "brier": 4.396852509375225e-06,
+                "ece": 0.0015129244886338713,
+                "bins": {
+                  "mean_predicted": [
+                    0.0015838638038565898,
+                    0.9987708330154419
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0
+                  ]
+                }
+              },
+              "half": {
+                "brier": 0.0003912389242477248,
+                "ece": 0.008314965285647374,
+                "bins": {
+                  "mean_predicted": [
+                    0.0045731024667397735,
+                    0.8793794512748718,
+                    0.987946093082428
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    1.0,
+                    1.0
+                  ]
+                }
+              },
+              "quarter": {
+                "brier": 0.00038292762912854784,
+                "ece": 0.00926224566422976,
+                "bins": {
+                  "mean_predicted": [
+                    0.0054478472710191754,
+                    0.11754877120256424,
+                    0.9860624670982361
+                  ],
+                  "fraction_positive": [
+                    0.0,
+                    0.0,
+                    1.0
+                  ]
+                }
+              }
+            },
+            "brier_mean": 0.00020089032312042474
           }
         }
       }
@@ -819,21 +1226,618 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "52b62fa47b8acf98585d073164978ebf3f00a71e",
+  "commit": "806d157f1cf18ccaace6869ecf65b350bd122a74",
+  "leave_one_robot_out": {
+    "maus-otto": {
+      "n": 14,
+      "balanced_accuracy": 1.0,
+      "f1_macro": 1.0,
+      "per_class": {
+        "empty": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "flat": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "half": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "quarter": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "empty",
+          "flat",
+          "half",
+          "quarter"
+        ],
+        "rows_true_cols_pred": [
+          [
+            6,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            6,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "calibration": {
+        "per_class": {
+          "empty": {
+            "brier": 0.015489894607852096,
+            "ece": 0.06635386177471705,
+            "bins": {
+              "mean_predicted": [
+                0.03033685580594465,
+                0.22421981394290924,
+                0.3257974684238434,
+                0.9994944930076599
+              ],
+              "fraction_positive": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "flat": {
+            "brier": 9.03361499774789e-05,
+            "ece": 0.005022702838427254,
+            "bins": {
+              "mean_predicted": [
+                0.005345012238719322,
+                0.9991673231124878
+              ],
+              "fraction_positive": [
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "half": {
+            "brier": 0.0286262002244461,
+            "ece": 0.08104408525728753,
+            "bins": {
+              "mean_predicted": [
+                0.0013817006879435212,
+                0.5375842452049255,
+                0.6016692519187927,
+                0.8457034826278687,
+                0.9638264576594034
+              ],
+              "fraction_positive": [
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "quarter": {
+            "brier": 0.0057160627660515296,
+            "ece": 0.03948579169809818,
+            "bins": {
+              "mean_predicted": [
+                0.008420203897747508,
+                0.12213152647018433,
+                0.7840842008590698
+              ],
+              "fraction_positive": [
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          }
+        },
+        "brier_mean": 0.012480623437081801
+      },
+      "n_train": 488,
+      "intervals": {
+        "method": "descriptive: bootstrap of runs",
+        "level": 0.95,
+        "n_boot": 1000,
+        "n_runs": 6,
+        "metrics": {
+          "balanced_accuracy": {
+            "value": 1.0,
+            "ci95": [
+              1.0,
+              1.0
+            ]
+          },
+          "f1_macro": {
+            "value": 1.0,
+            "ci95": [
+              0.5,
+              1.0
+            ]
+          }
+        }
+      }
+    },
+    "maus-pixi": {
+      "n": 128,
+      "balanced_accuracy": 0.8850796568627451,
+      "f1_macro": 0.8812437504552648,
+      "per_class": {
+        "empty": {
+          "precision": 1.0,
+          "recall": 0.9833333333333333,
+          "f1": 0.9915966386554622,
+          "support": 60
+        },
+        "flat": {
+          "precision": 1.0,
+          "recall": 0.96875,
+          "f1": 0.9841269841269841,
+          "support": 32
+        },
+        "half": {
+          "precision": 0.6785714285714286,
+          "recall": 1.0,
+          "f1": 0.8085106382978723,
+          "support": 19
+        },
+        "quarter": {
+          "precision": 1.0,
+          "recall": 0.5882352941176471,
+          "f1": 0.7407407407407407,
+          "support": 17
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "empty",
+          "flat",
+          "half",
+          "quarter"
+        ],
+        "rows_true_cols_pred": [
+          [
+            59,
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            31,
+            1,
+            0
+          ],
+          [
+            0,
+            0,
+            19,
+            0
+          ],
+          [
+            0,
+            0,
+            7,
+            10
+          ]
+        ]
+      },
+      "calibration": {
+        "per_class": {
+          "empty": {
+            "brier": 0.010690492350582493,
+            "ece": 0.02157115093723405,
+            "bins": {
+              "mean_predicted": [
+                0.011314045638798797,
+                0.14929492622613907,
+                0.37444958090782166,
+                0.8621059954166412,
+                0.9811020974527326
+              ],
+              "fraction_positive": [
+                0.015873015873015872,
+                0.0,
+                0.0,
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "flat": {
+            "brier": 0.007892234643004366,
+            "ece": 0.01318750408518099,
+            "bins": {
+              "mean_predicted": [
+                0.0008491386008676479,
+                0.9751494565317708
+              ],
+              "fraction_positive": [
+                0.010309278350515464,
+                1.0
+              ]
+            }
+          },
+          "half": {
+            "brier": 0.05157603783212489,
+            "ece": 0.08100441511487588,
+            "bins": {
+              "mean_predicted": [
+                0.017892628727207448,
+                0.14901394248008729,
+                0.20327511429786682,
+                0.3744041621685028,
+                0.49999117851257324,
+                0.5344069004058838,
+                0.6118485927581787,
+                0.8878659605979919,
+                0.9827526548634404
+              ],
+              "fraction_positive": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.8260869565217391
+              ]
+            }
+          },
+          "quarter": {
+            "brier": 0.04771917127537598,
+            "ece": 0.06376019426534185,
+            "bins": {
+              "mean_predicted": [
+                0.007428989270572303,
+                0.1025070771574974,
+                0.3610209971666336,
+                0.566912829875946,
+                0.6373681724071503,
+                0.7522170941034952,
+                0.8315329949061075
+              ],
+              "fraction_positive": [
+                0.034782608695652174,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          }
+        },
+        "brier_mean": 0.02946948402527193
+      },
+      "n_train": 374,
+      "intervals": {
+        "method": "descriptive: bootstrap of runs",
+        "level": 0.95,
+        "n_boot": 1000,
+        "n_runs": 54,
+        "metrics": {
+          "balanced_accuracy": {
+            "value": 0.8850796568627451,
+            "ci95": [
+              0.8199585941261436,
+              0.9444515971316818
+            ]
+          },
+          "f1_macro": {
+            "value": 0.8812437504552648,
+            "ci95": [
+              0.8043730489862143,
+              0.9428341343666029
+            ]
+          }
+        }
+      }
+    },
+    "maus-quin": {
+      "n": 360,
+      "balanced_accuracy": 0.7295018162947586,
+      "f1_macro": 0.6555923762240721,
+      "per_class": {
+        "empty": {
+          "precision": 1.0,
+          "recall": 0.8936170212765957,
+          "f1": 0.9438202247191011,
+          "support": 94
+        },
+        "flat": {
+          "precision": 0.8348623853211009,
+          "recall": 1.0,
+          "f1": 0.91,
+          "support": 91
+        },
+        "half": {
+          "precision": 0.5636363636363636,
+          "recall": 1.0,
+          "f1": 0.7209302325581395,
+          "support": 93
+        },
+        "quarter": {
+          "precision": 1.0,
+          "recall": 0.024390243902439025,
+          "f1": 0.047619047619047616,
+          "support": 82
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "empty",
+          "flat",
+          "half",
+          "quarter"
+        ],
+        "rows_true_cols_pred": [
+          [
+            84,
+            10,
+            0,
+            0
+          ],
+          [
+            0,
+            91,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            93,
+            0
+          ],
+          [
+            0,
+            8,
+            72,
+            2
+          ]
+        ]
+      },
+      "calibration": {
+        "per_class": {
+          "empty": {
+            "brier": 0.020017177286713008,
+            "ece": 0.04682436541447209,
+            "bins": {
+              "mean_predicted": [
+                0.016047511264941316,
+                0.14159213627378145,
+                0.23383110016584396,
+                0.36487574875354767,
+                0.439961055914561,
+                0.5518264770507812,
+                0.6531328161557516,
+                0.7354015350341797,
+                0.8571406039926741,
+                0.9727598119665075
+              ],
+              "fraction_positive": [
+                0.0,
+                0.16666666666666666,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "flat": {
+            "brier": 0.03325039801046872,
+            "ece": 0.08677216350204416,
+            "bins": {
+              "mean_predicted": [
+                0.027701910028958485,
+                0.13605609794075674,
+                0.24362211757236057,
+                0.3545895181596279,
+                0.45206518471241,
+                0.5520619302988052,
+                0.6674839655558268,
+                0.7582834277834211,
+                0.8640282630920411,
+                0.9737328441746264
+              ],
+              "fraction_positive": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.14285714285714285,
+                0.7,
+                1.0
+              ]
+            }
+          },
+          "half": {
+            "brier": 0.11437203185293383,
+            "ece": 0.15809710127715437,
+            "bins": {
+              "mean_predicted": [
+                0.018227735623666967,
+                0.16171736419200897,
+                0.2462945505976677,
+                0.36102361480395,
+                0.4852262884378433,
+                0.5553192138671875,
+                0.664831565959113,
+                0.7523455115465018,
+                0.8387342776571002,
+                0.9785161187774256
+              ],
+              "fraction_positive": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.14285714285714285,
+                0.9473684210526315
+              ]
+            }
+          },
+          "quarter": {
+            "brier": 0.19713845299097082,
+            "ece": 0.20831016024781598,
+            "bins": {
+              "mean_predicted": [
+                0.010794264922384533,
+                0.14344185590744019,
+                0.25010058283805847,
+                0.5624500513076782,
+                0.6178203225135803
+              ],
+              "fraction_positive": [
+                0.19476744186046513,
+                0.9230769230769231,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          }
+        },
+        "brier_mean": 0.0911945150352716
+      },
+      "n_train": 142,
+      "intervals": {
+        "method": "descriptive: bootstrap of runs",
+        "level": 0.95,
+        "n_boot": 1000,
+        "n_runs": 74,
+        "metrics": {
+          "balanced_accuracy": {
+            "value": 0.7295018162947586,
+            "ci95": [
+              0.7112434659966996,
+              0.7454248639988077
+            ]
+          },
+          "f1_macro": {
+            "value": 0.6555923762240721,
+            "ci95": [
+              0.6326498014811381,
+              0.6789312042062742
+            ]
+          }
+        }
+      }
+    }
+  },
+  "generalization": {
+    "generalizes": true,
+    "rule": "every robot beats the majority baseline (balanced accuracy 0.5) in its holdout and leave-one-robot-out",
+    "not_above_majority": [],
+    "evaluated": [
+      "maus-otto (holdout)",
+      "maus-pixi (holdout)",
+      "maus-quin (holdout)",
+      "maus-otto (leave_one_robot_out)",
+      "maus-pixi (leave_one_robot_out)",
+      "maus-quin (leave_one_robot_out)"
+    ],
+    "not_evaluated": []
+  },
+  "deployable": {
+    "deployable": true,
+    "rule": "holdout balanced accuracy beats the shuffled-label null at p < 0.05",
+    "null": {
+      "value": 0.9910714285714286,
+      "n_perm": 1000,
+      "null_mean": 0.2673242419345361,
+      "null_ci95": [
+        0.1404936974789916,
+        0.397967014603044
+      ],
+      "p_value": 0.000999000999000999,
+      "shuffled": "labels within robot",
+      "metric": "balanced_accuracy"
+    }
+  },
+  "intervals": {
+    "method": "descriptive: bootstrap of runs within robot",
+    "level": 0.95,
+    "n_boot": 1000,
+    "n_runs": 30,
+    "metrics": {
+      "balanced_accuracy": {
+        "value": 0.9910714285714286,
+        "ci95": [
+          0.9722222222222222,
+          1.0
+        ]
+      },
+      "f1_macro": {
+        "value": 0.9907375643224701,
+        "ci95": [
+          0.9711431742508325,
+          1.0
+        ]
+      }
+    }
+  },
   "labels": {
     "rule": "spread ok -> flat, fold1 ok -> half, fold2 ok -> quarter (frames.fold_class); plate_clean ok -> empty",
     "counts": {
       "train": {
-        "empty": 130,
-        "flat": 108,
-        "half": 105,
-        "quarter": 86
+        "empty": 126,
+        "flat": 102,
+        "half": 90,
+        "quarter": 74
       },
       "test": {
-        "empty": 30,
-        "flat": 16,
-        "quarter": 14,
-        "half": 13
+        "empty": 34,
+        "half": 28,
+        "quarter": 26,
+        "flat": 22
       }
     }
   },
@@ -852,49 +1856,47 @@
     "cv": "5-fold run-grouped, train rows only",
     "rule": "smallest C within 5% of the best CV log loss",
     "cv_log_loss": {
-      "0.001": 0.203682763834447,
-      "0.003": 0.10990240239983476,
-      "0.01": 0.0614817914035067,
-      "0.03": 0.0425050502682202,
-      "0.1": 0.03474073665726105,
-      "0.3": 0.03329075985503775,
-      "1.0": 0.035752692855618204,
-      "3.0": 0.03831888346989022,
-      "10.0": 0.03951919783199968,
-      "30.0": 0.04005145112735607
+      "0.001": 0.228058560064538,
+      "0.003": 0.1267656180158305,
+      "0.01": 0.07398283300028156,
+      "0.03": 0.05321201762091552,
+      "0.1": 0.044774931747606675,
+      "0.3": 0.04408432050455632,
+      "1.0": 0.0506336367829629,
+      "3.0": 0.054306272263261714,
+      "10.0": 0.05648882410087165,
+      "30.0": 0.057699565019621465
     },
     "cv_by_robot": {
       "maus-otto": {
-        "n": 14,
+        "n": 8,
         "accuracy": 1.0,
-        "log_loss": 0.04908806378835261,
+        "log_loss": 0.023619110649721685,
         "label_counts": {
-          "half": 6,
-          "empty": 6,
-          "quarter": 1,
-          "flat": 1
+          "half": 4,
+          "empty": 4
         }
       },
       "maus-pixi": {
-        "n": 55,
-        "accuracy": 0.9454545454545454,
-        "log_loss": 0.17477536594462725,
+        "n": 89,
+        "accuracy": 0.9550561797752809,
+        "log_loss": 0.14280439058625832,
         "label_counts": {
-          "empty": 30,
-          "flat": 16,
-          "half": 6,
-          "quarter": 3
+          "empty": 46,
+          "flat": 24,
+          "half": 11,
+          "quarter": 8
         }
       },
       "maus-quin": {
-        "n": 360,
-        "accuracy": 0.9972222222222222,
-        "log_loss": 0.01283422086202362,
+        "n": 295,
+        "accuracy": 0.9966101694915255,
+        "log_loss": 0.01585978245220991,
         "label_counts": {
-          "empty": 94,
-          "half": 93,
-          "flat": 91,
-          "quarter": 82
+          "flat": 78,
+          "empty": 76,
+          "half": 75,
+          "quarter": 66
         }
       }
     }
@@ -906,7 +1908,14 @@
         "expected": "half",
         "check_class": "quarter",
         "holdout": {
-          "n": 0
+          "n": 1,
+          "predicted_share": {
+            "empty": 1.0,
+            "flat": 0.0,
+            "half": 0.0,
+            "quarter": 0.0
+          },
+          "mean_confidence": 0.6879690885543823
         },
         "all_runs": {
           "n": 3,
@@ -916,10 +1925,10 @@
             "half": 0.0,
             "quarter": 0.6666666666666666
           },
-          "mean_confidence": 0.603848397731781
+          "mean_confidence": 0.6136423945426941
         },
         "verdict": "fail",
-        "verdict_basis": "all_runs"
+        "verdict_basis": "holdout"
       },
       "fold1_no_change": {
         "expected": "flat",
@@ -932,7 +1941,7 @@
             "half": 0.0,
             "quarter": 0.0
           },
-          "mean_confidence": 0.9926850199699402
+          "mean_confidence": 0.9959396719932556
         },
         "all_runs": {
           "n": 5,
@@ -942,54 +1951,54 @@
             "half": 0.0,
             "quarter": 0.0
           },
-          "mean_confidence": 0.9952119588851929
+          "mean_confidence": 0.9964747428894043
         },
         "verdict": "pass",
         "verdict_basis": "holdout"
       }
     },
     "plate_present_passed": {
-      "n": 23,
+      "n": 15,
       "predicted_share": {
-        "empty": 0.9565217391304348,
+        "empty": 1.0,
         "flat": 0.0,
         "half": 0.0,
-        "quarter": 0.043478260869565216
+        "quarter": 0.0
       },
-      "mean_confidence": 0.9749184250831604,
+      "mean_confidence": 0.9899186491966248,
       "expected": "empty",
       "verdict": "pass"
     },
     "failed_fold_checks": {
       "fold1": {
-        "n": 7,
+        "n": 4,
         "predicted_share": {
           "empty": 0.0,
-          "flat": 0.2857142857142857,
-          "half": 0.5714285714285714,
-          "quarter": 0.14285714285714285
+          "flat": 0.5,
+          "half": 0.5,
+          "quarter": 0.0
         },
-        "mean_confidence": 0.9236740469932556
+        "mean_confidence": 0.9942034482955933
       },
       "fold2": {
         "n": 5,
         "predicted_share": {
-          "empty": 0.0,
+          "empty": 0.2,
           "flat": 0.2,
           "half": 0.0,
-          "quarter": 0.8
+          "quarter": 0.6
         },
-        "mean_confidence": 0.771147608757019
+        "mean_confidence": 0.8706974983215332
       },
       "spread": {
-        "n": 13,
+        "n": 12,
         "predicted_share": {
-          "empty": 0.07692307692307693,
-          "flat": 0.8461538461538461,
+          "empty": 0.08333333333333333,
+          "flat": 0.9166666666666666,
           "half": 0.0,
-          "quarter": 0.07692307692307693
+          "quarter": 0.0
         },
-        "mean_confidence": 0.9133781790733337
+        "mean_confidence": 0.9822914600372314
       }
     }
   },
@@ -999,7 +2008,7 @@
     "label_leakage": "Weak labels: the class equals the check that took the frame. The head may learn check-specific camera timing or plate state instead of the fold shape. sanity_checks.geometry tests this with failed folds that changed nothing (small n, stated there). Still-flat crepes after a failed fold1 are named flat (pass). Still-half crepes after a failed fold2 are never named half (fail): by eye they are half folds turned sideways, which no training frame shows, and the head reads the wedge as quarter or the pan as empty. The likely cause is rotation: the head reads the wedge's orientation, not the fold, so half vs quarter is only shown to work in the robot's normal fold pose. Follow-up: rotation augmentation (#103) and rotation robustness plus the check against human labels on video frames (#104).",
     "empty": "empty is learned from passed plate_clean frames only and tested on passed plate_present frames, a check it never trained on.",
     "failed_checks": "Failed checks are excluded from training because their true state is unknown.",
-    "single_robot_holdout": "The holdout is the latest runs, which all come from maus-pixi; other robots are only in train."
+    "holdout": "The holdout covers robot(s) maus-otto, maus-pixi, maus-quin."
   },
   "out_of_scope": "edge angle for plate alignment"
 }
