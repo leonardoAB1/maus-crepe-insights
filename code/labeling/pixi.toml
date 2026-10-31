@@ -17,4 +17,6 @@ prepare = "python ../maus_export/phase_pilot.py"
 start = "python workflow.py start"
 setup = "python workflow.py setup"
 export-masks = "python mask_export.py"
-test = { cmd = "python -m pytest ../tests/test_labeling_workflow.py ../tests/test_phase_pilot.py ../tests/test_mask_labeling.py -q", env = { PYTHONPATH = ".." } }
+label-sets = "python collaboration.py"
+label-set = "python collaboration.py start"
+test = { cmd = "python -m pytest ../tests/test_labeling_workflow.py ../tests/test_phase_pilot.py ../tests/test_mask_labeling.py ../tests/test_labeling_sets.py -q", env = { PYTHONPATH = ".." } }

@@ -16,6 +16,7 @@ Browse the guides by subject:
 - [Vision-target dataset](training/vision-targets.md)
 - [Private phase labeling](phase-labeling-pilot.md)
 - [Crêpe material and hole masks](mask-labeling.md)
+- [Two-person labeling handoff](labeling-collaboration.md)
 
 ## Analysis
 

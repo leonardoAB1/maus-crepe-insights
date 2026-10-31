@@ -24,6 +24,7 @@ RECTIFIED_COORDINATE_SPACE = "rectified_upstream"
 SHA256_HEX_LENGTH = 64
 MIN_TEMPORAL_SAMPLES = 2
 VALID_MASK_VALUES = {0, 255}
+ASSIGNMENT_VERSION = "labeling-two-sets-v1"
 HUMAN_LABELS = (
     "emptyplate",
     "spreading",
@@ -289,6 +290,19 @@ def _validate_manifest(pilot: Path, manifest: dict) -> None:
             raise ValueError("frame storage contains unexpected files")
     if manifest.get("preprocessing"):
         _validate_rectified(pilot, manifest)
+    if manifest.get("assignment"):
+        assignment = manifest["assignment"]
+        run_ids = [run["run_id"] for run in manifest["runs"]]
+        if (
+            assignment["version"] != ASSIGNMENT_VERSION
+            or assignment["set_number"] not in {1, 2}
+            or len(assignment["assignment_id"]) != SHA256_HEX_LENGTH
+            or len(assignment["source_manifest_sha256"]) != SHA256_HEX_LENGTH
+            or len(set(run_ids)) != len(run_ids)
+            or sorted(assignment["run_ids"]) != sorted(run_ids)
+            or manifest.get("preprocessing")
+        ):
+            raise ValueError("invalid original-frame assignment")
 
 
 def _validate_rectified(pilot: Path, manifest: dict) -> None:
@@ -413,6 +427,22 @@ def build_plan(pilot: Path, *, kind: ProjectKind = "phase") -> dict:
         "title": "Visual pilot v1 " + digest[:32],
         "description": HUMAN_TAXONOMY_VERSION + "; SHA256=" + digest,
     }
+    if manifest.get("assignment"):
+        assignment = manifest["assignment"]
+        number = assignment["set_number"]
+        plan["assignment"] = assignment
+        plan["title"] = f"Set {number} phase " + digest[:32]
+        plan["description"] += (
+            f"; set={number}; assignment=" + assignment["assignment_id"]
+        )
+        for task in tasks:
+            task["data"].update(
+                {
+                    "assignment_id": assignment["assignment_id"],
+                    "assignment_set": number,
+                    "parent_pilot_sha256": assignment["source_manifest_sha256"],
+                }
+            )
     return _mask_plan(plan, manifest, pilot) if kind == "masks" else plan
 
 
@@ -478,7 +508,7 @@ def _mask_plan(plan: dict, manifest: dict, pilot: Path) -> dict:
                 "source_pilot_sha256": plan["digest"],
             }
         )
-    return {
+    result = {
         **plan,
         "config": ET.tostring(view, encoding="unicode"),
         "title": (
@@ -489,6 +519,14 @@ def _mask_plan(plan: dict, manifest: dict, pilot: Path) -> dict:
         + plan["digest"][:32],
         "description": MASK_TAXONOMY_VERSION + "; SHA256=" + plan["digest"],
     }
+    if plan.get("assignment"):
+        assignment = plan["assignment"]
+        number = assignment["set_number"]
+        result["title"] = f"Set {number} masks " + plan["digest"][:32]
+        result["description"] += (
+            f"; set={number}; assignment=" + assignment["assignment_id"]
+        )
+    return result
 
 
 def main() -> int:

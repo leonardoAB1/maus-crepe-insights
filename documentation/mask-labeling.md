@@ -1,5 +1,8 @@
 # Private crêpe and hole masks
 
+For owner/set-1 and collaborator/set-2 assignments, use the
+[two-person labeling runbook](labeling-collaboration.md).
+
 The mask project is separate from the phase project, in the same local Label
 Studio app. Both reference the **same immutable original PNG files**, not
 regenerated or resized copies. Setup does not read, copy or change phase
