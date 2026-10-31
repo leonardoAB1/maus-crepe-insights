@@ -75,6 +75,12 @@ def test_factor_columns_skip_toppings_and_recipe_switches() -> None:
     assert TOPPING not in cols and GF not in cols
 
 
+def test_parameter_id_is_not_a_model_factor() -> None:
+    frame = history()
+    frame["parameter_id"] = [f"v1:sha256:{i}" for i in range(len(frame))]
+    assert "parameter_id" not in factor_columns(frame)
+
+
 def test_cold_and_short_runs_are_dropped() -> None:
     runs = run_rows([{FAN: 1.0, INNER: 0.97, YC: -45.0}])
     runs.loc[0, "hotplate_temp"] = 40.0

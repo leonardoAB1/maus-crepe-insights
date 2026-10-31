@@ -106,8 +106,8 @@ worktrees/         # git worktrees, gitignored
 3. Commit in small logical steps using Conventional Commits
 4. Push and open a PR that references the issue (`Closes #N`). Fill in what changed, why, and how
    it was tested (offline tests, live dashboard run, or both)
-5. Reviews are encouraged but not required during the hackathon (0 approvals). Ruff and pytest
-   must pass before merging
+5. Reviews are encouraged but not required during the hackathon (0 approvals). The `ci`
+   workflow runs ruff and pytest on every PR and must pass before merging
 6. **Squash merge** into `main` (the only merge strategy). GitHub deletes the branch after merge
 
 The `main` branch is protected by the "protect main" ruleset: no force pushes, no deletion,

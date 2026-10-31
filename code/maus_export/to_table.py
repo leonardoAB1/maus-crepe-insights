@@ -25,6 +25,25 @@ FULL_CYCLE_PHASE = "cook"
 CONFIG_ID_LEN = 10
 LOG_WARN = 30
 LOG_ERROR = 40
+# Change the version if canonical_json changes
+PARAMETER_ID_PREFIX = "v1:sha256:"
+
+
+def canonical_json(value: Any) -> str:
+    """Stable JSON text: sorted keys, compact, ASCII, finite numbers only."""
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    )
+
+
+def parameter_id(parameters: Any) -> str:
+    """Versioned digest of one run's raw parameters (see pipeline docs)."""
+    digest = hashlib.sha256(canonical_json(parameters).encode("utf-8"))
+    return PARAMETER_ID_PREFIX + digest.hexdigest()
 
 
 def _cell(value: Any) -> Any:
@@ -46,6 +65,7 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
 
     row: dict[str, Any] = {
         "id": run["id"],
+        "parameter_id": parameter_id(run.get("parameters")),
         "robot": run.get("machineName"),
         "machine_id": run.get("machineId"),
         "ts_start": start,
@@ -80,7 +100,8 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
         "has_batch": run.get("batch") is not None,
     }
     # Seconds spent in each phase (until the next phase starts)
-    for cur, nxt in zip(phases, phases[1:] + [None], strict=True):
+    next_phases = phases[1:] + ([None] if phases else [])
+    for cur, nxt in zip(phases, next_phases, strict=True):
         t0 = float(cur.get("elapsed_sec") or 0.0)
         t1 = float(nxt["elapsed_sec"]) if nxt else (row["duration_s"] or t0)
         row[f"phase_s.{cur['phase']}"] = row.get(
@@ -173,6 +194,11 @@ def build_table(data_dir: Path) -> pd.DataFrame:
         json.loads(p.read_text(encoding="utf-8"))
         for p in (data_dir / "raw" / "runs").glob("*.json")
     ]
+    if not runs:
+        raise ValueError(
+            f"No raw run JSON files found in {data_dir / 'raw' / 'runs'}; "
+            "fetch runs into this data directory first"
+        )
     df = runs_to_table(runs)
     df.to_csv(data_dir / "runs.csv", index=False)
     df.to_parquet(data_dir / "runs.parquet", index=False)

@@ -104,7 +104,40 @@ run, sorted by `id`. Image metric and analysis columns join on `id`.
 | Phases | `phase_s.<phase>` | seconds spent in each phase |
 | Checks | `check.<name>.ok`, `.error`, `.n` | last attempt; `n` counts attempts (`push_off` retries) |
 | Parameters | `param.<key>` | every key that varies across runs; constant keys are dropped, lists are JSON text |
-| Config | `config_id`, `segment_id` | hash of all `param.*`; consecutive runs on one robot with the same config |
+| Config | `config_id`, `segment_id` | export-local hash of varying `param.*`; consecutive runs on one robot with the same config |
+| Parameter identity | `parameter_id` | versioned hash of raw per-run parameters; metadata, not a model input |
+
+### Parameter identity and compatibility
+
+`parameter_id` identifies only the raw `parameters` value of each run. It is
+computed before building the dataframe, dropping constants, or coercing mixed
+column types, and is independent of the other runs and of robot or run metadata.
+Identical parameters on different robots therefore share an ID. It does not
+identify the robot's other settings, runtime state, or outcome.
+
+Version 1 is `v1:sha256:` followed by the full lowercase SHA-256 hex digest of
+UTF-8 encoded Python `json.dumps(parameters, sort_keys=True,
+separators=(",", ":"), ensure_ascii=True, allow_nan=False)`. Mapping keys are
+sorted recursively; array order is significant. This contract is for JSON
+values with string object keys and finite numbers. Non-finite numbers are
+rejected. Missing `parameters` and explicit `null` both hash as JSON `null`;
+an empty object hashes as `{}` and is distinct. Within an object, a missing
+key, a key with `null`, and a key with `{}` are all distinct.
+
+Numbers use the JSON representation produced by Python after parsing: integer
+`1` and floating-point `1.0` differ, as do booleans and strings. Numeric lexical
+forms lost during JSON parsing, such as `1.0` and `1e0`, are not distinguished.
+The version prefix must change if canonicalization changes. A digest is a
+fingerprint, not a mathematical guarantee against collisions; it is not a
+confidentiality mechanism for sensitive or guessable parameters.
+
+The existing `config_id` and `segment_id` have not changed. `config_id` uses
+only parameter columns varying in that export, and `segment_id` numbers
+consecutive configurations per robot in that export; neither is a stable
+cross-export identifier. Old tables lack `parameter_id` and must be regenerated
+from raw runs, since dropped constants and coerced types cannot be recovered
+from the table alone. Select actual `param.*` columns for model features; do
+not feed `parameter_id` to a model.
 
 ## Vision score columns
 

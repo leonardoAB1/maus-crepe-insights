@@ -90,6 +90,7 @@ docs-check = "maus-docs --check"
 test = "pytest"
 lint = "ruff check ."
 fmt = "ruff format ."
+fmt-check = "ruff format --check ."
 
 [tool.ruff]
 line-length = 80
