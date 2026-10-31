@@ -18,7 +18,7 @@ human visual labels, **not** operational robot phases. No automatic mapping is
 made. The owner still needs to agree annotation criteria, particularly `ugly`,
 before using labels as a training target. This workflow invents neither those
 criteria nor geometry semantics. Visible crêpe material and hole masks use a
-separate [mask-labeling project](mask-labeling.md) on the same rectified images.
+separate [mask-labeling project](mask-labeling.md) on the same original images.
 Physical geometry measurements remain future work.
 
 ## Supported environment
@@ -76,7 +76,7 @@ read -r FROM
 printf 'Last requested date (YYYY-MM-DD): '
 read -r TO
 pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
-  export --data-dir "$PRIVATE" fetch --from "$FROM" --to "$TO" --media --video
+  export --data-dir "$PRIVATE" fetch --from "$FROM" --to "$TO" --video
 ```
 
 Authenticate through the exporter's normal OAuth browser flow using **your own
@@ -124,6 +124,10 @@ the unfinished output; forced termination may leave a directory without
 `manifest.json`. Absence of that final manifest means incomplete, not importable.
 
 ### Shared rectified images for all labels
+
+This is an optional experiment, not a requirement for labeling. To label
+original frames, skip this subsection and keep `PILOT` pointing to `pilot-v1`.
+Phase and mask projects both support that unchanged original frame set.
 
 To use the exact same pixels for phase labels, segmentation masks and training,
 rectify the extracted images **before** importing any project. Do not rectify

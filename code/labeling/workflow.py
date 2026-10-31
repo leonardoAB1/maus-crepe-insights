@@ -16,6 +16,7 @@ from xml.etree import ElementTree as ET
 
 HUMAN_TAXONOMY_VERSION = "crepe-visual-v2"
 MASK_TAXONOMY_VERSION = "crepe-material-holes-v1"
+ORIGINAL_FRAME_VERSION = "original-video-frames-v1"
 ProjectKind = Literal["phase", "masks"]
 RECTIFICATION_VERSION = "upstream-rectified-v1"
 EXPERIMENTAL_RECTIFICATION_VERSION = "upstream-rectified-experimental-v1"
@@ -412,12 +413,12 @@ def build_plan(pilot: Path, *, kind: ProjectKind = "phase") -> dict:
         "title": "Visual pilot v1 " + digest[:32],
         "description": HUMAN_TAXONOMY_VERSION + "; SHA256=" + digest,
     }
-    return _mask_plan(plan, manifest) if kind == "masks" else plan
+    return _mask_plan(plan, manifest, pilot) if kind == "masks" else plan
 
 
-def _mask_plan(plan: dict, manifest: dict) -> dict:
-    if not manifest.get("preprocessing"):
-        raise ValueError("mask projects require the shared rectified pilot")
+def _mask_plan(plan: dict, manifest: dict, pilot: Path) -> dict:
+    from PIL import Image
+
     view = ET.Element("View")
     ET.SubElement(view, "Image", name="image", value="$image")
     ET.SubElement(
@@ -426,11 +427,15 @@ def _mask_plan(plan: dict, manifest: dict) -> dict:
         value="Paint visible crepe material and enclosed bare-plate holes. "
         "Exclude utensils, shadows and glare. Erase overlaps; skip if unsure.",
     )
-    if manifest["preprocessing"].get("experimental"):
+    if manifest.get("preprocessing", {}).get("experimental"):
         ET.SubElement(
             view,
             "Header",
             value="Experimental rectification: review geometry before labeling",
+        )
+    elif not manifest.get("preprocessing"):
+        ET.SubElement(
+            view, "Header", value="Original camera frames: no rectification"
         )
     labels = ET.SubElement(
         view, "BrushLabels", name="segmentation", toName="image"
@@ -447,7 +452,23 @@ def _mask_plan(plan: dict, manifest: dict) -> dict:
     )
     for name in ("crepe_present", "no_crepe"):
         ET.SubElement(state, "Choice", value=name)
+    original_images = {
+        "/data/local-files/?d=" + quote(frame["image"]): frame["image"]
+        for run in manifest["runs"]
+        for frame in run.get("frames", [])
+    }
     for task in plan["tasks"]:
+        if not manifest.get("preprocessing"):
+            with Image.open(
+                pilot / original_images[task["data"]["image"]]
+            ) as image:
+                task["data"].update(
+                    {
+                        "image_size": list(image.size),
+                        "coordinate_space": "original_video",
+                        "preprocessing_version": ORIGINAL_FRAME_VERSION,
+                    }
+                )
         task["data"].pop("phase_sequence", None)
         task["data"].pop("human_taxonomy_version", None)
         task["data"].update(
@@ -460,7 +481,12 @@ def _mask_plan(plan: dict, manifest: dict) -> dict:
     return {
         **plan,
         "config": ET.tostring(view, encoding="unicode"),
-        "title": "Crepe masks v1 " + plan["digest"][:32],
+        "title": (
+            "Crepe masks v1 "
+            if manifest.get("preprocessing")
+            else "Original masks v1 "
+        )
+        + plan["digest"][:32],
         "description": MASK_TAXONOMY_VERSION + "; SHA256=" + plan["digest"],
     }
 

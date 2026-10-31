@@ -22,9 +22,6 @@ pytestmark = pytest.mark.skipif(
 
 
 def mask_plan(pilot: Path) -> dict:
-    manifest = json.loads((pilot / "manifest.json").read_text())
-    if not manifest.get("preprocessing"):
-        pytest.skip("mask project requires rectified frames")
     return load_workflow().build_plan(pilot, kind="masks")
 
 
@@ -96,13 +93,10 @@ def test_mask_plan_preserves_phase_plan_and_identical_image_identity(
     phase = workflow.build_plan(pilot)
     before = copy.deepcopy(phase)
     manifest = json.loads((pilot / "manifest.json").read_text())
-    if not manifest.get("preprocessing"):
-        with pytest.raises(ValueError, match="shared rectified"):
-            workflow.build_plan(pilot, kind="masks")
-        return
     masks = workflow.build_plan(pilot, kind="masks")
     assert phase == before == workflow.build_plan(pilot)
     assert masks["title"] != phase["title"]
+    assert len(masks["title"]) <= 50
     assert masks["digest"] == phase["digest"]
     assert masks["storage_roots"] == phase["storage_roots"]
     config = ET.fromstring(masks["config"])
@@ -120,6 +114,11 @@ def test_mask_plan_preserves_phase_plan_and_identical_image_identity(
         assert data["phase_context_shown"] is False
         assert "phase_sequence" not in data
         assert data["mask_taxonomy_version"] == "crepe-material-holes-v1"
+        assert data["image_size"] == [8, 8]
+        if not manifest.get("preprocessing"):
+            assert data["coordinate_space"] == "original_video"
+            assert data["preprocessing_version"] == "original-video-frames-v1"
+            assert "transform_sha256" not in data
         assert mask_task["annotations"] == mask_task["predictions"] == []
 
 
@@ -142,6 +141,10 @@ def test_reviewed_masks_export_in_original_coordinates(pilot: Path) -> None:
     assert source.read_bytes() == before
     manifest = json.loads((output / "manifest.json").read_text())
     assert len(manifest["records"]) == 2
+    if tasks[0]["data"]["coordinate_space"] == "original_video":
+        assert manifest["records"][0]["transform_sha256"] is None
+        assert manifest["records"][0]["valid_mask_sha256"] is None
+        assert 255 not in labels
     assert (
         manifest["records"][0]["image_sha256"]
         == tasks[0]["data"]["image_sha256"]
@@ -155,6 +158,8 @@ def test_unsupported_pixels_are_ignored_not_holes(pilot: Path) -> None:
     manifest_path = pilot / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
     frame = manifest["runs"][0]["frames"][0]
+    if "valid_mask" not in frame:
+        pytest.skip("original images have no unsupported warp pixels")
     valid_path = pilot / frame["valid_mask"]
     with Image.open(valid_path) as image:
         valid = np.array(image)

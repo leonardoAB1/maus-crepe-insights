@@ -1,10 +1,12 @@
 # Private crêpe and hole masks
 
 The mask project is separate from the phase project, in the same local Label
-Studio app. Both reference the **same immutable rectified PNG files**, not
+Studio app. Both reference the **same immutable original PNG files**, not
 regenerated or resized copies. Setup does not read, copy or change phase
 annotations. The image hashes join the two label sets, with run/frame provenance
-to disambiguate identical images. Raw pilots are not accepted for mask projects.
+to disambiguate identical images. No rectification or calibration is required.
+Original camera coordinates are recorded as `original_video` with preprocessing
+version `original-video-frames-v1`; this identifies extraction, not a warp.
 
 ## Set up
 
@@ -19,7 +21,8 @@ pixi run --locked --manifest-path "$SOURCE/code/labeling/pixi.toml" \
 ```
 
 The result contains the new project ID. Refresh the project list in the app.
-The project title starts with `Crepe masks v1`. Rerunning setup verifies the
+The original-frame project title starts with `Original masks v1`.
+Rerunning setup verifies the
 existing project and preserves annotations. It refuses configuration/task drift.
 Do not rename or reconfigure managed projects and do not click storage **Sync**.
 
@@ -44,10 +47,13 @@ boundaries, heavy steam, unclear occlusion or bad rectification. Review a small
 shared sample before annotating a large batch. No phase or robot verdict is
 displayed as a mask suggestion, and no predictions are created.
 
-Experimental rectification stays visibly marked. Inspect the geometry before
-painting. Validity masks represent unsupported warp pixels, **not** human hole
-labels. Export ignores unsupported pixels rather than training on black borders.
-No physical diameter, angle or area accuracy is implied by these masks.
+Inspect the original image before painting; zoom does not change the stored
+coordinates. No physical diameter, angle or area accuracy is implied by masks.
+Previously created rectified projects remain available with their original
+provenance. Do not replace their images with original frames or copy their
+pixel masks directly: those use a different coordinate system. Start a separate
+original-frame project instead. Rectified legacy exports still respect their
+warp-validity masks; unsupported pixels are not human hole labels.
 
 ## Private export for training
 
@@ -76,10 +82,12 @@ For each reviewed frame it writes native-size, lossless PNGs:
 
 - `*-material.png`: visible material, 0 or 255.
 - `*-holes.png`: enclosed holes, 0 or 255.
-- `*-labels.png`: 0 = other scene, 1 = material, 2 = hole, 255 = unsupported.
+- `*-labels.png`: 0 = other scene, 1 = material, 2 = hole. Legacy rectified
+  exports additionally use 255 for unsupported warp pixels.
 
-The private `manifest.json` records annotation IDs, image and transform hashes,
-original frame timing, mask taxonomy and preprocessing version. Use the same
+The private `manifest.json` records annotation IDs, image hashes,
+original frame timing, mask taxonomy and preprocessing version. Transform and
+validity hashes are null for originals. Use the same
 stored input PNG for training. Exclude label 255 from losses and measurements;
 keep train/test splits grouped by run. If resizing is needed for a model, apply
 one recorded transform to image and masks, with nearest-neighbour mask sampling.

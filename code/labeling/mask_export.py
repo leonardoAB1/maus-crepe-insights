@@ -165,8 +165,12 @@ def export_masks(
             if len(submitted) != 1:
                 raise ValueError("Resolve multiple submitted annotations first")
             annotation = submitted[0]
-            with Image.open(pilot / data["valid_mask"]) as image:
-                valid = np.asarray(image) == BYTE_MAX
+            if data.get("valid_mask"):
+                with Image.open(pilot / data["valid_mask"]) as image:
+                    valid = np.asarray(image) == BYTE_MAX
+            else:
+                width, height = data["image_size"]
+                valid = np.ones((height, width), dtype=bool)
             material, holes = _masks(annotation, valid)
             labels = np.zeros(valid.shape, dtype=np.uint8)
             labels[material] = MATERIAL_CLASS
@@ -194,8 +198,8 @@ def export_masks(
                     "image_sha256": data["image_sha256"],
                     "coordinate_space": data["coordinate_space"],
                     "preprocessing_version": data["preprocessing_version"],
-                    "transform_sha256": data["transform_sha256"],
-                    "valid_mask_sha256": data["valid_mask_sha256"],
+                    "transform_sha256": data.get("transform_sha256"),
+                    "valid_mask_sha256": data.get("valid_mask_sha256"),
                     "image_size": data["image_size"],
                     "outputs": names,
                 }
