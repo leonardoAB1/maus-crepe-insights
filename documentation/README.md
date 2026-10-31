@@ -15,6 +15,8 @@ Browse the guides by subject:
 - [Training data audit](training/training-audit.md)
 - [Vision-target dataset](training/vision-targets.md)
 - [Classification data coverage by robot and time](training/classification-data.md)
+- [One crepe-state vocabulary](training/crepe-states.md)
+- [Label versus prediction deviation and fine-tuning](training/deviation-pipeline.md)
 - [Private phase labeling](phase-labeling-pilot.md)
 - [Crêpe material and hole masks](mask-labeling.md)
 - [Simple pixel-mask suggestions](pixel-masks.md)
