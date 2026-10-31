@@ -46,6 +46,16 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
 
     row: dict[str, Any] = {
         "id": run["id"],
+        "parameter_id": "v1:sha256:"
+        + hashlib.sha256(
+            json.dumps(
+                run.get("parameters"),
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest(),
         "robot": run.get("machineName"),
         "machine_id": run.get("machineId"),
         "ts_start": start,
