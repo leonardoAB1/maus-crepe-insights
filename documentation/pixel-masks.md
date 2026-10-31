@@ -92,10 +92,16 @@ a deliberately dark stain that becomes a false hole, showing why review matters.
 
 ![Synthetic example: a dark stain becomes a false hole](../assets/pixel-mask-example.png)
 
-## Prefill untouched set-1 mask tasks
+## Prefill untouched mask tasks in either set
+
+Use the recommended [preview-first mask-assistance guide](mask-assist.md) for
+set 1 or set 2. It provides a single command family, contact-sheet previews,
+tuning, explicit confirmation and exact collaborator/agent instructions.
+The lower-level commands below remain available for advanced use.
 
 The opt-in prefill creates editable Label Studio **predictions**, not accepted
-annotations. It is restricted to the original set-1 mask project. Phase tasks,
+annotations. An explicit set number must match the original mask workspace.
+Phase tasks,
 source images, task data and all human annotations/drafts remain unchanged.
 Tasks with any annotation (including skips), draft, lock or existing prediction
 are skipped. Protection is checked both before processing and immediately before
@@ -106,12 +112,13 @@ From this feature's worktree, set `SOURCE` to its canonical repository root and
 
 ```bash
 pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
-  pixel-mask-tasks --workspace "$WORKSPACE" \
+  pixel-mask-tasks --set 1 --workspace "$WORKSPACE" --roi 360 100 640 620 \
   --output "$DATA/pixel-masks/set-1-prefill-v1"
 ```
 
-This uses the prototype's explicit `(360, 100, 640, 620)` ROI and 10,000-pixel
-minimum component area. Those are not adaptive camera parameters. Check that
+This example uses an explicit `(360, 100, 640, 620)` ROI and 10,000-pixel
+minimum component area. Without an ROI the whole image is processed. These
+are not adaptive camera parameters. Check that
 they fit the original frames before applying to another camera/dataset.
 Empty results are recorded but not imported or declared `no_crepe`.
 
@@ -119,11 +126,11 @@ Inspect the job counts and optionally dry-run the import:
 
 ```bash
 pixi run --locked --manifest-path "$SOURCE/code/labeling/pixi.toml" \
-  prefill-pixels --workspace "$WORKSPACE" \
+  prefill-pixels --set 1 --workspace "$WORKSPACE" \
   --suggestions "$DATA/pixel-masks/set-1-prefill-v1"
 
 pixi run --locked --manifest-path "$SOURCE/code/labeling/pixi.toml" \
-  prefill-pixels --workspace "$WORKSPACE" \
+  prefill-pixels --set 1 --workspace "$WORKSPACE" \
   --suggestions "$DATA/pixel-masks/set-1-prefill-v1" --apply
 ```
 

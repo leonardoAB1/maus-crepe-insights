@@ -19,7 +19,7 @@ if __package__:
     from .workflow import (
         PIXEL_SUGGESTION_MARKER,
         PIXEL_SUGGESTION_VERSION,
-        build_plan,
+        prefill_context,
         runtime,
         validate_pixel_result,
     )
@@ -27,7 +27,7 @@ else:
     from workflow import (
         PIXEL_SUGGESTION_MARKER,
         PIXEL_SUGGESTION_VERSION,
-        build_plan,
+        prefill_context,
         runtime,
         validate_pixel_result,
     )
@@ -86,7 +86,7 @@ def _result(folder: Path, record: dict) -> list:
 
 
 def install_predictions(
-    workspace: Path, suggestions: Path, *, apply: bool = False
+    workspace: Path, suggestions: Path, *, set_number: int, apply: bool = False
 ) -> dict:
     """Recheck live annotations/drafts/locks before each prediction insert."""
     from django.conf import settings
@@ -95,23 +95,25 @@ def install_predictions(
     from tasks.models import Prediction, Task
     from tasks.serializers import PredictionSerializer
 
+    state, plan = prefill_context(workspace, set_number)
     workspace = workspace.resolve(strict=True)
     pilot = workspace / "pilot"
     if Path(settings.LOCAL_FILES_DOCUMENT_ROOT) != pilot:
         raise ValueError("App root differs from the selected workspace")
-    plan = build_plan(pilot, kind="masks")
-    if plan.get("assignment", {}).get("set_number") != 1:
-        raise ValueError("Pixel prefill is restricted to set 1")
     job = json.loads((suggestions / "manifest.json").read_text())
-    state = json.loads((workspace / "workspace.json").read_text())
     if (
         job["algorithm"] != PIXEL_SUGGESTION_VERSION
         or job["human_annotation"] is not False
         or job["pilot_sha256"] != plan["digest"]
         or job["assignment"] != plan["assignment"]
         or job["project_id"] != state["projects"]["masks"]["project_id"]
+        or job.get("set_number", job["assignment"]["set_number"]) != set_number
     ):
         raise ValueError("Wrong prediction source, project or assignment")
+    if apply and job.get("scope", "full") != "full":
+        raise ValueError(
+            "Sample previews cannot be applied; prepare a full job first"
+        )
     project = Project.objects.get(pk=job["project_id"])
     descriptions = {
         plan["description"],
@@ -122,7 +124,7 @@ def install_predictions(
         or project.label_config != plan["config"]
         or project.description not in descriptions
     ):
-        raise ValueError("Target is not the managed set-1 mask project")
+        raise ValueError("Target is not the selected managed mask project")
     if project.predictions.exclude(
         model_version=PIXEL_SUGGESTION_VERSION
     ).exists():
@@ -260,13 +262,29 @@ def main() -> int:
     """Dry-run first; explicit --apply adds proposals to untouched tasks."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", type=Path, required=True)
+    parser.add_argument(
+        "--set", dest="set_number", type=int, choices=(1, 2), required=True
+    )
     parser.add_argument("--suggestions", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     os.umask(0o077)
     workspace = args.workspace.resolve(strict=True)
+    state, _ = prefill_context(workspace, args.set_number)
+    if (
+        args.apply
+        and json.loads((args.suggestions / "manifest.json").read_text()).get(
+            "scope", "full"
+        )
+        != "full"
+    ):
+        parser.error(
+            "Sample previews cannot be applied; prepare a full job first"
+        )
     app = workspace / "app"
-    command, env = runtime(workspace / "pilot", app, 8082)
+    command, env = runtime(
+        workspace / "pilot", app, state.get("port", 8081 + args.set_number)
+    )
     if args.apply:
         backups = app / "backups"
         backups.mkdir(mode=0o700, exist_ok=True)
@@ -284,7 +302,7 @@ def main() -> int:
         "import json\nfrom pathlib import Path\n"
         "from labeling.pixel_predictions import install_predictions\n"
         f"r=install_predictions(Path({str(workspace)!r}),"
-        f"Path({str(args.suggestions.resolve())!r}),apply={args.apply!r})\n"
+        f"Path({str(args.suggestions.resolve())!r}),set_number={args.set_number!r},apply={args.apply!r})\n"
         "print('PIXEL_IMPORT='+json.dumps(r))\n"
     )
     result = subprocess.run(
