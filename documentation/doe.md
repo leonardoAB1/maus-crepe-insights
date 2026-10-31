@@ -25,9 +25,23 @@ pixi run -e ml doe-figures              # redraws the figures on this page
 Seen from above, the crêpe robot is a plant in a feedback loop. This
 experiment works on the **outer loop**: from one batch of crêpes to the next.
 
-<!-- diagram: doe-control-loop -->
+<!-- diagram: doe-loop -->
 ```mermaid
-flowchart LR
+flowchart TB
+    r([Quality target]) --> ctrl[DoE analysis]
+    ctrl -->|6 settings| robot[Crepe robot]
+    d[Disturbances] -.-> robot
+    robot --> sense[Camera, logs, sensors]
+    sense -->|quality, once per batch| ctrl
+
+    style ctrl fill:#2a78d6,stroke:#1c5cab,color:#ffffff
+```
+<!-- /diagram -->
+
+**In detail.** Each sensor and the signal it turns into:
+
+```mermaid
+flowchart TB
     r([Quality target r]) --> cmp((compare))
     cmp -->|gap e| ctrl[DoE analysis]
     ctrl -->|u: 6 settings| fw
@@ -49,7 +63,6 @@ flowchart LR
     style ctrl fill:#2a78d6,stroke:#1c5cab,color:#ffffff
     style y fill:#cde2fb,stroke:#2a78d6,color:#0b0b0b
 ```
-<!-- /diagram -->
 
 **Two loops, two timescales.**
 
