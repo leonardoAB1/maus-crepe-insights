@@ -116,6 +116,31 @@ def main() -> None:
     )
     em.add_argument("--model", type=Path, default=None, help="model.onnx")
     em.add_argument("--batch-size", type=int, default=None)
+
+    def data_dir_arg(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument(
+            "--data-dir",
+            type=Path,
+            default=REPO_ROOT / "data",
+            help="output folder (default: <repo>/data)",
+        )
+
+    ff = sub.add_parser(
+        "fold-frames", help="extract corrected fold check frames"
+    )
+    data_dir_arg(ff)
+    ff.add_argument("--ids", type=int, nargs="*", help="only these run ids")
+    fs = sub.add_parser("fold-segment", help="segment fold frames and features")
+    data_dir_arg(fs)
+    fe = sub.add_parser("fold-eval", help="write fold metrics and report")
+    data_dir_arg(fe)
+    fl = sub.add_parser("fold-live", help="run live-style video inference")
+    data_dir_arg(fl)
+    fl.add_argument("--ids", type=int, nargs="*", help="only these run ids")
+    fd = sub.add_parser(
+        "fold-dashboard", help="write local fold review dashboard"
+    )
+    data_dir_arg(fd)
     ls = sub.add_parser(
         "label-states", help="print the unified crepe-state vocabulary"
     )
@@ -291,6 +316,26 @@ def main() -> None:
 
         for path in example_figures(data_dir, args.assets):
             print(path)
+    if args.cmd == "fold-frames":
+        from .fold_frames import build_frames
+
+        build_frames(data_dir, set(args.ids) if args.ids else None)
+    if args.cmd == "fold-segment":
+        from .fold_state import segment_frames
+
+        segment_frames(data_dir)
+    if args.cmd == "fold-eval":
+        from .fold_eval import write_report
+
+        write_report(data_dir)
+    if args.cmd == "fold-live":
+        from .fold_live import run_live
+
+        run_live(data_dir, set(args.ids) if args.ids else None)
+    if args.cmd == "fold-dashboard":
+        from .fold_dashboard import build_dashboard
+
+        print(build_dashboard(data_dir))
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,
