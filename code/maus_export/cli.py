@@ -77,6 +77,12 @@ def main() -> None:
         default=Path("../assets/vision-scores-example.jpg"),
         help="output image (.jpg or .png)",
     )
+    an = sub.add_parser(
+        "analyze", help="which settings matter -> data/analysis/ (ml env)"
+    )
+    an.add_argument(
+        "--boot", type=int, default=None, help="bootstrap draws (default 500)"
+    )
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -110,6 +116,10 @@ def main() -> None:
         from .vision_metrics import build_vision_table
 
         build_vision_table(data_dir)
+    if args.cmd == "analyze":
+        from .analysis import N_BOOT, run_analysis
+
+        run_analysis(data_dir, n_boot=args.boot or N_BOOT)
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,
