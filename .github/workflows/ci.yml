@@ -1,9 +1,13 @@
-# Runs lint, format check and tests on every pull request. Uses the ml
+# Runs lint, format check and tests on every pull request and on main after
+# each merge. docs-sync dispatches it after pushing a sync commit, since pushes
+# made with the workflow token do not trigger other workflows. Uses the ml
 # environment because tests/test_analysis.py needs scikit-learn.
 name: ci
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -29,10 +33,10 @@ jobs:
           cache: true
 
       - name: Lint
-        run: pixi run -e ml ruff check .
+        run: pixi run -e ml lint
 
       - name: Check formatting
-        run: pixi run -e ml ruff format --check .
+        run: pixi run -e ml fmt-check
 
       - name: Test
-        run: pixi run -e ml pytest
+        run: pixi run -e ml test
