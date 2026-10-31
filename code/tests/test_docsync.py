@@ -47,6 +47,16 @@ def test_check_reports_stale_without_writing(tmp_path: Path) -> None:
     assert "a --> b" in (root / "readme.md").read_text(encoding="utf-8")
 
 
+def test_keeps_crlf_line_endings(tmp_path: Path) -> None:
+    root = make_repo(tmp_path, "")
+    readme = root / "readme.md"
+    readme.write_bytes(EMPTY_BLOCK.replace("\n", "\r\n").encode("utf-8"))
+    sync(root)
+    raw = readme.read_bytes()
+    assert raw.count(b"\r\n") == raw.count(b"\n")
+    assert b"a --> b\r\n" in raw
+
+
 def test_unknown_diagram_raises(tmp_path: Path) -> None:
     root = make_repo(tmp_path, "<!-- diagram: missing -->\n<!-- /diagram -->\n")
     with pytest.raises(UnknownDiagramError, match="missing"):

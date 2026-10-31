@@ -22,6 +22,8 @@ DIAGRAM_DIR = Path("documentation") / "diagrams"
 DIAGRAM_SUFFIX = ".mmd"
 SCANNED_GLOBS = ("readme.md", "documentation/*.md")
 FENCE = "```"
+LF = "\n"
+CRLF = "\r\n"
 
 BLOCK_RE = re.compile(
     r"(?P<open><!-- diagram: (?P<name>[\w-]+) -->\n)"
@@ -59,7 +61,7 @@ def load_diagrams(root: Path) -> dict[str, str]:
     """Read every ``.mmd`` file in the diagram folder, keyed by stem."""
     folder = root / DIAGRAM_DIR
     return {
-        path.stem: path.read_text(encoding="utf-8")
+        path.stem: path.read_bytes().decode("utf-8")
         for path in sorted(folder.glob(f"*{DIAGRAM_SUFFIX}"))
     }
 
@@ -78,16 +80,23 @@ def sync(root: Path = REPO_ROOT, check: bool = False) -> list[Path]:
     Returns the files that changed, or with ``check`` the files that
     would change (nothing is written then).
     """
-    diagrams = load_diagrams(root)
+    diagrams = {
+        name: source.replace(CRLF, LF)
+        for name, source in load_diagrams(root).items()
+    }
     stale: list[Path] = []
     for path in markdown_files(root):
-        text = path.read_text(encoding="utf-8")
+        raw = path.read_bytes().decode("utf-8")
+        # Keep each file's own line endings so a sync never rewrites
+        # every line of a CRLF file
+        eol = CRLF if CRLF in raw else LF
+        text = raw.replace(CRLF, LF)
         new = sync_text(text, diagrams, where=str(path))
         if new == text:
             continue
         stale.append(path)
         if not check:
-            path.write_bytes(new.encode("utf-8"))
+            path.write_bytes(new.replace(LF, eol).encode("utf-8"))
     return stale
 
 
