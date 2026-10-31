@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from test_labeling_workflow import load_workflow
 from maus_export.labeling_rectification import prepare_rectified
 
 SIZE = 64
+SHARED_UMASK = 0o022  # a typical default, distinct from the private 0o077
 pytestmark = pytest.mark.skipif(
     sys.platform not in {"linux", "darwin"},
     reason="labeling workflow requires POSIX file permissions and locking",
@@ -238,6 +240,20 @@ def test_annotated_pilot_is_refused_before_any_output(
     with pytest.raises(ValueError, match="unannotated"):
         prepare_rectified(data, pilot, output)
     assert not output.exists()
+
+
+def test_process_umask_is_restored(source_pilot: tuple) -> None:
+    data, pilot = source_pilot
+    before = os.umask(SHARED_UMASK)
+    try:
+        prepare_rectified(data, pilot, pilot.parent / "rectified")
+        assert os.umask(SHARED_UMASK) == SHARED_UMASK
+        image = pilot / "run-000" / "000000.png"
+        image.write_bytes(b"changed source")
+        prepare_rectified(data, pilot, pilot.parent / "after-change")
+        assert os.umask(SHARED_UMASK) == SHARED_UMASK
+    finally:
+        os.umask(before)
 
 
 def test_public_or_unrelated_output_is_refused(source_pilot: tuple) -> None:

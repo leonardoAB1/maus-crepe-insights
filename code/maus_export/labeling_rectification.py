@@ -22,6 +22,7 @@ PREPROCESSING_VERSION = "upstream-rectified-v1"
 EXPERIMENTAL_VERSION = "upstream-rectified-experimental-v1"
 COORDINATE_SPACE = "rectified_upstream"
 PILOT_SCHEMA_VERSION = 1
+PRIVATE_UMASK = 0o077  # new files readable by the owner only
 
 
 class SourceChangedError(ValueError):
@@ -178,7 +179,30 @@ def prepare_rectified(
         raise ValueError("Only unannotated source pilots are supported")
     if shutil.disk_usage(parent).free < MIN_FREE_BYTES:
         raise ValueError("Insufficient free disk space")
-    os.umask(0o077)
+    previous_umask = os.umask(PRIVATE_UMASK)
+    try:
+        return _publish(
+            data_dir,
+            pilot,
+            output,
+            content,
+            manifest,
+            experimental=experimental,
+        )
+    finally:
+        os.umask(previous_umask)
+
+
+def _publish(
+    data_dir: Path,
+    pilot: Path,
+    output: Path,
+    content: bytes,
+    manifest: dict[str, Any],
+    *,
+    experimental: bool,
+) -> dict:
+    """Write the new pilot; the caller has validated inputs and umask."""
     output.mkdir(mode=0o700)
     summary = {
         "selected": len(manifest["runs"]),
