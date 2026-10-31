@@ -95,6 +95,7 @@ def test_plan_uses_fixed_visual_taxonomy_without_automatic_labels(
     assert choices.attrib["name"] == "visual_label"
     assert [c.attrib["value"] for c in choices] == [
         "emptyplate",
+        "spreading",
         "circle",
         "halffold",
         "quarter fold",
@@ -108,7 +109,7 @@ def test_plan_uses_fixed_visual_taxonomy_without_automatic_labels(
     assert task["data"]["phase_context_shown"] is True
     assert task["data"]["phase_suggestion"] is None
     assert task["data"]["human_label"] is None
-    assert task["data"]["human_taxonomy_version"] == "crepe-visual-v1"
+    assert task["data"]["human_taxonomy_version"] == "crepe-visual-v2"
     assert (pilot / "manifest.json").read_bytes() == source
     assert plan["storage_roots"] == [str(pilot / "run-000")]
 
