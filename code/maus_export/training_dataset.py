@@ -25,7 +25,8 @@ CONTEXT = {
 }
 # Settings in the current robot parameter set that are fixed before a run.
 # Radius offsets, ring count and rings enabled were dropped: the current
-# software no longer has them (see documentation/doe.md, Controllability).
+# software no longer has them (see documentation/analysis/doe.md,
+# Controllability).
 CANDIDATE_PARAMETERS = (
     "dispense.batter.cook_time",
     "dispense.batter.centre_dispense_time",
