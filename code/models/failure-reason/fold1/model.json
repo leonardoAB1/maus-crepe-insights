@@ -1,0 +1,48 @@
+{
+  "check": "fold1",
+  "rows": "failed frames of this check with an embedding",
+  "design": "multi-label: one binary head per reason class",
+  "class_map": {
+    "not a half fold": "shape",
+    "wrong fold shape": "shape",
+    "batter left on the plate": "residue",
+    "no crepe detected": "no_crepe"
+  },
+  "min_support": 8,
+  "support": {
+    "no_crepe": {
+      "train": 1,
+      "test": 0
+    },
+    "other": {
+      "train": 0,
+      "test": 0
+    },
+    "residue": {
+      "train": 3,
+      "test": 3
+    },
+    "shape": {
+      "train": 8,
+      "test": 6
+    }
+  },
+  "robots": {
+    "train": {
+      "maus-pixi": 7,
+      "maus-quin": 4,
+      "maus-otto": 1
+    },
+    "test": {
+      "maus-pixi": 7
+    }
+  },
+  "modelled": [],
+  "not_modelled": [
+    "no_crepe",
+    "residue",
+    "shape"
+  ],
+  "heads": {},
+  "verdict": "no reason class has 8 train frames on both sides; not enough data to train a head"
+}

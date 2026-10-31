@@ -1,0 +1,70 @@
+{
+  "spread": {
+    "failed_frames": {
+      "train": 25,
+      "test": 13
+    },
+    "modelled": [
+      "too_small"
+    ],
+    "not_modelled": [
+      "hole",
+      "no_crepe",
+      "residue"
+    ],
+    "abstain_threshold": 0.7,
+    "verdict": "deployable heads: too_small",
+    "heads": {
+      "too_small": "deployable"
+    }
+  },
+  "fold1": {
+    "failed_frames": {
+      "train": 12,
+      "test": 7
+    },
+    "modelled": [],
+    "not_modelled": [
+      "no_crepe",
+      "residue",
+      "shape"
+    ],
+    "abstain_threshold": null,
+    "verdict": "no reason class has 8 train frames on both sides; not enough data to train a head",
+    "heads": {}
+  },
+  "fold2": {
+    "failed_frames": {
+      "train": 29,
+      "test": 5
+    },
+    "modelled": [
+      "residue",
+      "shape"
+    ],
+    "not_modelled": [
+      "no_crepe"
+    ],
+    "abstain_threshold": 0.55,
+    "verdict": "research only: no head passes the null and majority checks",
+    "heads": {
+      "residue": "not deployable: holdout has one class only, cannot score",
+      "shape": "not deployable: holdout has one class only, cannot score"
+    }
+  },
+  "push_off": {
+    "failed_frames": {
+      "train": 116,
+      "test": 22
+    },
+    "modelled": [],
+    "not_modelled": [
+      "misaligned",
+      "no_crepe",
+      "no_plate"
+    ],
+    "abstain_threshold": null,
+    "verdict": "no reason class has 8 train frames on both sides; not enough data to train a head",
+    "heads": {}
+  }
+}
