@@ -124,10 +124,11 @@ robot), since no millimetre scale is published for the plate.
 | `vision.spread.area_rel` | crepe area / zone area |
 | `vision.spread.offset_rel` | crepe centroid distance from zone centre / zone radius |
 | `vision.spread.circularity` | 4 pi area / perimeter^2 of the outline (1 = circle) |
-| `vision.spread.hole_frac` | hole (red) area / crepe area |
+| `vision.spread.hole_frac` | robot-marked hole (red) area / crepe area; the robot marks only some gaps |
+| `vision.spread.uncovered_frac` | bare plate (CIE L* < 35, or red) inside the crepe outline / crepe area, bubble specks removed; catches unmarked holes and plate inside a loose outline edge. Shiny glare can be missed |
 | `vision.spread.residue_frac` | residue (orange) area / zone area |
 | `vision.spread.circle_diameter_rel`, `circle_offset_rel` | robot's fitted circle, same scale |
-| `vision.spread.l_mean`, `l_std` | CIE L* of the batter, holes excluded |
+| `vision.spread.l_mean`, `l_std` | CIE L* of the batter, holes and bare plate excluded |
 | `vision.fold1.iou`, `vision.fold2.iou` | overlap of the crepe with the robot's ideal fold shape |
 | `vision.fold1.area_rel`, `vision.fold2.area_rel` | folded crepe area / zone area |
 | `vision.fold2.area_ratio` | fold-2 area / fold-1 area: about 0.5 for a good quarter fold, about 1 when the second fold did nothing |
