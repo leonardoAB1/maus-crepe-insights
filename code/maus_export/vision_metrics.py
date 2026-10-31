@@ -212,7 +212,7 @@ def bare_plate(
     return np.isin(labels, big)
 
 
-def _prepare(img: np.ndarray) -> tuple[np.ndarray, Any, np.ndarray] | None:
+def prepare(img: np.ndarray) -> tuple[np.ndarray, Any, np.ndarray] | None:
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     zone = zone_of(hsv)
     if zone is None:
@@ -223,7 +223,7 @@ def _prepare(img: np.ndarray) -> tuple[np.ndarray, Any, np.ndarray] | None:
 
 def spread_metrics(img: np.ndarray) -> dict[str, float | None]:
     """Scores for a spread-check overlay (BGR image)."""
-    prep = _prepare(img)
+    prep = prepare(img)
     if prep is None:
         return {}
     hsv, zone, inside = prep
@@ -256,15 +256,10 @@ def spread_metrics(img: np.ndarray) -> dict[str, float | None]:
     return out
 
 
-def fold_metrics(img: np.ndarray) -> dict[str, float | None]:
-    """Scores for a fold-check overlay: shape match against the robot's
-    ideal fold, size, and browning."""
-    prep = _prepare(img)
-    if prep is None:
-        return {}
-    hsv, zone, inside = prep
-    zr = zone[2]
-    out: dict[str, float | None] = {}
+def fold_regions(
+    hsv: np.ndarray, zone: tuple[float, float, float], inside: np.ndarray
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Crepe region and the robot's ideal fold region on a fold overlay."""
     ideal_line = colour_mask(hsv, "magenta") & inside
     outline = outline_mask(hsv) & inside
     # Where the ideal fold line crosses the crepe outline it hides it; the
@@ -273,7 +268,19 @@ def fold_metrics(img: np.ndarray) -> dict[str, float | None]:
         outline.astype(np.uint8), np.ones((BRIDGE_PX, BRIDGE_PX), np.uint8)
     )
     crepe = filled_outline(outline | (ideal_line & (near > 0)), zone)
-    ideal = hull_region(ideal_line)
+    return crepe, hull_region(ideal_line)
+
+
+def fold_metrics(img: np.ndarray) -> dict[str, float | None]:
+    """Scores for a fold-check overlay: shape match against the robot's
+    ideal fold, size, and browning."""
+    prep = prepare(img)
+    if prep is None:
+        return {}
+    hsv, zone, inside = prep
+    zr = zone[2]
+    out: dict[str, float | None] = {}
+    crepe, ideal = fold_regions(hsv, zone, inside)
     if crepe is not None:
         out["area_rel"] = float(crepe.sum()) / (np.pi * zr**2)
         out["l_mean"], out["l_std"] = lightness(img, crepe)
