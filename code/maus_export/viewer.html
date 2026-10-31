@@ -7,13 +7,15 @@
 <style>
   :root {
     color-scheme: light;
-    --bg: #f4ecdd;
-    --panel: #fffdf7;
-    --line: #e6dbc4;
-    --ink: #3f362e;
-    --ink-soft: #8b7c68;
-    --caramel: #c98f4f;
-    --shadow: 0 1px 2px rgba(122,103,79,.07), 0 10px 26px rgba(122,103,79,.10);
+    --bg: #fdf6ea;
+    --panel: #fffbf2;
+    --line: #efe1ca;
+    --ink: #3b3229;
+    --ink-soft: #8a7a63;
+    --caramel: #e39b3d;
+    --material: #7fbf6a;
+    --hole: #e8705f;
+    --shadow: 0 1px 2px rgba(150,120,80,.07), 0 10px 26px rgba(150,120,80,.10);
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
@@ -31,7 +33,7 @@
   }
   .brand { display: flex; align-items: center; gap: 12px; font-weight: 700;
            font-size: 19px; white-space: nowrap; }
-  .mark { width: 26px; height: 26px; border-radius: 50%; background: #f0dcb4;
+  .mark { width: 26px; height: 26px; border-radius: 50%; background: #fdeec9;
           border: 3px dashed var(--caramel); }
   .legend { display: flex; gap: 14px; overflow: hidden; color: var(--ink-soft);
             font-size: 15px; }
@@ -46,7 +48,7 @@
               padding: 12px 22px; min-height: 0; }
   .wrap { position: relative; line-height: 0; }
   video { max-width: 100%; max-height: 100%; display: block; border-radius: 16px;
-          box-shadow: var(--shadow); background: #efe6d5; }
+          box-shadow: var(--shadow); background: #f6ecd9; }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%;
            pointer-events: none; border-radius: 16px; }
   .wrap::before, .wrap::after {
@@ -59,7 +61,7 @@
                  border-radius: 0 0 10px 0; }
   .toast {
     position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
-    background: #fdf3e3; border: 1px solid var(--line); color: #8a5a2b;
+    background: #fff4dd; border: 1px solid var(--line); color: #a86a1e;
     padding: 6px 14px; border-radius: 999px; font-size: 15px; max-width: 70vw;
   }
   .toast:empty { display: none; }
@@ -72,7 +74,7 @@
   .track { flex: 1 1 auto; min-width: 180px; }
   #spark { display: block; height: 26px; width: 100%; }
   #timeline {
-    position: relative; height: 26px; margin-top: 6px; background: #f7f1e4;
+    position: relative; height: 26px; margin-top: 6px; background: #fbf3e2;
     border: 1px solid var(--line); border-radius: 9px; cursor: pointer;
     overflow: hidden;
   }
@@ -91,7 +93,7 @@
   .ctl { display: flex; align-items: center; gap: 14px; flex: none;
          border-left: 1px solid var(--line); padding-left: 20px; }
   select {
-    background: #fbf7ec; color: var(--ink); border: 1px solid var(--line);
+    background: #fffbf2; color: var(--ink); border: 1px solid var(--line);
     border-radius: 10px; padding: 7px 10px; font: inherit; font-family: var(--mono);
   }
   label { display: flex; gap: 7px; align-items: center; font-size: 15px;
@@ -142,12 +144,12 @@
 
 <script>
 const STATE_COLOURS = {
-  emptyplate: '#c3b49f', flat: '#9fbfe0', cooking: '#e2bb6c',
-  halffold: '#a8c795', 'quarter fold': '#c8aede', ugly: '#d99a8d'
+  emptyplate: '#c9b79b', flat: '#7ca9d6', cooking: '#f2b33d',
+  halffold: '#7fbf6a', 'quarter fold': '#a98bd8', ugly: '#e8705f'
 };
-const NO_STATE_COLOUR = '#e9dfcb';
-const MATERIAL_RGB = '143,179,124';
-const HOLE_RGB = '212,136,122';
+const NO_STATE_COLOUR = '#f0e6d3';
+const MATERIAL_RGB = '127,191,106';
+const HOLE_RGB = '232,112,95';
 const TINT_ALPHA = 0.40;
 const POLL_MS = 300;
 const REVIEW_THRESHOLD = 0.5;
@@ -176,9 +178,9 @@ async function boot() {
   video.src = '/api/video';
   els.legend.innerHTML = Object.entries(STATE_COLOURS).map(([name, colour]) =>
     `<span><i class="swatch" style="background:${colour}"></i>${name}</span>`
-  ).join('') + '<span><i class="swatch" style="background:rgb(143,179,124)">'
+  ).join('') + '<span><i class="swatch" style="background:rgb(127,191,106)">'
     + '</i>material</span><span><i class="swatch" style="background:'
-    + 'rgb(212,136,122)"></i>holes</span>';
+    + 'rgb(232,112,95)"></i>holes</span>';
   for (const producer of status.producers) {
     const option = document.createElement('option');
     option.value = producer.name;
@@ -242,12 +244,12 @@ function drawSpark(records) {
     + `${height - pad} L ${x(points[0][0]).toFixed(1)} ${height - pad} Z`;
   els.spark.innerHTML =
     `<line x1="0" y1="${y(REVIEW_THRESHOLD)}" x2="${width}" `
-    + `y2="${y(REVIEW_THRESHOLD)}" stroke="#d99a8d" stroke-dasharray="6 6" `
+    + `y2="${y(REVIEW_THRESHOLD)}" stroke="#e8705f" stroke-dasharray="6 6" `
     + `stroke-width="1"/>`
-    + `<path d="${area}" fill="rgba(201,143,79,.20)"/>`
-    + `<path d="${line}" fill="none" stroke="#c98f4f" stroke-width="2"/>`
+    + `<path d="${area}" fill="rgba(227,155,61,.22)"/>`
+    + `<path d="${line}" fill="none" stroke="#e39b3d" stroke-width="2"/>`
     + `<line id="spark_marker" x1="0" y1="0" x2="0" y2="${height}" `
-    + `stroke="#3f362e" stroke-width="2" opacity=".6"/>`;
+    + `stroke="#3b3229" stroke-width="2" opacity=".6"/>`;
   els.spark.dataset.x = JSON.stringify({ pad, width, maxFrame });
   moveMarker(currentFrame());
 }
