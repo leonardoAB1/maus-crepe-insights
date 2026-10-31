@@ -1,4 +1,4 @@
-"""Check local documentation links and the original section URLs."""
+"""Check local documentation links and the topic folder layout."""
 
 from __future__ import annotations
 
@@ -181,19 +181,13 @@ def headings(path: Path) -> list[tuple[str, str]]:
 
 
 @pytest.mark.parametrize("name", PAGES)
-def test_original_sections_link_to_the_matching_canonical_section(
-    name: str,
-) -> None:
+def test_pages_live_only_in_their_topic_folder(name: str) -> None:
     folder, expected = PAGES[name]
     legacy = DOCS / name
     canonical = DOCS / folder / name
     assert canonical.is_file()
-    old_sections = dict(headings(legacy))
-    new_sections = dict(headings(canonical))
-    assert list(old_sections) == expected
-    assert list(new_sections) == expected
-    for slug in expected:
-        assert f"({folder}/{name}#{slug})" in old_sections[slug]
+    assert not legacy.exists(), f"stale page at old path: {name}"
+    assert [slug for slug, _ in headings(canonical)] == expected
 
 
 def test_latest_doe_diagrams_are_preserved() -> None:
@@ -217,6 +211,17 @@ def test_canonical_pages_are_not_gitignored() -> None:
             check=False,
         )
         assert result.returncode == 1, f"canonical page is ignored: {page}"
+
+
+def test_new_data_guides_are_not_gitignored() -> None:
+    """Any markdown page added under documentation/data/ is tracked."""
+    page = "documentation/data/new-guide.md"
+    result = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-q", "--", page],
+        cwd=ROOT,
+        check=False,
+    )
+    assert result.returncode == 1, f"new data guide is ignored: {page}"
 
 
 @pytest.mark.parametrize(

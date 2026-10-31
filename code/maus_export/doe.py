@@ -26,7 +26,7 @@ from .to_table import PARAM_PREFIX, RENAMED_PARAMETERS
 # four recipe settings, then two machine geometry settings (from the #25
 # shortlist) that operators did tune but Maus should confirm per run.
 # The radius offsets and inner fan power from the first shortlist no longer
-# exist in the current parameter set (see documentation/doe.md).
+# exist in the current parameter set (see documentation/analysis/doe.md).
 DEFAULT_FACTORS = (
     "dispense.batter.fan_power",
     "dispense.batter.concentric_outer_fan_tail_deg",

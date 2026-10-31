@@ -57,7 +57,7 @@ code/              # all code
   maus_export/     # dashboard -> raw JSON -> MCAP / tables (importable package)
   models/          # one folder per model: model.onnx, model.json, train.py
   tests/           # pytest suite only - must run offline, without dashboard access
-documentation/     # guides, diagrams and legacy section links
+documentation/     # guides and diagrams
   data/            # dashboard data, MCAP and pipeline
   training/        # training datasets and audit
   analysis/        # historical settings analysis
