@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 
+from .check_verdict import embedding_columns
 from .split import TEST
 
 SPREAD = "spread"
@@ -36,7 +37,6 @@ SCORE_FEATURES = [
     "residue_frac",
 ]
 VERDICT_FEATURE = "spread_ok"
-EMBED_PREFIX = "e"
 FAIL = "fail"
 PASS = "ok"
 N_BOOT = 2000
@@ -56,16 +56,6 @@ def last_spread(frames: pd.DataFrame) -> pd.DataFrame:
     """The last spread attempt of each run, indexed by run id."""
     spread = frames[(frames["check"] == SPREAD) & frames["is_last_attempt"]]
     return spread.set_index("run_id")
-
-
-def embedding_columns(df: pd.DataFrame) -> list[str]:
-    """`e0`, `e1`, ... in numeric order."""
-    cols = [
-        c
-        for c in df.columns
-        if c.startswith(EMBED_PREFIX) and c[len(EMBED_PREFIX) :].isdigit()
-    ]
-    return sorted(cols, key=lambda c: int(c[len(EMBED_PREFIX) :]))
 
 
 def fold_risk_table(
