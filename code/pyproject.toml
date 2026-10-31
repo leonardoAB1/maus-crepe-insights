@@ -82,6 +82,7 @@ doe-figures = "maus-export doe-figures"
 embed = "maus-export embed"
 fold-class = "maus-classify fold-class"
 fold-class-example = "maus-classify fold-class-example"
+model-examples = "maus-classify model-examples"
 notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]
