@@ -183,6 +183,9 @@ pixi run export all --media
 
 Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
 
+Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
+See [documentation/analysis.md](documentation/analysis.md).
+
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
 
 **VS Code.** Run `pixi install -e ml` in `code/`, open the repo folder (or a worktree folder) and
@@ -205,6 +208,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [MCAP topics & schemas](documentation/mcap.md)
 - [Robot system](documentation/system.md)
 - [Crêpe stages and where runs fail](documentation/crepe-stages.md)
+- [Which settings matter (history analysis)](documentation/analysis.md)
 - [Data pipeline and data model](documentation/pipeline.md)
 
 ## License
