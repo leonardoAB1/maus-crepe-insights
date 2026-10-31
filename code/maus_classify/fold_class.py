@@ -173,14 +173,17 @@ CAVEATS = {
     "triangle_fold": (
         "Unsupported. No frame in the data shows a triangle fold, so the "
         "head can only answer flat, half or quarter. Human fold labels "
-        "from the labelling workstream (#87) are the path to add it."
+        "from the labelling workstream (#87) are the path to add it, but "
+        "its visual taxonomy (crepe-visual-v2) has no triangle label yet; "
+        "the follow-up (#106) depends on adding one."
     ),
     "label_leakage": (
         "Weak labels: the class equals the check that took the frame "
         "(spread, fold1, fold2). The head may learn check-specific camera "
         "timing or plate state instead of the fold shape. See "
         "sanity_checks: push_off frames show a quarter fold from a check "
-        "the head never trained on."
+        "the head never trained on. The stronger check against human "
+        "labels on video frames is tracked in #104."
     ),
     "no_crepe": (
         "There is no 'no crepe' class. Empty pans (plate_clean frames) "
