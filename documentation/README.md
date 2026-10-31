@@ -2,6 +2,10 @@
 
 Browse the guides by subject:
 
+## Status
+
+- [What works and what does not](status.md)
+
 ## Data
 
 - [Dashboard data and handling](data/data.md)

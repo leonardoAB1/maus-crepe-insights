@@ -249,6 +249,8 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 
 [Browse all documentation](documentation/README.md) by subject.
 
+- [Project status: what works and what does not](documentation/status.md)
+
 - [What data the dashboard has](documentation/data/data.md)
 - [MCAP topics & schemas](documentation/data/mcap.md)
 - [Robot system](documentation/system/system.md)
