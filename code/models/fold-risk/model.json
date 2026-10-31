@@ -156,10 +156,10 @@
     "parity_atol": 0.0001,
     "parity": "ok"
   },
-  "commit": "8e539d068133c81f1fea344fdb719e3e055b1fe6",
+  "commit": "01149adfe951aa2708e42d07b464e3a0b318ab37",
   "fold_risk": {
     "verdict": "research only",
-    "verdict_rule": "deployable only if the 95% CI of within-robot delta AUC over robot-only (any fold failure) is above 0",
+    "verdict_rule": "deployable only if within-robot delta AUC over robot-only (any fold failure) beats labels shuffled within robot, one-sided permutation p < 0.05",
     "target": {
       "any": "any fold1 or fold2 attempt not ok",
       "residue": "a fold error 'batter left on the plate'",
@@ -246,14 +246,23 @@
             91
           ],
           "estimable": true,
-          "log_or": 0.5210484196349473,
-          "se": 0.6254896361039357,
-          "odds_ratio": 1.6837920452652164,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.5133999316941383,
+          "odds_ratio": 1.670962707173304,
           "ci95": [
-            0.4941635519175624,
-            5.737282000456782
+            0.4983661774633346,
+            5.5301845206702325
           ],
-          "p": 0.4048307060886063,
+          "p": 0.39954231699281273,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.6837920452652164,
+            "ci95": [
+              0.4941635519175624,
+              5.737282000456782
+            ],
+            "p": 0.4048307060886063
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -263,15 +272,24 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.2996222850536625,
-          "se": 0.2295933909732678,
-          "odds_ratio": 0.7410980916485848,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.24372058183703393,
+          "odds_ratio": 0.7837065855263903,
           "ci95": [
-            0.472547474270182,
-            1.162267097699374
+            0.47181926063821067,
+            1.1026810170981565
           ],
-          "p": 0.1918885322190803,
-          "p_holm": 1.0,
+          "p": 0.15012705502251816,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.7410980916485848,
+            "ci95": [
+              0.472547474270182,
+              1.162267097699374
+            ],
+            "p": 0.1918885322190803
+          },
+          "p_holm": 0.900762330135109,
           "significant": false
         },
         {
@@ -280,15 +298,24 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.30562059599601754,
-          "se": 0.2355328014715806,
-          "odds_ratio": 1.357467180350101,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.26976705094854536,
+          "odds_ratio": 1.3096593312970313,
           "ci95": [
-            0.8555461756470502,
-            2.1538488490513163
+            0.873580184784328,
+            2.128328002231669
           ],
-          "p": 0.19443470042086664,
-          "p_holm": 1.0,
+          "p": 0.19365975958325937,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.357467180350101,
+            "ci95": [
+              0.8555461756470502,
+              2.1538488490513163
+            ],
+            "p": 0.19443470042086664
+          },
+          "p_holm": 0.9682987979162969,
           "significant": false
         },
         {
@@ -297,14 +324,23 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.06245081709625595,
-          "se": 0.22133205250318727,
-          "odds_ratio": 0.939459267011939,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.04782886251428536,
+          "odds_ratio": 0.9532969179558809,
           "ci95": [
-            0.6088071862006189,
-            1.4496933255380036
+            0.6103464391862937,
+            1.4209989233630125
           ],
-          "p": 0.7778216415593272,
+          "p": 0.8146582845483181,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.939459267011939,
+            "ci95": [
+              0.6088071862006189,
+              1.4496933255380036
+            ],
+            "p": 0.7778216415593272
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -314,14 +350,23 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.1449048128503061,
-          "se": 0.28076218107881595,
-          "odds_ratio": 1.1559295353934305,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.041813770085937875,
+          "odds_ratio": 1.0427002786851016,
           "ci95": [
-            0.6667241076898467,
-            2.0040869609839373
+            0.7758361138618236,
+            1.6947948584065289
           ],
-          "p": 0.6057759831476461,
+          "p": 0.7824748830659026,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.1559295353934305,
+            "ci95": [
+              0.6667241076898467,
+              2.0040869609839373
+            ],
+            "p": 0.6057759831476461
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -331,15 +376,24 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.5162328913521349,
-          "se": 0.40388476990800126,
-          "odds_ratio": 1.6757031887388025,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.3127362759766835,
+          "odds_ratio": 1.3671609302990981,
           "ci95": [
-            0.7592936304041605,
-            3.698149259140689
+            0.9738430362746776,
+            3.4972085593219977
           ],
-          "p": 0.20118993229490922,
-          "p_holm": 1.0,
+          "p": 0.07058650114557163,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.6757031887388025,
+            "ci95": [
+              0.7592936304041605,
+              3.698149259140689
+            ],
+            "p": 0.20118993229490922
+          },
+          "p_holm": 0.49410550801900144,
           "significant": false
         },
         {
@@ -348,14 +402,23 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.21768959437028082,
-          "se": 0.32354254346314537,
-          "odds_ratio": 1.2432011110968646,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.07752959265087561,
+          "odds_ratio": 1.0806142102244585,
           "ci95": [
-            0.659388665051342,
-            2.3439119968981235
+            0.7895548424080244,
+            2.3582486559623494
           ],
-          "p": 0.5010545354862596,
+          "p": 0.644108402423963,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.2432011110968646,
+            "ci95": [
+              0.659388665051342,
+              2.3439119968981235
+            ],
+            "p": 0.5010545354862596
+          },
           "p_holm": 1.0,
           "significant": false
         }
@@ -375,15 +438,24 @@
             90
           ],
           "estimable": true,
-          "log_or": -0.041164141273995446,
-          "se": 0.9109776094536736,
-          "odds_ratio": 0.9596715953009138,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.07764657708677286,
+          "odds_ratio": 1.0807406326628488,
           "ci95": [
-            0.1609522653407948,
-            5.72200440222057
+            0.1706720402821567,
+            5.2009194325010855
           ],
-          "p": 0.9639584346248756,
-          "p_holm": 1.0,
+          "p": 0.9271344724496448,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.9596715953009138,
+            "ci95": [
+              0.1609522653407948,
+              5.72200440222057
+            ],
+            "p": 0.9639584346248756
+          },
+          "p_holm": 0.9271344724496448,
           "significant": false
         },
         {
@@ -392,15 +464,24 @@
           "n_events": 9,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.23134056135091172,
-          "se": 0.30749811949248024,
-          "odds_ratio": 0.7934691950749517,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.23281600496662622,
+          "odds_ratio": 0.792299339257186,
           "ci95": [
-            0.43429736752953463,
-            1.4496826612472524
+            0.4480581710431661,
+            1.4396937082245729
           ],
-          "p": 0.4518516512298,
-          "p_holm": 1.0,
+          "p": 0.4237068356138971,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.7934691950749517,
+            "ci95": [
+              0.43429736752953463,
+              1.4496826612472524
+            ],
+            "p": 0.4518516512298
+          },
+          "p_holm": 0.8474136712277942,
           "significant": false
         },
         {
@@ -409,15 +490,24 @@
           "n_events": 9,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.43431464857706964,
-          "se": 0.27461469838139124,
-          "odds_ratio": 1.5439045790772865,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.36486465550004565,
+          "odds_ratio": 1.4403190556942758,
           "ci95": [
-            0.9012971550906843,
-            2.644678656570243
+            0.9479245869841245,
+            2.6147855826034747
           ],
-          "p": 0.11375418920603157,
-          "p_holm": 0.5687709460301579,
+          "p": 0.08641846674707983,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.5439045790772865,
+            "ci95": [
+              0.9012971550906843,
+              2.644678656570243
+            ],
+            "p": 0.11375418920603157
+          },
+          "p_holm": 0.4320923337353991,
           "significant": false
         },
         {
@@ -426,15 +516,24 @@
           "n_events": 9,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.6044518391170985,
-          "se": 0.32093096915945196,
-          "odds_ratio": 0.5463738453368574,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.5070716133859173,
+          "odds_ratio": 0.6022566393015673,
           "ci95": [
-            0.2912815423089051,
-            1.0248654154391905
+            0.29605985659236905,
+            0.9651485213434727
           ],
-          "p": 0.05964177032113804,
-          "p_holm": 0.35785062192682826,
+          "p": 0.03506521989975285,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.5463738453368574,
+            "ci95": [
+              0.2912815423089051,
+              1.0248654154391905
+            ],
+            "p": 0.05964177032113804
+          },
+          "p_holm": 0.2103913193985171,
           "significant": false
         },
         {
@@ -443,15 +542,24 @@
           "n_events": 9,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.4047204505488218,
-          "se": 0.37228084858685956,
-          "odds_ratio": 1.4988834294439348,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.236409117577262,
+          "odds_ratio": 1.2666924303118492,
           "ci95": [
-            0.7225731598489429,
-            3.1092374584343596
+            0.9366243972474497,
+            2.7027722729116834
           ],
-          "p": 0.27697607147391756,
-          "p_holm": 1.0,
+          "p": 0.12105696425119701,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.4988834294439348,
+            "ci95": [
+              0.7225731598489429,
+              3.1092374584343596
+            ],
+            "p": 0.27697607147391756
+          },
+          "p_holm": 0.43344336837195674,
           "significant": false
         },
         {
@@ -460,15 +568,24 @@
           "n_events": 9,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.9801119723621643,
-          "se": 0.43056400659238797,
-          "odds_ratio": 2.664754604092556,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.9030119462659976,
+          "odds_ratio": 2.4670224713115676,
           "ci95": [
-            1.1459362934640227,
-            6.196607211529434
+            1.1249955035378598,
+            5.558279031827511
           ],
-          "p": 0.02282540365230519,
-          "p_holm": 0.15977782556613634,
+          "p": 0.010917347270019051,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 2.664754604092556,
+            "ci95": [
+              1.1459362934640227,
+              6.196607211529434
+            ],
+            "p": 0.02282540365230519
+          },
+          "p_holm": 0.07642143089013335,
           "significant": false
         },
         {
@@ -477,15 +594,24 @@
           "n_events": 9,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.4830706642745359,
-          "se": 0.4655771140145595,
-          "odds_ratio": 1.6210444508949886,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.26131573568523725,
+          "odds_ratio": 1.2986376269515643,
           "ci95": [
-            0.6508710663049648,
-            4.037335883887931
+            0.942181498272499,
+            4.012695775063574
           ],
-          "p": 0.29946847192341874,
-          "p_holm": 1.0,
+          "p": 0.10836084209298918,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.6210444508949886,
+            "ci95": [
+              0.6508710663049648,
+              4.037335883887931
+            ],
+            "p": 0.29946847192341874
+          },
+          "p_holm": 0.43344336837195674,
           "significant": false
         }
       ],
@@ -504,14 +630,23 @@
             90
           ],
           "estimable": true,
-          "log_or": 0.6809002654387232,
-          "se": 0.6460390221473438,
-          "odds_ratio": 1.9756555462652328,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.6717493241094756,
+          "odds_ratio": 1.957658906955743,
           "ci95": [
-            0.5569315424890553,
-            7.008428396862224
+            0.5594345116835624,
+            6.696746239697092
           ],
-          "p": 0.29190053799401683,
+          "p": 0.2873922261905897,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.9756555462652328,
+            "ci95": [
+              0.5569315424890553,
+              7.008428396862224
+            ],
+            "p": 0.29190053799401683
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -521,14 +656,23 @@
           "n_events": 28,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.10662648721820289,
-          "se": 0.23062678491944769,
-          "odds_ratio": 0.8988613464992108,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.09983113806236961,
+          "odds_ratio": 0.904990223536763,
           "ci95": [
-            0.5719826160812098,
-            1.4125459367381572
+            0.5771618754227036,
+            1.400996082227524
           ],
-          "p": 0.6438421841586865,
+          "p": 0.6524078587482731,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.8988613464992108,
+            "ci95": [
+              0.5719826160812098,
+              1.4125459367381572
+            ],
+            "p": 0.6438421841586865
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -538,14 +682,23 @@
           "n_events": 28,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.127138526416461,
-          "se": 0.22477517771543926,
-          "odds_ratio": 1.1355743139267327,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.10004423166964614,
+          "odds_ratio": 1.105219802711715,
           "ci95": [
-            0.7309481686071585,
-            1.7641866794842678
+            0.7530361069612862,
+            1.7599312893413868
           ],
-          "p": 0.5716485281023214,
+          "p": 0.6057228770099903,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.1355743139267327,
+            "ci95": [
+              0.7309481686071585,
+              1.7641866794842678
+            ],
+            "p": 0.5716485281023214
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -555,14 +708,23 @@
           "n_events": 28,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.12557338682055216,
-          "se": 0.22931704952776497,
-          "odds_ratio": 0.8819910355340848,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.1086184907065286,
+          "odds_ratio": 0.89707259375381,
           "ci95": [
-            0.5626899320404979,
-            1.382481083216715
+            0.5653730297526082,
+            1.3540268317559878
           ],
-          "p": 0.5839684747444251,
+          "p": 0.6015447357042798,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.8819910355340848,
+            "ci95": [
+              0.5626899320404979,
+              1.382481083216715
+            ],
+            "p": 0.5839684747444251
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -572,14 +734,23 @@
           "n_events": 28,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.19619050241882868,
-          "se": 0.29435767135231544,
-          "odds_ratio": 1.2167586787283478,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.08272490364658933,
+          "odds_ratio": 1.086242945968766,
           "ci95": [
-            0.6833555854295218,
-            2.166517277136453
+            0.806377380759127,
+            1.8310765586507196
           ],
-          "p": 0.5050891444989007,
+          "p": 0.5841326794101693,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.2167586787283478,
+            "ci95": [
+              0.6833555854295218,
+              2.166517277136453
+            ],
+            "p": 0.5050891444989007
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -589,14 +760,23 @@
           "n_events": 28,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.23207424268790958,
-          "se": 0.26864753519869916,
-          "odds_ratio": 1.2612133612224907,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.13900194587759432,
+          "odds_ratio": 1.1491263360606199,
           "ci95": [
-            0.7449298315799991,
-            2.1353140592481554
+            0.8161850268270618,
+            2.1398803884992277
           ],
-          "p": 0.3876640195548362,
+          "p": 0.441149434913253,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.2612133612224907,
+            "ci95": [
+              0.7449298315799991,
+              2.1353140592481554
+            ],
+            "p": 0.3876640195548362
+          },
           "p_holm": 1.0,
           "significant": false
         },
@@ -606,14 +786,23 @@
           "n_events": 28,
           "unit": "per SD",
           "estimable": true,
-          "log_or": 0.31024159665893425,
-          "se": 0.37790124903464073,
-          "odds_ratio": 1.3637545528785069,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": 0.12766178272164855,
+          "odds_ratio": 1.136168665832134,
           "ci95": [
-            0.6502286289041848,
-            2.8602654479104976
+            0.8260142287108672,
+            2.8098026597434727
           ],
-          "p": 0.4116693734796759,
+          "p": 0.44813582535437557,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 1.3637545528785069,
+            "ci95": [
+              0.6502286289041848,
+              2.8602654479104976
+            ],
+            "p": 0.4116693734796759
+          },
           "p_holm": 1.0,
           "significant": false
         }
@@ -633,14 +822,23 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.25495587481495846,
-          "se": 0.23194479009949054,
-          "odds_ratio": 0.7749506920493499,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.24351898252466436,
+          "odds_ratio": 0.7838645961620144,
           "ci95": [
-            0.4918609079825323,
-            1.2209723630427118
+            0.49692799777586555,
+            1.216504189220368
           ],
-          "p": 0.27167677478740804
+          "p": 0.27826330889523954,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.7749506920493499,
+            "ci95": [
+              0.4918609079825323,
+              1.2209723630427118
+            ],
+            "p": 0.27167677478740804
+          }
         }
       },
       "l_std": {
@@ -656,14 +854,23 @@
           "n_events": 35,
           "unit": "per SD",
           "estimable": true,
-          "log_or": -0.07041015647056695,
-          "se": 0.2101043829939157,
-          "odds_ratio": 0.9320114709644035,
+          "method": "Firth, profile penalized likelihood CI and LR test",
+          "log_or": -0.07084811656074436,
+          "odds_ratio": 0.9316033765075992,
           "ci95": [
-            0.6174191315352636,
-            1.4068974180461056
+            0.6269287228700215,
+            1.3919611024790899
           ],
-          "p": 0.7375346539433766
+          "p": 0.7130632383891383,
+          "wald": {
+            "estimable": true,
+            "odds_ratio": 0.9320114709644035,
+            "ci95": [
+              0.6174191315352636,
+              1.4068974180461056
+            ],
+            "p": 0.7375346539433766
+          }
         }
       }
     },
@@ -703,23 +910,24 @@
         "pooled_cv": {
           "n_runs": 106,
           "n_events": 35,
+          "note": "resample_ci95 resamples fixed out-of-fold predictions; it excludes CV refit variance. Use permutation_test for inference.",
           "delta_auc_within_robot": {
             "value": -0.17941335935805686,
-            "ci95": [
+            "resample_ci95": [
               -0.2901449309468321,
               -0.06385311007471514
             ]
           },
           "delta_auc_pooled": {
             "value": -0.0557344064386317,
-            "ci95": [
+            "resample_ci95": [
               -0.14788906557625314,
               0.029783782934090938
             ]
           },
           "brier_skill": {
             "value": -0.10860034283986897,
-            "ci95": [
+            "resample_ci95": [
               -0.20690751898498716,
               -0.026354645916265407
             ]
@@ -819,36 +1027,41 @@
             }
           }
         },
-        "permutation_null": {
-          "n_perm": 100,
-          "mean": -0.015447383347513461,
-          "q05_q95": [
-            -0.1795850849974142,
-            0.10018430008508082
-          ]
+        "permutation_test": {
+          "observed_delta_auc": -0.12990924711809554,
+          "n_perm": 1000,
+          "cv_repeats": 5,
+          "null_mean": -0.03426797624409856,
+          "null_q05_q95": [
+            -0.19715150226048073,
+            0.10649925762808007
+          ],
+          "p_one_sided": 0.8431568431568431,
+          "beats_null": false
         }
       },
       "residue": {
         "pooled_cv": {
           "n_runs": 104,
           "n_events": 9,
+          "note": "resample_ci95 resamples fixed out-of-fold predictions; it excludes CV refit variance. Use permutation_test for inference.",
           "delta_auc_within_robot": {
             "value": -0.1877917233268404,
-            "ci95": [
+            "resample_ci95": [
               -0.3179655067155068,
               0.3214440993788821
             ]
           },
           "delta_auc_pooled": {
             "value": 0.011695906432748537,
-            "ci95": [
+            "resample_ci95": [
               -0.10356161021109479,
               0.12873053301162554
             ]
           },
           "brier_skill": {
             "value": 0.1629558541694801,
-            "ci95": [
+            "resample_ci95": [
               -0.01910644645834858,
               0.3732781891204783
             ]
@@ -947,29 +1160,42 @@
               ]
             }
           }
+        },
+        "permutation_test": {
+          "observed_delta_auc": -0.13219737341810922,
+          "n_perm": 1000,
+          "cv_repeats": 5,
+          "null_mean": -0.0418565073443836,
+          "null_q05_q95": [
+            -0.3421545949869529,
+            0.2654307474855132
+          ],
+          "p_one_sided": 0.6693306693306693,
+          "beats_null": false
         }
       },
       "shape": {
         "pooled_cv": {
           "n_runs": 104,
           "n_events": 28,
+          "note": "resample_ci95 resamples fixed out-of-fold predictions; it excludes CV refit variance. Use permutation_test for inference.",
           "delta_auc_within_robot": {
             "value": -0.2549306698203757,
-            "ci95": [
+            "resample_ci95": [
               -0.3673238566988567,
               -0.11619802706763963
             ]
           },
           "delta_auc_pooled": {
             "value": -0.08012218045112784,
-            "ci95": [
+            "resample_ci95": [
               -0.17928447678447673,
               0.011720940615171326
             ]
           },
           "brier_skill": {
             "value": -0.1717435425154572,
-            "ci95": [
+            "resample_ci95": [
               -0.30327277116721313,
               -0.07133269113119453
             ]
@@ -1068,6 +1294,18 @@
               ]
             }
           }
+        },
+        "permutation_test": {
+          "observed_delta_auc": -0.2405815079528315,
+          "n_perm": 1000,
+          "cv_repeats": 5,
+          "null_mean": -0.039870913033045394,
+          "null_q05_q95": [
+            -0.2245854222370766,
+            0.12813751199780604
+          ],
+          "p_one_sided": 0.962037962037962,
+          "beats_null": false
         }
       }
     },
