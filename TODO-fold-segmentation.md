@@ -15,7 +15,7 @@
 - [x] Build the video and synchronized timeline dashboard.
 - [x] Document the method, limitations, schema and commands.
 - [x] Validate with offline tests and the cached private export.
-- [ ] Run lint, test and docs-check, then update the PR.
+- [x] Run lint, test and docs-check, then update the PR.
 
 ## Known follow-up
 
