@@ -144,7 +144,7 @@ instead of only pass/fail. Columns in [documentation/pipeline.md](documentation/
 ![Annotated spread and fold checks with the measured vision scores](assets/vision-scores-example.jpg)
 
 ## Team
-Leonardo Acha ([leonardoAB1](https://github.com/leonardoAB1)) · [Qbyte248](https://github.com/Qbyte248) · [AetherDim](https://github.com/AetherDim) · [salarehman](https://github.com/salarehman) · Timon Tscheulin ([timonTscheulin](https://github.com/timonTscheulin)) · [WhyAge36](https://github.com/WhyAge36)
+[leonardoAB1](https://github.com/leonardoAB1) · [Qbyte248](https://github.com/Qbyte248) · [AetherDim](https://github.com/AetherDim) · [salarehman](https://github.com/salarehman) · [timonTscheulin](https://github.com/timonTscheulin) · [WhyAge36](https://github.com/WhyAge36)
 
 ## Repo layout (BaselHack template)
 ```
