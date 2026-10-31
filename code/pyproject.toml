@@ -68,6 +68,11 @@ scikit-learn = ">=1.5"
 onnx = ">=1.17"
 onnxruntime = ">=1.20"
 skl2onnx = ">=1.18"
+jupyterlab = ">=4.6.5,<5"
+
+[tool.pixi.feature.ml.tasks]
+analyze = "maus-export analyze"
+notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]
 default = { features = ["dev"], solve-group = "default" }
