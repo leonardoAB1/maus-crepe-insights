@@ -10,6 +10,7 @@ Needs the ml environment: `pixi run -e ml ...`.
 
 from __future__ import annotations
 
+import json
 import math
 import subprocess
 import warnings
@@ -34,8 +35,6 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import Pipeline
 
-from maus_export.doe_analyze import dump_json
-
 from .split import MIN_RUNS_FOR_TEST, SPLIT_VERSION, TEST, TRAIN
 
 ONNX_INPUT = "x"
@@ -51,6 +50,11 @@ N_FOLDS = 5
 MIN_CLASSES = 2
 # Balanced accuracy of always predicting the majority class
 MAJORITY_BA = 0.5
+# Label shuffles for the null distribution of the holdout score
+N_PERM = 1000
+# A model is deployable when its score beats the shuffled-label null at
+# this level
+ALPHA = 0.05
 
 
 class HarnessError(ValueError):
@@ -228,7 +232,7 @@ def holdout_intervals(
         return out
 
     return {
-        "method": "bootstrap of runs"
+        "method": "descriptive: bootstrap of runs"
         + (" within robot" if strata is not None else ""),
         "level": CI_LEVEL,
         "n_boot": n_boot,
@@ -237,6 +241,96 @@ def holdout_intervals(
             stat, groups, strata=strata, n_boot=n_boot, seed=seed
         ),
     }
+
+
+def permutation_test(
+    stat: Callable[[np.ndarray], float],
+    y: np.ndarray,
+    *,
+    strata: np.ndarray | None = None,
+    n_perm: int = N_PERM,
+    seed: int = SEED,
+) -> dict[str, Any]:
+    """Score against a shuffled-label null.
+
+    `stat(labels)` refits and scores with the given labels, so the null
+    includes refit variance. Labels are shuffled within each stratum (e.g.
+    robot), keeping each robot's class mix. The p-value counts null scores
+    at or above the observed one, with the usual +1 correction.
+    """
+    y = np.asarray(y)
+    value = float(stat(y))
+    rng = np.random.default_rng(seed)
+    pools = (
+        [np.arange(len(y))]
+        if strata is None
+        else [
+            np.flatnonzero(np.asarray(strata) == s) for s in pd.unique(strata)
+        ]
+    )
+    null = []
+    for _ in range(n_perm):
+        shuffled = y.copy()
+        for idx in pools:
+            shuffled[idx] = y[rng.permutation(idx)]
+        null.append(float(stat(shuffled)))
+    null_arr = np.asarray(null)
+    finite = null_arr[np.isfinite(null_arr)]
+    return {
+        "value": value,
+        "n_perm": n_perm,
+        "null_mean": float(finite.mean()) if len(finite) else math.nan,
+        "null_ci95": ci95(finite),
+        "p_value": float((1 + (finite >= value).sum()) / (1 + len(finite))),
+        "shuffled": "labels within robot" if strata is not None else "labels",
+    }
+
+
+def holdout_null(
+    estimator: ClassifierMixin,
+    X: np.ndarray,
+    y: np.ndarray,
+    split: np.ndarray,
+    *,
+    robots: np.ndarray | None = None,
+    sample_weight: np.ndarray | None = None,
+    n_perm: int = N_PERM,
+    seed: int = SEED,
+) -> dict[str, Any]:
+    """Holdout balanced accuracy against refits on shuffled train labels.
+
+    Train labels are shuffled (within robot when given), the model is
+    refit and scored on the true holdout labels. A model that only learned
+    noise lands inside this null, whatever its bootstrap interval says.
+    """
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y).astype(str)
+    train, test = split == TRAIN, split == TEST
+    w = None if sample_weight is None else np.asarray(sample_weight)[train]
+
+    def stat(labels: np.ndarray) -> float:
+        if len(set(labels)) < MIN_CLASSES:
+            return math.nan
+        model = fit_model(estimator, X[train], labels, w)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return balanced_accuracy_score(y[test], model.predict(X[test]))
+
+    out = permutation_test(
+        stat,
+        y[train],
+        strata=None if robots is None else np.asarray(robots)[train],
+        n_perm=n_perm,
+        seed=seed,
+    )
+    out["metric"] = "balanced_accuracy"
+    return out
+
+
+def write_card(card: dict[str, Any], path: Path) -> None:
+    """Write a model card as indented JSON with a trailing newline."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(card, indent=2) + "\n", encoding="utf-8")
 
 
 def _quiet_metrics(
@@ -573,6 +667,7 @@ def train_and_evaluate(
     positive: str | None = None,
     sample_weight: np.ndarray | None = None,
     n_boot: int = N_BOOT,
+    n_perm: int = N_PERM,
 ) -> dict[str, Any]:
     """Fit on train rows, score on test rows, export and check ONNX, write
     `model.onnx` and `model.json` in `out_dir`. Returns the model card.
@@ -582,7 +677,11 @@ def train_and_evaluate(
     per-robot holdout metrics, a leave-one-robot-out check and a
     `generalization` verdict. With `positive` the intervals include that
     class's recall. `sample_weight` (one per row) weights the train fit and
-    the leave-one-robot-out fits."""
+    the leave-one-robot-out fits.
+
+    With `n_perm` > 0 the card gets a `deployable` verdict: the holdout
+    balanced accuracy must beat a shuffled-label null (p < ALPHA). The
+    bootstrap intervals are descriptive only."""
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y).astype(str)
     split = np.asarray(split)
@@ -667,6 +766,22 @@ def train_and_evaluate(
         card["generalization"] = generalization(
             card["metrics"]["per_robot"][TEST], card["leave_one_robot_out"]
         )
+    if n_perm > 0:
+        null = holdout_null(
+            estimator,
+            X,
+            y,
+            split,
+            robots=robots,
+            sample_weight=weights,
+            n_perm=n_perm,
+        )
+        card["deployable"] = {
+            "deployable": null["p_value"] < ALPHA,
+            "rule": f"holdout balanced accuracy beats the shuffled-label "
+            f"null at p < {ALPHA}",
+            "null": null,
+        }
     card["intervals"] = holdout_intervals(
         y[test],
         pred,
@@ -675,5 +790,5 @@ def train_and_evaluate(
         positive=positive,
         n_boot=n_boot,
     )
-    dump_json(card, out_dir / "model.json")
+    write_card(card, out_dir / "model.json")
     return card

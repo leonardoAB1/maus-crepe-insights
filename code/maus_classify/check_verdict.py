@@ -28,13 +28,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from maus_export.doe_analyze import dump_json
-
 from .harness import (
+    N_PERM,
     cross_val_proba,
     fit_model,
     metrics,
     train_and_evaluate,
+    write_card,
 )
 from .split import SPLIT_VERSION, TEST, TRAIN
 
@@ -277,9 +277,11 @@ def train_check(
     vision: pd.DataFrame,
     check: str,
     out_dir: Path,
+    n_perm: int = N_PERM,
 ) -> dict[str, Any]:
     """Train, evaluate and export the head for one check. Writes
-    `model.onnx` and `model.json` in `out_dir` and returns the card."""
+    `model.onnx` and `model.json` in `out_dir` and returns the card.
+    `n_perm` label shuffles test the head against a null."""
     if "split_version" in frames and set(frames["split_version"]) != {
         SPLIT_VERSION
     }:
@@ -321,6 +323,7 @@ def train_check(
         robots=robots,
         positive=FAIL,
         sample_weight=weights,
+        n_perm=n_perm,
         description=(
             f"Robot pass/fail verdict for the {check} check frame, from the "
             f"frame embedding. {WEAK_LABELS}"
@@ -377,7 +380,7 @@ def train_check(
         if majority is not None
         else "No majority baseline: train or test rows missing."
     )
-    dump_json(card, out_dir / "model.json")
+    write_card(card, out_dir / "model.json")
     return card
 
 

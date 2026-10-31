@@ -28,6 +28,7 @@ N_RUNS = 120
 TEST_FROM = 96  # runs at or after this index are holdout
 FAIL_RATE = 0.25
 SIGNAL = 3.0
+N_PERM = 20
 
 
 def synthetic(seed: int = 0) -> tuple[pd.DataFrame, ...]:
@@ -96,7 +97,7 @@ def test_head_uses_balanced_class_weights():
 
 def test_spread_head_beats_majority_and_exports(tmp_path):
     frames, embs, vision = synthetic()
-    card = train_check(frames, embs, vision, "spread", tmp_path)
+    card = train_check(frames, embs, vision, "spread", tmp_path, n_perm=N_PERM)
     test = card["metrics"]["test"]
     assert test["balanced_accuracy"] > 0.8
     assert card["baselines"]["majority"]["balanced_accuracy"] == 0.5
@@ -126,7 +127,9 @@ def test_spread_head_beats_majority_and_exports(tmp_path):
 
 def test_push_off_uses_all_attempts_and_has_no_overlay(tmp_path):
     frames, embs, vision = synthetic()
-    card = train_check(frames, embs, vision, "push_off", tmp_path)
+    card = train_check(
+        frames, embs, vision, "push_off", tmp_path, n_perm=N_PERM
+    )
     assert card["baselines"]["overlay_scores"] is None
     assert "overlay_scores_missing" in card["baselines"]
     counts = card["counts"]
@@ -152,7 +155,7 @@ def test_verdict_flags_missed_and_few_failures():
 def test_summary_table_has_one_row_per_check(tmp_path):
     frames, embs, vision = synthetic()
     cards = {
-        c: train_check(frames, embs, vision, c, tmp_path / c)
+        c: train_check(frames, embs, vision, c, tmp_path / c, n_perm=N_PERM)
         for c in ("spread", "push_off")
     }
     table = summary_table(cards)

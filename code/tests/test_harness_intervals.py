@@ -21,12 +21,15 @@ from maus_classify.harness import (  # noqa: E402
     ci95,
     cross_val_proba,
     holdout_intervals,
+    holdout_null,
     leave_one_robot_out,
     per_robot_metrics,
+    permutation_test,
     run_bootstrap,
     run_starts,
     time_group_folds,
     train_and_evaluate,
+    write_card,
 )
 
 FRAMES_PER_RUN = 2
@@ -262,3 +265,72 @@ def test_robot_confound_is_exposed(tmp_path):
     gen = card["generalization"]
     assert gen["generalizes"] is False
     assert gen["not_above_majority"]
+
+
+N_PERM = 50
+
+
+def test_permutation_test_shuffles_within_strata():
+    y = np.array(["fail", "pass", "pass", "fail", "fail", "fail"])
+    strata = np.array(["a", "a", "a", "b", "b", "b"])
+    seen = []
+
+    def stat(labels: np.ndarray) -> float:
+        seen.append(labels.copy())
+        return float((labels == "fail").sum())
+
+    out = permutation_test(stat, y, strata=strata, n_perm=20)
+    for labels in seen:
+        # each robot keeps its own class counts
+        assert (labels[strata == "a"] == "fail").sum() == 1
+        assert (labels[strata == "b"] == "fail").sum() == 3
+    assert out["p_value"] == 1.0  # every shuffle ties the observed count
+
+
+def test_holdout_null_separates_signal_from_noise():
+    X, y, groups, ts, robots = separable(90)
+    split = np.where(groups % 5 == 4, "test", "train")
+    real = holdout_null(
+        LogisticRegression(max_iter=500),
+        X,
+        y,
+        split,
+        robots=robots,
+        n_perm=N_PERM,
+    )
+    assert real["p_value"] < 0.05
+    assert real["value"] > real["null_ci95"][1]
+
+    noise = np.random.default_rng(9).normal(size=X.shape)
+    fake = holdout_null(
+        LogisticRegression(max_iter=500),
+        noise,
+        y,
+        split,
+        robots=robots,
+        n_perm=N_PERM,
+    )
+    assert fake["p_value"] > 0.05
+
+
+def test_card_deployable_and_write_card(tmp_path):
+    X, y, groups, ts, robots = separable(90)
+    split = np.where(groups % 5 == 4, "test", "train")
+    card = train_and_evaluate(
+        LogisticRegression(max_iter=500),
+        X,
+        y,
+        split,
+        groups,
+        name="dummy",
+        feature_names=["a", "b", "c"],
+        out_dir=tmp_path,
+        robots=robots,
+        n_boot=N_BOOT,
+        n_perm=N_PERM,
+    )
+    assert card["deployable"]["deployable"] is True
+    assert card["intervals"]["method"].startswith("descriptive")
+    nested = tmp_path / "a" / "b.json"
+    write_card({"x": 1}, nested)
+    assert nested.read_text(encoding="utf-8") == '{\n  "x": 1\n}\n'
