@@ -1,0 +1,56 @@
+# Copies each shared diagram (documentation/diagrams/*.mmd) into every
+# marked block in the readme and docs, and commits the result to the PR.
+name: docs-sync
+
+on:
+  pull_request:
+    paths:
+      - "documentation/**"
+      - "readme.md"
+      - "code/docsync/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-sync-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      # Forks get a read-only token, so they can only be checked
+      CAN_PUSH: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          manifest-path: code/pyproject.toml
+
+      - name: Check diagrams (fork PRs)
+        if: env.CAN_PUSH != 'true'
+        working-directory: code
+        run: pixi run docs-check
+
+      - name: Sync diagrams
+        if: env.CAN_PUSH == 'true'
+        working-directory: code
+        run: pixi run docs
+
+      - name: Commit synced files
+        if: env.CAN_PUSH == 'true'
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "diagrams already in sync"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A readme.md documentation
+          git commit -m "docs: sync shared diagrams"
+          git push

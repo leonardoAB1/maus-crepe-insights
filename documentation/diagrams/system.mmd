@@ -1,0 +1,28 @@
+flowchart LR
+    kiosk[Kiosk tablet]
+    cam[Hotplate camera]
+    sensors[Sensor boards]
+    pi[Raspberry Pi 5]
+    duet2[Duet 2]
+    duet1[Duet 1]
+    worker[Cloud worker]
+    db[(Database)]
+    video[(Video storage)]
+    alerts[Team alerts]
+    pay[Card payments]
+    dash[Maus dashboard]
+
+    kiosk <-->|web| pi
+    cam -->|USB3| pi
+    sensors -->|USB| pi
+    pi <-->|SPI| duet2
+    duet2 <-->|CAN-FD| duet1
+    pi -->|uploads| worker
+    worker --> db
+    worker --> video
+    worker --> alerts
+    worker --> pay
+    dash -->|reads| worker
+    dash -->|live control| pi
+
+    style pi fill:#f3d9cf,stroke:#c8553d

@@ -4,6 +4,138 @@ Our BaselHack 2026 project on the **Maus Robotics** challenge. Maus builds auton
 Every run is logged with phases, machine logs, on-robot vision checks (with images), recipe parameters and video.
 We turn that data into insight: why runs fail, which settings and conditions matter, and how to catch problems early.
 
+## How it works
+
+**The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
+camera above the hotplate feeds the vision checks. More in [documentation/system.md](documentation/system.md).
+
+<!-- diagram: system -->
+```mermaid
+flowchart LR
+    kiosk[Kiosk tablet]
+    cam[Hotplate camera]
+    sensors[Sensor boards]
+    pi[Raspberry Pi 5]
+    duet2[Duet 2]
+    duet1[Duet 1]
+    worker[Cloud worker]
+    db[(Database)]
+    video[(Video storage)]
+    alerts[Team alerts]
+    pay[Card payments]
+    dash[Maus dashboard]
+
+    kiosk <-->|web| pi
+    cam -->|USB3| pi
+    sensors -->|USB| pi
+    pi <-->|SPI| duet2
+    duet2 <-->|CAN-FD| duet1
+    pi -->|uploads| worker
+    worker --> db
+    worker --> video
+    worker --> alerts
+    worker --> pay
+    dash -->|reads| worker
+    dash -->|live control| pi
+
+    style pi fill:#f3d9cf,stroke:#c8553d
+```
+<!-- /diagram -->
+
+**A crêpe run.** Four groups of stages, a vision check before each critical move, and four possible endings.
+Timings and check fail rates in [documentation/crepe-stages.md](documentation/crepe-stages.md).
+
+<!-- diagram: crepe-stages -->
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Prep
+    state Prep {
+        state "Check plate" as plate
+        [*] --> Prepare
+        Prepare --> plate
+        Prepare --> Oil
+        plate --> Oil
+        Oil --> [*]
+    }
+    Prep --> Bake
+    state Bake {
+        state "Spread batter" as spread
+        state "Add topping" as topping
+        [*] --> spread
+        spread --> Cook
+        Cook --> topping
+        topping --> [*]
+    }
+    Bake --> Serve
+    state Serve {
+        state "Push off" as push
+        [*] --> Fold
+        Fold --> push
+        push --> push: not aligned
+        push --> Handover
+        Handover --> [*]
+    }
+    Serve --> Reset
+    state Reset {
+        state "Wipe spatula" as wipe
+        state "Discard crepe" as discard
+        state "Plate load" as load
+        [*] --> wipe
+        wipe --> discard
+        discard --> load
+        load --> [*]
+    }
+    state "Not succeeded" as NotOk
+    Reset --> Succeeded: checks ok
+    Reset --> NotOk: check failed
+    Bake --> Canceled: order canceled
+    Prep --> Aborted: fault
+```
+<!-- /diagram -->
+
+**Where runs end.** The 430 runs that started a crêpe in our data window, and the first failed check behind
+each `not_succeeded` run.
+
+<!-- diagram: where-runs-end -->
+```mermaid
+sankey-beta
+
+Started crepe,Succeeded,181
+Started crepe,Not succeeded,147
+Started crepe,Canceled,66
+Started crepe,Aborted,36
+Canceled,In spread,13
+Canceled,In cook,34
+Canceled,In fold,10
+Canceled,After fold,9
+Not succeeded,Spread failed,12
+Not succeeded,Fold 2 failed,9
+Not succeeded,Fold 1 failed,4
+Not succeeded,Plate checks failed,6
+Not succeeded,No check data,116
+```
+<!-- /diagram -->
+
+**Our pipeline.** From the Maus dashboard to MCAP, analysis tables and ONNX models.
+Details in [documentation/pipeline.md](documentation/pipeline.md).
+
+<!-- diagram: pipeline -->
+```mermaid
+flowchart LR
+    robot[Robots] --> dash[Maus dashboard]
+    dash -->|fetch| raw[Raw JSON]
+    raw -->|mcap| mcap[MCAP files]
+    raw -->|table| table[Runs table]
+    mcap --> fox[Foxglove]
+    table --> train[Training]
+    raw --> train
+    train --> onnx[ONNX model]
+    onnx --> pi[Pi 5 runtime]
+    table --> insight[Failure analysis]
+```
+<!-- /diagram -->
+
 ## Team
 Leonardo Acha (leonardoAB1) · Qbyte248 · AetherDim · salarehman · Timon Tscheulin (timonTscheulin) · WhyAge36
 
@@ -13,7 +145,8 @@ code/            Python tooling (maus_export) + models
   maus_export/   dashboard → raw JSON → ROS 2 MCAP / analysis tables
   models/        trained models, always exported as ONNX
   tests/
-documentation/   data description, MCAP format
+documentation/   data description, MCAP format, diagrams
+  diagrams/      Mermaid sources shared by the docs and this readme
 assets/          slides, videos, images for the pitch
 data/            local exports (gitignored, never committed)
 ```
@@ -54,6 +187,9 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 ## Documentation
 - [What data the dashboard has](documentation/data.md)
 - [MCAP topics & schemas](documentation/mcap.md)
+- [Robot system](documentation/system.md)
+- [Crêpe stages and where runs fail](documentation/crepe-stages.md)
+- [Data pipeline and data model](documentation/pipeline.md)
 
 ## License
 MIT - see [license.txt](license.txt).

@@ -41,6 +41,10 @@ change.
 - **Models: ONNX.** Train with any framework, but every shipped model is exported to `.onnx` and run
   with `onnxruntime`, with a model card next to it. See `code/models/README.md`
 - **Tables:** flat analysis tables are Parquet (CSV only as a convenience copy)
+- **Diagrams: Mermaid, one source.** A diagram shown in more than one file lives in
+  `documentation/diagrams/<name>.mmd` and is placed with `<!-- diagram: <name> -->` /
+  `<!-- /diagram -->` markers. Edit the `.mmd`, never the copy. `pixi run docs` fills the copies, and CI
+  does it on every PR. Keep blocks to 3 words or fewer so they read well on GitHub
 - **Time:** all stored timestamps are UTC. Robot logs are naive local time (Europe/Zurich); convert
   them, never mix the two
 

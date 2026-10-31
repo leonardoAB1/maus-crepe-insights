@@ -1,0 +1,44 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Prep
+    state Prep {
+        state "Check plate" as plate
+        [*] --> Prepare
+        Prepare --> plate
+        Prepare --> Oil
+        plate --> Oil
+        Oil --> [*]
+    }
+    Prep --> Bake
+    state Bake {
+        state "Spread batter" as spread
+        state "Add topping" as topping
+        [*] --> spread
+        spread --> Cook
+        Cook --> topping
+        topping --> [*]
+    }
+    Bake --> Serve
+    state Serve {
+        state "Push off" as push
+        [*] --> Fold
+        Fold --> push
+        push --> push: not aligned
+        push --> Handover
+        Handover --> [*]
+    }
+    Serve --> Reset
+    state Reset {
+        state "Wipe spatula" as wipe
+        state "Discard crepe" as discard
+        state "Plate load" as load
+        [*] --> wipe
+        wipe --> discard
+        discard --> load
+        load --> [*]
+    }
+    state "Not succeeded" as NotOk
+    Reset --> Succeeded: checks ok
+    Reset --> NotOk: check failed
+    Bake --> Canceled: order canceled
+    Prep --> Aborted: fault
