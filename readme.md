@@ -185,6 +185,12 @@ Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
 
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
 
+**VS Code.** Run `pixi install -e ml` in `code/`, open the repo folder (or a worktree folder) and
+install the recommended extensions. The shared `.vscode/settings.json` points Python and notebooks
+at `code/.pixi/envs/ml`. On macOS or Linux, select `code/.pixi/envs/ml/bin/python` once
+("Python: Select Interpreter"). In a notebook, pick that same environment under "Select Kernel".
+JupyterLab works too: `pixi run -e ml notebook`.
+
 ## Standards we follow
 - **Data → [MCAP](https://mcap.dev) (ROS 2 profile)**, the standard container for multimodal robot logs.
   See [documentation/mcap.md](documentation/mcap.md).
