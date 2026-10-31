@@ -22,7 +22,7 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
-    font: 17px/1.6 ui-rounded, "Quicksand", "Segoe UI", system-ui, sans-serif;
+    font: 18px/1.6 ui-rounded, "Quicksand", "Segoe UI", system-ui, sans-serif;
   }
   header {
     display: flex; gap: 16px; align-items: center;
@@ -34,7 +34,7 @@
     background: var(--batter); border: 3px dashed var(--caramel);
   }
   h1 { font-size: 22px; margin: 0; font-weight: 700; }
-  .meta { color: var(--ink-soft); font-size: 15px; }
+  .meta { color: var(--ink-soft); font-size: 16px; }
   main {
     display: grid; grid-template-columns: minmax(0, 1fr) 380px;
     gap: 24px; padding: 24px 30px 34px; align-items: start;
@@ -65,19 +65,20 @@
     border-radius: 20px; padding: 22px; box-shadow: var(--shadow);
   }
   .card h2 {
-    font-size: 14px; text-transform: uppercase; letter-spacing: .1em;
+    font-size: 15px; text-transform: uppercase; letter-spacing: .1em;
     color: var(--caramel); margin: 0 0 16px; font-weight: 700;
   }
   .state {
     display: flex; align-items: center; gap: 12px;
-    font-size: 32px; font-weight: 700; line-height: 1.2;
+    font-size: 40px; font-weight: 700; line-height: 1.15;
   }
-  .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+  .dot { width: 20px; height: 20px; border-radius: 50%; display: inline-block;
+         flex: none; }
   .rows { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
   .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-  .row span:first-child { color: var(--ink-soft); font-size: 16px; }
-  .row span:last-child { font-size: 21px; font-weight: 650; text-align: right; }
-  .note { color: var(--ink-soft); font-size: 15px; margin: 18px 0 0; }
+  .row span:first-child { color: var(--ink-soft); font-size: 17px; }
+  .row span:last-child { font-size: 23px; font-weight: 650; text-align: right; }
+  .note { color: var(--ink-soft); font-size: 16px; margin: 18px 0 0; }
   select, button {
     background: var(--bg); color: var(--ink); border: 1px solid var(--line);
     border-radius: 12px; padding: 10px 12px; font: inherit; max-width: 100%;
@@ -86,7 +87,7 @@
   .row-toggles { display: flex; gap: 18px; margin-top: 16px; flex-wrap: wrap; }
   .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
   .legend {
-    display: flex; gap: 18px; flex-wrap: wrap; font-size: 16px;
+    display: flex; gap: 18px; flex-wrap: wrap; font-size: 17px;
     color: var(--ink-soft); margin-top: 16px;
   }
   .legend span { display: flex; gap: 8px; align-items: center; }
@@ -114,7 +115,7 @@
   </div>
 
   <aside>
-    <div class="card">
+    <div class="card" id="hero">
       <h2>Right now</h2>
       <div class="state">
         <i class="dot" id="state_dot"></i><span id="state">-</span>
@@ -151,8 +152,7 @@
 </main>
 
 <footer>
-  Local only. Masks and video stay in the private data directory, nothing is
-  uploaded, and a suggestion is drawn, not verified.
+  Local only. Nothing is uploaded, and a suggestion is drawn, not verified.
 </footer>
 
 <script>
@@ -175,6 +175,7 @@ const els = {
   prediction_state: el('prediction_state'), deviation: el('deviation'),
   check: el('check'), verdict: el('verdict'), phase_context: el('phase_context'),
   notes: el('notes'), error: el('error'), producer: el('producer'),
+  hero: el('hero'),
   producer_note: el('producer_note'), timeline: el('timeline'),
   donut: el('donut'), donut_legend: el('donut_legend'),
   show_material: el('show_material'), show_holes: el('show_holes')
@@ -263,9 +264,10 @@ function drawDonut(records) {
   els.donut.innerHTML =
     `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
     + arcs
-    + `<text x="${centre}" y="${centre + 10}" text-anchor="middle"`
-    + ` style="font-size:30px;fill:var(--ink)">${total}</text>`
-    + `</svg>`;
+    + `<text x="${centre}" y="${centre - 2}" text-anchor="middle"`
+    + ` style="font-size:34px;fill:var(--ink)">${total}</text>`
+    + `<text x="${centre}" y="${centre + 24}" text-anchor="middle"`
+    + `>labelled frames</text></svg>`;
   els.donut_legend.innerHTML = entries.map(([name, value]) =>
     `<span><i class="swatch" style="background:${STATE_COLOURS[name] || NO_STATE_COLOUR}"></i>`
     + `${name} ${Math.round((value / total) * 100)}%</span>`).join('');
@@ -312,7 +314,9 @@ async function refresh(force = false) {
   els.error.textContent = payload.error || '';
   const state = payload.state || 'unknown';
   els.state.textContent = state;
-  els.state_dot.style.background = STATE_COLOURS[state] || NO_STATE_COLOUR;
+  const colour = STATE_COLOURS[state];
+  els.state_dot.style.background = colour || NO_STATE_COLOUR;
+  el("hero").style.backgroundColor = colour ? `${colour}1f` : "var(--card)";
   els.prediction_state.textContent = payload.prediction_state || 'none';
   els.deviation.textContent = payload.deviation === null
     || payload.deviation === undefined ? '-' : payload.deviation.toFixed(2);
