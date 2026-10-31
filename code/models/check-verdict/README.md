@@ -24,8 +24,8 @@ The ONNX input is `x` (float32, `[None, 576]`), in the feature order listed in
 - Label: `fail` when the robot marked the check not ok. These are weak
   labels. The heads learn to agree with the robot, not to judge crepe
   quality.
-- Split: the fixed chronological, run-grouped holdout from `frames.split`.
-  Train rows are fit, test rows are only scored.
+- Split: the fixed per-robot chronological, run-grouped holdout from
+  `frames.split`. Train rows are fit, test rows are only scored.
 
 ## Report
 
@@ -45,25 +45,35 @@ overlay baseline close to an upper bound, not a fair competitor.
 
 ## Holdout results
 
-Trained on the 1,112 cached frame embeddings, with the holdout made of the
-latest 20% of runs that have vision checks. Balanced accuracy (BA) is shown
-for both baselines.
+Trained on the 1,112 cached frame embeddings with the per-robot split
+(`robot-chrono-v2`): each robot's latest 20% of runs are test, so the
+holdout mixes maus-quin, maus-otto and maus-pixi. maus-nilo has no runs with
+vision checks. Intervals are 95% bootstraps over runs.
 
-| check | test frames | test fails | balanced acc | macro F1 | agreement | majority BA | overlay BA |
+| check | test frames | test fails | balanced acc [95% CI] | fail recall [95% CI] | majority BA | overlay BA | generalizes |
 |---|---|---|---|---|---|---|---|
-| spread | 29 | 13 | 0.91 | 0.90 | 0.90 | 0.50 | 0.74 |
-| fold1 | 20 | 7 | 0.68 | 0.69 | 0.75 | 0.50 | 0.66 |
-| fold2 | 19 | 5 | 0.76 | 0.78 | 0.84 | 0.50 | 0.82 |
-| push_off | 36 | 22 | 0.87 | 0.86 | 0.86 | 0.50 | - |
+| spread | 34 | 12 | 0.70 [0.55, 0.85] | 0.50 [0.25, 0.75] | 0.50 | 0.60 | no |
+| fold1 | 32 | 4 | 0.75 [0.50, 1.00] | 0.50 [0.00, 1.00] | 0.50 | 0.74 | yes, weakly |
+| fold2 | 31 | 5 | 0.67 [0.37, 0.89] | 0.60 [0.00, 1.00] | 0.50 | 0.88 | no |
+| push_off | 61 | 32 | 0.92 [0.85, 0.97] | 0.94 [0.86, 1.00] | 0.50 | - | no |
 
-- All four heads beat the majority baseline.
-- spread and push_off are solid: spread catches all 13 test failures, push_off
-  18 of 22.
-- fold1 and fold2 fall short on failures. fold1 catches 3 of 7 and fold2
-  catches 3 of 5. With this few failures in the holdout, their scores are
-  rough. fold2 is slightly below the overlay baseline.
-- The holdout is small, so a single frame moves balanced accuracy by several
-  points. Read these numbers as a first signal, not a final score.
+- **push_off** is the only strong head: high on every robot in the holdout
+  (0.75 to 0.97). It drops to majority when maus-otto is held out entirely.
+  otto has only 11 runs.
+- **spread** fell from 0.91 on the old pixi-only holdout to 0.70. It works
+  on pixi (0.85) but sits at majority on the quin and otto holdouts. The
+  earlier score mostly described one robot.
+- **fold1** passes the generalization rule, but quin and otto have no test
+  failures, so their holdouts cannot be scored for it. Leave-one-robot-out
+  gives 0.73 to 0.81.
+- **fold2** is at or below majority for otto and quin in both views. It is
+  weaker than the overlay baseline.
+- **Weights:** robot-balanced weights won cross validation for spread
+  (0.88 vs 0.85) and tied for push_off. They lost for fold1 and fold2, so
+  those use class weights. The choice is in each card under `weighting`.
+- With 4 to 5 fold failures in the holdout, fold recall intervals span
+  almost 0 to 1. More pixi and otto runs are the main way to tighten them.
+  Fold recall work continues in #103.
 
 ## Train
 
