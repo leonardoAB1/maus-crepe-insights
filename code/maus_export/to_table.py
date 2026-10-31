@@ -46,6 +46,16 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
 
     row: dict[str, Any] = {
         "id": run["id"],
+        "parameter_id": "v1:sha256:"
+        + hashlib.sha256(
+            json.dumps(
+                run.get("parameters"),
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest(),
         "robot": run.get("machineName"),
         "machine_id": run.get("machineId"),
         "ts_start": start,
@@ -80,7 +90,8 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
         "has_batch": run.get("batch") is not None,
     }
     # Seconds spent in each phase (until the next phase starts)
-    for cur, nxt in zip(phases, phases[1:] + [None], strict=True):
+    next_phases = phases[1:] + ([None] if phases else [])
+    for cur, nxt in zip(phases, next_phases, strict=True):
         t0 = float(cur.get("elapsed_sec") or 0.0)
         t1 = float(nxt["elapsed_sec"]) if nxt else (row["duration_s"] or t0)
         row[f"phase_s.{cur['phase']}"] = row.get(
@@ -173,6 +184,11 @@ def build_table(data_dir: Path) -> pd.DataFrame:
         json.loads(p.read_text(encoding="utf-8"))
         for p in (data_dir / "raw" / "runs").glob("*.json")
     ]
+    if not runs:
+        raise ValueError(
+            f"No raw run JSON files found in {data_dir / 'raw' / 'runs'}; "
+            "fetch runs into this data directory first"
+        )
     df = runs_to_table(runs)
     df.to_csv(data_dir / "runs.csv", index=False)
     df.to_parquet(data_dir / "runs.parquet", index=False)
