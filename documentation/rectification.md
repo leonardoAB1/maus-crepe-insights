@@ -91,6 +91,37 @@ transform using suitable reference correspondences before video use.
 6. A planar homography cannot remove parallax from raised folds, utensils,
    or other objects away from the calibration plane.
 
+## Batch export
+
+Attempt all local raw check images and videos, leaving originals untouched:
+
+```bash
+pixi run python -m maus_export.rectification_batch \
+  --data-dir "$DATA" --out "$DATA/rectification/morph" --workers 2
+```
+
+Outputs are grouped by source run directory. Every attempted input gets a
+private JSON report, including skip reasons or the accepted transform.
+`summary.json` records aggregate progress. Run the same command to resume;
+completed items with their outputs present are reused, while skips are
+retried. Do not change source files or acceptance settings between resumes;
+use a new output directory for a different experiment.
+
+Only square overlays are accepted as rectified references. Overlays are
+never exported as training inputs. An image without a usable paired overlay
+is reported as skipped. For videos, try up to three same-run square
+references and five temporal samples. Require two separately accepted
+sample fits to agree within 3 pixels over a grid spanning the source.
+Do not scale an image transform to video resolution. Videos without usable
+same-run references or consistent fits are skipped. Silent MP4 output is
+published only after rendering completes and its decoded frame count agrees
+with source frame-count metadata. Intermediate video files use `.partial`.
+
+Temporal agreement is an extra experimental safeguard, not proof that
+calibration stays valid in every frame. Output videos currently have no
+validity-mask sidecar. Frame counts and constant-rate encoding do not prove
+exact timestamp preservation. Inspect accepted outputs before training.
+
 ## Tests
 
 `pixi run test` exercises known homographies, independent point validation,
