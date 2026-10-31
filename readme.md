@@ -194,6 +194,8 @@ Designed experiment for Maus: `pixi run doe --robot <robot>` writes a run sheet 
 `pixi run -e ml doe-analyze <sheet>` reads it back once the runs are done.
 See [documentation/doe.md](documentation/doe.md).
 
+![Example DoE result on a simulated batch: which setting to change and which way](assets/doe-results-example.png)
+
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
 
 **VS Code.** Run `pixi install -e ml` in `code/`, open the repo folder (or a worktree folder) and
