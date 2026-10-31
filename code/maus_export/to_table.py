@@ -80,7 +80,8 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
         "has_batch": run.get("batch") is not None,
     }
     # Seconds spent in each phase (until the next phase starts)
-    for cur, nxt in zip(phases, phases[1:] + [None], strict=True):
+    next_phases = phases[1:] + ([None] if phases else [])
+    for cur, nxt in zip(phases, next_phases, strict=True):
         t0 = float(cur.get("elapsed_sec") or 0.0)
         t1 = float(nxt["elapsed_sec"]) if nxt else (row["duration_s"] or t0)
         row[f"phase_s.{cur['phase']}"] = row.get(

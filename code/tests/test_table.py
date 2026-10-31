@@ -39,6 +39,31 @@ def make_run(
     }
 
 
+@pytest.mark.parametrize("phase_state", ["missing", "null", "empty"])
+def test_run_without_phases_remains_in_table(phase_state: str) -> None:
+    run = make_run(1)
+    if phase_state == "missing":
+        del run["phases"]
+    elif phase_state == "null":
+        run["phases"] = None
+    else:
+        run["phases"] = []
+    table = runs_to_table([run])
+    assert len(table) == 1
+    assert table.at[0, "last_phase"] is None
+    assert not table.at[0, "is_full_cycle"]
+    assert not any(c.startswith("phase_s.") for c in table.columns)
+
+
+def test_recorded_phase_durations_are_preserved() -> None:
+    row = run_row(make_run(1))
+    assert row["phase_s.init"] == 10.0
+    assert row["phase_s.spread_batter"] == 10.0
+    assert row["phase_s.cook"] == 10.0
+    assert row["phase_s.plate_load"] == 150.0
+    assert row["last_phase"] == "plate_load"
+
+
 def test_empty_export_reports_missing_runs_without_overwriting(
     tmp_path: Path,
 ) -> None:
