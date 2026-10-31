@@ -1,4 +1,4 @@
-"""maus-classify: frames"""
+"""maus-classify: frames | coverage | fold-class"""
 
 from __future__ import annotations
 
@@ -25,6 +25,9 @@ def main() -> None:
     sub.add_parser(
         "frames", help="one row per check frame -> training/frames.parquet"
     )
+    sub.add_parser(
+        "coverage", help="Markdown tables of data coverage (aggregates)"
+    )
     fc = sub.add_parser(
         "fold-class", help="fold state head -> models/fold-class (ml env)"
     )
@@ -34,6 +37,14 @@ def main() -> None:
     )
     fx.add_argument("--out", type=Path, default=None, help="image path")
     args = p.parse_args()
+
+    if args.cmd == "coverage":
+        from .coverage import CoverageError, report
+
+        try:
+            print(report(args.data_dir), end="")
+        except CoverageError as exc:
+            p.exit(1, f"Coverage report failed: {exc}\n")
 
     if args.cmd == "fold-class-example":
         from .fold_class import EXAMPLE_ASSET, example_figure
