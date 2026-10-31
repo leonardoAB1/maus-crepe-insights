@@ -165,8 +165,8 @@ Requires [pixi](https://pixi.sh) and a Maus dashboard account.
 cd code
 pixi install
 
-# 1. Download runs (opens a browser to sign in the first time; tokens are cached in ~/.maus-export/)
-pixi run fetch --limit 10 --media    # drop --limit for all runs; add --video for mp4s
+# 1. Download runs; the first sign-in opens a browser.
+pixi run fetch --limit 10 --media  # add --video only if mp4s are needed
 
 # 2. Convert to ROS 2 MCAP (one file per run in data/mcap/) and open them in Foxglove
 pixi run mcap
@@ -192,6 +192,12 @@ pixi run export vision-targets
 ```
 
 Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
+
+Removing `--limit` does not remove the fetch date defaults or account
+permission restrictions. Cached runs can also extend beyond the latest
+fetch. A successful fetch may still have missing media. For the complete
+private, account-specific fetch-to-vision-target workflow, see the
+[collaborator runbook](documentation/vision-targets.md).
 
 Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
 See [documentation/analysis.md](documentation/analysis.md).

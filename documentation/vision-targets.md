@@ -6,20 +6,75 @@ are candidates only: the dashboard snapshot does not prove that settings and
 context were available at that time or unchanged afterward. Verify each field's
 provenance and timing before use; otherwise it may leak future information.
 
-## Build
+## Reproduce the dataset privately
 
-From this worktree's `code/` directory, with pixi installed and private inputs
-already present:
+A collaborator needs their own Maus dashboard account and access to the desired
+runs. From this checkout's `code/` directory, install the pixi environment and
+choose an absolute private data directory. This example uses a separate
+subdirectory under this worktree's gitignored `data/`:
 
 ```bash
-# Build the two inputs separately if needed. Vision needs downloaded overlays.
-pixi run export training
-pixi run export vision
-pixi run export vision-targets
-
-# Or use an existing private data directory for both inputs and the output:
-pixi run export --data-dir /absolute/path/to/data vision-targets
+pixi install
+umask 077
+DATA_DIR="$(cd .. && pwd)/data/collaborator-export"
 ```
+
+Choose a new, empty subdirectory for a clean export, or reconcile any existing
+cache before proceeding. If choosing another location, check that it is private
+and gitignored. Raw records, images, tables, audits and other derivatives must
+stay private and out of git. Never commit them, share links, or paste logs,
+run IDs, tokens or rows into issues, pull requests or other public places.
+
+Fetch with the collaborator's own account. The first OAuth sign-in opens a
+browser; sign in there with that account. Credentials are cached in
+`~/.maus-export/`, so use a local user account with the collaborator's own
+credentials, not a shared cache or someone else's token. An existing
+`MAUS_TOKEN` bypasses browser sign-in; make sure it is not another account's.
+
+```bash
+pixi run export --data-dir "$DATA_DIR" fetch --media
+```
+
+`--data-dir` is a global option and must precede the subcommand. `--media`
+downloads vision-check images needed by the scorer; video is not needed. Without
+`--limit`, the fetch is still restricted by the default dates in
+`code/maus_export/fetch.py` and by the account's permissions. Inspect those
+current defaults and choose a window appropriate for the account. To override
+both dates, set `FROM_DATE` and `TO_DATE` to the desired dates in `YYYY-MM-DD`
+format, then use this instead of the fetch command above:
+
+```bash
+pixi run export --data-dir "$DATA_DIR" fetch --media \
+  --from "$FROM_DATE" --to "$TO_DATE"
+```
+
+A cached data directory can contain runs from earlier fetches outside the
+latest selection. Both downstream builders read all cached raw runs, so
+reconcile the cache against the intended window and account scope before
+building. A fetch can log failed downloads and still exit successfully. Logs can
+contain private media URLs, so inspect them locally and never paste or share
+them. Privately compare expected check images in the raw records with local
+media and verify that the required overlays are readable. Missing or unusable
+images reduce score coverage; successful exit does not prove complete media.
+
+Then build both inputs and the joined output from the same data directory:
+
+```bash
+pixi run export --data-dir "$DATA_DIR" training
+pixi run export --data-dir "$DATA_DIR" vision
+pixi run export --data-dir "$DATA_DIR" vision-targets
+
+# Optional: audit training and vision coverage locally.
+pixi run export --data-dir "$DATA_DIR" audit
+```
+
+Check coverage and missingness privately, including per-target coverage and
+join counts in the [training audit](training-audit.md). The audit does not
+prove that media is complete. Record the fetch window, account access scope,
+media coverage, code revision and environment privately; separate accounts or
+windows may produce different datasets. Candidate input timing and vision
+provenance remain unverified even if the commands succeed. See the provenance
+and evaluation sections below before training or interpreting scores.
 
 `vision-targets` reads `training/run_start.parquet`, `vision.parquet`, and the
 cached `raw/runs/*.json` from the selected data directory, and replaces only
@@ -27,11 +82,7 @@ cached `raw/runs/*.json` from the selected data directory, and replaces only
 `data/`, not the main checkout's. `export all --media` builds vision but does
 not build either training artifact. Run `training` and `vision-targets`
 separately after it. The command does not fetch data, score images, modify the
-inputs or update an audit. Both upstream builders read all cached raw runs,
-which can include earlier fetches beyond the latest fetch selection. Review
-the selected data directory and its cache before building. Keep all raw and
-derived data private and out of git; do not share rows or IDs. A successful
-`vision-targets` command is silent.
+inputs or update an audit. A successful `vision-targets` command is silent.
 
 The exporter rejects missing or malformed inputs, unexpected columns or types,
 incompatible run-start schema or manifest, nonpositive, null or duplicate IDs,
