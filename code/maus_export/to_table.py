@@ -2,36 +2,47 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-# A few parameters worth having as columns; the rest stay in the MCAP metadata.
-KEY_PARAMS = [
-    "dispense.batter.total_cook_time",
-    "dispense.batter.fan_power",
-    "dispense.batter.concentric_inner_radius_mm",
-    "dispense.batter.concentric_outer_radius_mm",
-    "dispense.batter.concentric_inner_flowrate_g_s",
-    "dispense.batter.concentric_outer_flowrate_g_s",
-    "dispense.batter.concentric_inner_speed_mm_s",
-    "dispense.batter.concentric_outer_speed_mm_s",
-    "dispense.batter.gluten_free",
-    "dispense.batter.gluten_free_krampouz",
-    "dispense.oil.grams",
-    "fold.spatula_gate_enabled",
+PARAM_PREFIX = "param."
+CHECK_PREFIX = "check."
+VISION_CHECKS = [
+    "plate_present",
+    "spread",
+    "fold1",
+    "fold2",
+    "push_off",
+    "plate_clean",
+    "plate_loaded",
 ]
+# A run that reached this phase made a real crepe, not a short test cycle
+FULL_CYCLE_PHASE = "cook"
+CONFIG_ID_LEN = 10
+LOG_WARN = 30
+LOG_ERROR = 40
+
+
+def _cell(value: Any) -> Any:
+    """Make a parameter value fit a flat column (lists become JSON)."""
+    if isinstance(value, list | dict):
+        return json.dumps(value, sort_keys=True)
+    return value
 
 
 def run_row(run: dict[str, Any]) -> dict[str, Any]:
+    """One flat row for a raw `crepe_get` run, with every parameter."""
     start = pd.Timestamp(run["tsStart"])
     end = pd.Timestamp(run["tsEnd"]) if run.get("tsEnd") else None
     logs = run.get("logs") or []
     checks = run.get("visionChecks") or []
     failed = [c for c in checks if not c.get("ok")]
     phases = run.get("phases") or []
+    phase_names = {p.get("phase") for p in phases}
 
     row: dict[str, Any] = {
         "id": run["id"],
@@ -46,6 +57,7 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
         "order_id": run.get("orderId") or None,
         "status": run.get("terminal_status"),
         "last_phase": phases[-1]["phase"] if phases else None,
+        "is_full_cycle": FULL_CYCLE_PHASE in phase_names,
         "hotplate_temp": run.get("hotplateTemp"),
         "env_temp_start": run.get("envTempStart"),
         "env_humidity_start": run.get("envHumidityStart"),
@@ -57,8 +69,10 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
         else None,
         "last_check": checks[-1].get("phase") if checks else None,
         "last_check_ok": checks[-1].get("ok") if checks else None,
-        "n_log_warn": sum(1 for e in logs if (e.get("level") or 0) == 30),
-        "n_log_error": sum(1 for e in logs if (e.get("level") or 0) >= 40),
+        "n_log_warn": sum(1 for e in logs if (e.get("level") or 0) == LOG_WARN),
+        "n_log_error": sum(
+            1 for e in logs if (e.get("level") or 0) >= LOG_ERROR
+        ),
         "success_spread": run.get("successSpread"),
         "success_topping": run.get("successTopping"),
         "success_fold": run.get("successFold"),
@@ -72,10 +86,86 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
         row[f"phase_s.{cur['phase']}"] = row.get(
             f"phase_s.{cur['phase']}", 0.0
         ) + max(t1 - t0, 0.0)
-    params = run.get("parameters") or {}
-    for k in KEY_PARAMS:
-        row[f"param.{k}"] = params.get(k)
+    row.update(check_columns(checks))
+    for k, v in (run.get("parameters") or {}).items():
+        row[f"{PARAM_PREFIX}{k}"] = _cell(v)
     return row
+
+
+def check_columns(checks: list[dict[str, Any]]) -> dict[str, Any]:
+    """Per-check result columns. A check can repeat (push_off retries by
+    design), so ok/error come from the last attempt and n counts attempts."""
+    out: dict[str, Any] = {}
+    for name in VISION_CHECKS:
+        attempts = [c for c in checks if c.get("phase") == name]
+        last = attempts[-1] if attempts else None
+        out[f"{CHECK_PREFIX}{name}.n"] = len(attempts)
+        ok = error = None
+        if last is not None:
+            ok = last.get("ok")
+            error = "; ".join(last.get("errors") or []) or None
+        out[f"{CHECK_PREFIX}{name}.ok"] = ok
+        out[f"{CHECK_PREFIX}{name}.error"] = error
+    return out
+
+
+def fix_mixed_types(df: pd.DataFrame) -> pd.DataFrame:
+    """Parquet needs one type per column. A parameter that was a number in
+    some runs and a string in others is stored as text."""
+    df = df.copy()
+    for c in df.columns:
+        if df[c].dtype != object:
+            continue
+        kinds = {type(v) for v in df[c].dropna()}
+        if len(kinds) > 1 and not kinds <= {int, float}:
+            df[c] = df[c].map(lambda v: None if pd.isna(v) else str(v))
+    return df
+
+
+def drop_constant_params(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop parameter columns that hold one value in every run. A key that
+    is unset in some runs counts as varying."""
+    params = [c for c in df.columns if c.startswith(PARAM_PREFIX)]
+    const = [c for c in params if df[c].astype(str).nunique(dropna=False) <= 1]
+    return df.drop(columns=const)
+
+
+def _config_hash(values: dict[str, Any]) -> str:
+    clean = {k: (None if pd.isna(v) else v) for k, v in values.items()}
+    blob = json.dumps(clean, sort_keys=True, default=str)
+    return hashlib.sha1(blob.encode()).hexdigest()[:CONFIG_ID_LEN]
+
+
+def add_config_ids(df: pd.DataFrame) -> pd.DataFrame:
+    """Add `config_id` (hash of the varying parameters) and `segment_id`
+    (consecutive runs on one robot with the same config)."""
+    params = sorted(c for c in df.columns if c.startswith(PARAM_PREFIX))
+    df = df.copy()
+    df["config_id"] = [
+        _config_hash(rec) for rec in df[params].to_dict("records")
+    ]
+    order = df.sort_values(["robot", "id"], na_position="last").index
+    seg = 0
+    prev: tuple[Any, str] | None = None
+    segments: dict[int, int] = {}
+    for i in order:
+        key = (df.at[i, "robot"], df.at[i, "config_id"])
+        if prev is not None and key != prev:
+            seg += 1
+        segments[i] = seg
+        prev = key
+    df["segment_id"] = pd.Series(segments)
+    return df
+
+
+def runs_to_table(runs: list[dict[str, Any]]) -> pd.DataFrame:
+    """Raw runs -> flat analysis table, sorted by id."""
+    df = (
+        pd.DataFrame([run_row(r) for r in runs])
+        .sort_values("id")
+        .reset_index(drop=True)
+    )
+    return fix_mixed_types(add_config_ids(drop_constant_params(df)))
 
 
 def build_table(data_dir: Path) -> pd.DataFrame:
@@ -83,11 +173,7 @@ def build_table(data_dir: Path) -> pd.DataFrame:
         json.loads(p.read_text(encoding="utf-8"))
         for p in (data_dir / "raw" / "runs").glob("*.json")
     ]
-    df = (
-        pd.DataFrame([run_row(r) for r in runs])
-        .sort_values("id")
-        .reset_index(drop=True)
-    )
+    df = runs_to_table(runs)
     df.to_csv(data_dir / "runs.csv", index=False)
     df.to_parquet(data_dir / "runs.parquet", index=False)
     print(f"{len(df)} runs -> {data_dir / 'runs.csv'} and runs.parquet")

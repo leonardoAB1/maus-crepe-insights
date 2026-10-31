@@ -91,3 +91,17 @@ erDiagram
 `terminal_status` is one of `succeeded`, `not_succeeded`, `canceled`,
 `aborted`. Phase, check and log timestamps are naive robot-local time
 (Europe/Zurich); see the time zone note in [data.md](data.md).
+
+## Run table columns
+
+`pixi run table` writes `data/runs.parquet` (and a CSV copy), one row per
+run, sorted by `id`. Image metric and analysis columns join on `id`.
+
+| Group | Columns | Notes |
+|---|---|---|
+| Run | `id`, `robot`, `ts_start`, `duration_s`, `topping`, `status`, `last_phase`, `is_full_cycle` | `is_full_cycle` means the run reached `cook` |
+| Context | `hotplate_temp`, `env_temp_start`, `env_humidity_start`, `is_test` | |
+| Phases | `phase_s.<phase>` | seconds spent in each phase |
+| Checks | `check.<name>.ok`, `.error`, `.n` | last attempt; `n` counts attempts (`push_off` retries) |
+| Parameters | `param.<key>` | every key that varies across runs; constant keys are dropped, lists are JSON text |
+| Config | `config_id`, `segment_id` | hash of all `param.*`; consecutive runs on one robot with the same config |
