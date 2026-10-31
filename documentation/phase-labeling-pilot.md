@@ -22,18 +22,23 @@ work.
 
 ## Supported environment
 
-The isolated `code/labeling/pixi.toml` and `pixi.lock` target **Linux x86-64**.
+The isolated `code/labeling/pixi.toml` and `pixi.lock` target **Linux x86-64**
+and **Apple Silicon macOS** (`osx-arm64`, M-series Macs).
 They pin Label Studio 1.23.2 and FFmpeg/ffprobe 7.1.1, with Python 3.12 and locked
 transitive dependencies. They do not change the exporter's dependency graph.
-Linux x86-64 with Pixi 0.83.0 was installed and exercised. macOS, Windows and
-ARM are not supported/tested by this standalone lock; use a Linux x86-64
-machine. This is a local single-user workflow, not a shared deployment.
+Linux x86-64 with Pixi 0.83.0 was installed and exercised. Apple Silicon with
+Pixi 0.82.0 is covered by synthetic video and installed-app integration tests.
+CI runs the isolated labeling tests on Linux and Apple Silicon macOS.
+Intel Macs, Windows and Linux ARM are not supported by this standalone lock.
+On Apple Silicon, use a native arm64 terminal, not a shell running under
+Rosetta. Check with `uname -m`: it should print `arm64`. This is a local
+single-user workflow, not a shared deployment.
 
 ## 1. Clone and install
 
 Install Git and curl using your OS package manager. Install Pixi following its
 [installation guide](https://pixi.sh/latest/installation/), then open a new
-shell. The official Linux installer can be downloaded and reviewed first:
+shell. The official macOS/Linux installer can be downloaded and reviewed first:
 
 ```bash
 curl -fsSL https://pixi.sh/install.sh -o "$HOME/pixi-install.sh"
@@ -48,9 +53,10 @@ pixi install --locked --manifest-path "$SOURCE/code/pyproject.toml"
 pixi install --locked --manifest-path "$SOURCE/code/labeling/pixi.toml"
 ```
 
-These commands require a revision containing issue #87's workflow. Until that
-change is merged, use its published branch/review revision instead of main.
-Do not use an unrelated private machine's runtime or copy its database.
+For an existing checkout, pull the latest `main` instead of cloning again,
+then set `SOURCE` to its absolute path and run both install commands. Run
+the commands below in the same Bash or zsh shell; both are supported. Do not
+use an unrelated private machine's runtime or copy its database.
 
 ## 2. Fetch a new private snapshot
 
@@ -64,8 +70,10 @@ mkdir -p "$SOURCE/data"
 export PRIVATE="$SOURCE/data/phase-snapshot"
 mkdir -m 700 "$PRIVATE"
 df -h "$PRIVATE"
-read -r -p 'First date visible to your account (YYYY-MM-DD): ' FROM
-read -r -p 'Last requested date (YYYY-MM-DD): ' TO
+printf 'First date visible to your account (YYYY-MM-DD): '
+read -r FROM
+printf 'Last requested date (YYYY-MM-DD): '
+read -r TO
 pixi run --locked --manifest-path "$SOURCE/code/pyproject.toml" \
   export --data-dir "$PRIVATE" fetch --from "$FROM" --to "$TO" --video
 ```
@@ -128,7 +136,8 @@ server with Ctrl-C. Label Studio login is separate from Maus OAuth. In the same
 shell, enter the email you just registered; this is not a password prompt:
 
 ```bash
-read -r -p 'Your existing local Label Studio email: ' OWNER_EMAIL
+printf 'Your existing local Label Studio email: '
+read -r OWNER_EMAIL
 pixi run --locked --manifest-path "$SOURCE/code/labeling/pixi.toml" \
   setup --pilot "$PILOT" --app-data "$APP_DATA" --owner-email "$OWNER_EMAIL"
 # Rerunning the same command verifies the project without duplicating tasks.

@@ -17,8 +17,8 @@ import pytest
 
 WORKFLOW = Path(__file__).parents[1] / "labeling" / "workflow.py"
 pytestmark = pytest.mark.skipif(
-    sys.platform != "linux",
-    reason="standalone labeling lock targets Linux",
+    sys.platform not in {"linux", "darwin"},
+    reason="labeling workflow requires POSIX file permissions and locking",
 )
 
 
@@ -290,13 +290,39 @@ def test_start_cli_serves_login_on_loopback_and_stops(pilot: Path) -> None:
                     time.sleep(0.2)
             else:
                 pytest.fail(log.read_text())
-            listeners = [
-                line.split()[1]
-                for line in Path("/proc/net/tcp").read_text().splitlines()[1:]
-                if line.split()[3] == "0A"
-                and line.split()[1].endswith(f":{port:04X}")
-            ]
-            assert listeners == [f"0100007F:{port:04X}"]
+            if sys.platform == "darwin":
+                result = subprocess.run(
+                    [
+                        "/usr/sbin/lsof",
+                        "-nP",
+                        "-a",
+                        "-p",
+                        str(process.pid),
+                        f"-iTCP:{port}",
+                        "-sTCP:LISTEN",
+                        "-Fn",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=10,
+                )
+                listeners = [
+                    line[1:]
+                    for line in result.stdout.splitlines()
+                    if line.startswith("n")
+                ]
+                assert listeners == [f"127.0.0.1:{port}"]
+            else:
+                listeners = [
+                    line.split()[1]
+                    for line in Path("/proc/net/tcp")
+                    .read_text()
+                    .splitlines()[1:]
+                    if line.split()[3] == "0A"
+                    and line.split()[1].endswith(f":{port:04X}")
+                ]
+                assert listeners == [f"0100007F:{port:04X}"]
             assert (app / "label_studio.sqlite3").is_file()
             assert (app / "label_studio.sqlite3").stat().st_mode & 0o077 == 0
         finally:
