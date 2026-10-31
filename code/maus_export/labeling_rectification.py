@@ -24,6 +24,10 @@ COORDINATE_SPACE = "rectified_upstream"
 PILOT_SCHEMA_VERSION = 1
 
 
+class SourceChangedError(ValueError):
+    """A source artifact moved, changed or became unsafe after extraction."""
+
+
 def _checked_source(root: Path, relative: str, expected_hash: str) -> Path:
     path = root / relative
     if (
@@ -33,7 +37,7 @@ def _checked_source(root: Path, relative: str, expected_hash: str) -> Path:
         or not path.is_file()
         or _hash_file(path) != expected_hash
     ):
-        raise ValueError("Unsafe or changed source artifact")
+        raise SourceChangedError("Unsafe or changed source artifact")
     return path
 
 
@@ -176,7 +180,13 @@ def prepare_rectified(
         raise ValueError("Insufficient free disk space")
     os.umask(0o077)
     output.mkdir(mode=0o700)
-    summary = {"selected": len(manifest["runs"]), "ok": 0, "rejected": 0}
+    summary = {
+        "selected": len(manifest["runs"]),
+        "ok": 0,
+        "alignment_rejected": 0,
+        "source_changed": 0,
+        "unavailable": 0,
+    }
     try:
         bank: dict[Any, list[Path]] = {}
         if experimental:
@@ -231,13 +241,19 @@ def prepare_rectified(
                             artifact.replace(destination)
                     summary["ok"] += 1
                 except (ValueError, cv2.error) as error:
+                    changed = isinstance(error, SourceChangedError)
                     candidate["status"] = "alignment_rejected"
                     candidate["rectification_rejection"] = str(error)
-                    summary["rejected"] += 1
+                    candidate["rectification_rejection_kind"] = (
+                        "source_changed" if changed else "alignment"
+                    )
+                    summary[
+                        "source_changed" if changed else "alignment_rejected"
+                    ] += 1
                 finally:
                     shutil.rmtree(staging)
             else:
-                summary["rejected"] += 1
+                summary["unavailable"] += 1
             runs.append(candidate)
         result["runs"] = runs
         for run in runs:

@@ -105,7 +105,9 @@ def test_shared_frames_preserve_timing_and_export_only_raw_pixels(
     assert prepare_rectified(data, pilot, output) == {
         "selected": 2,
         "ok": 1,
-        "rejected": 1,
+        "alignment_rejected": 1,
+        "source_changed": 0,
+        "unavailable": 0,
         "frames": 1,
     }
     result = json.loads((output / "manifest.json").read_text())
@@ -201,8 +203,27 @@ def test_changed_source_image_is_rejected_without_raw_fallback(
     image = pilot / "run-000" / "000000.png"
     image.write_bytes(b"changed source")
     output = pilot.parent / "rectified"
-    assert prepare_rectified(data, pilot, output)["frames"] == 0
+    summary = prepare_rectified(data, pilot, output)
+    assert summary["frames"] == 0
+    assert summary["source_changed"] == 1
+    assert summary["alignment_rejected"] == 1  # run 1 has no reference
     assert not list(output.rglob("*.png"))
+    runs = json.loads((output / "manifest.json").read_text())["runs"]
+    assert runs[0]["status"] == "alignment_rejected"
+    assert runs[0]["rectification_rejection_kind"] == "source_changed"
+
+
+def test_unavailable_videos_are_counted_apart(source_pilot: tuple) -> None:
+    data, pilot = source_pilot
+    manifest = pilot / "manifest.json"
+    content = json.loads(manifest.read_text())
+    content["runs"][1]["status"] = "missing_video"
+    content["runs"][1]["frames"] = []
+    manifest.write_text(json.dumps(content))
+    output = pilot.parent / "rectified"
+    summary = prepare_rectified(data, pilot, output)
+    assert (summary["ok"], summary["unavailable"]) == (1, 1)
+    assert summary["alignment_rejected"] == 0
 
 
 def test_annotated_pilot_is_refused_before_any_output(

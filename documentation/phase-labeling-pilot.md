@@ -144,8 +144,15 @@ transform. Only raw video pixels are warped; overlay paint is never copied.
 Videos are not re-encoded, and original selected frame indices, PTS and time
 bases stay unchanged.
 
-Check the aggregate `selected`, `ok`, `rejected` and `frames` counts. Rejected
-runs have no output frames and an explicit reason in the private manifest.
+Check the aggregate `selected`, `ok`, `alignment_rejected`, `source_changed`,
+`unavailable` and `frames` counts. `alignment_rejected` means no transform
+passed validation. `source_changed` means a video, run file, reference or
+extracted frame no longer matches its recorded hash. `unavailable` counts runs
+whose video was already missing or invalid in the source pilot. Rejected runs
+keep the `alignment_rejected` status, with `rectification_rejection_kind` and
+an explicit reason in the private manifest. Rejected runs have no output
+frames. A pilot that already holds labels or phase suggestions is refused
+before any output is created.
 They never fall back to raw images. A pilot with zero accepted frames cannot
 be imported. A partial pilot requires a deliberate review of that missingness.
 Existing output directories are never overwritten; choose a new name to retry.
