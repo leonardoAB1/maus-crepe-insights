@@ -64,6 +64,7 @@ def main() -> None:
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
     sub.add_parser("training", help="export candidate run-start dataset")
+    sub.add_parser("vision-targets", help="join run-start and vision targets")
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
@@ -130,6 +131,23 @@ def main() -> None:
             p.exit(
                 1,
                 f"{failed} ({type(exc).__name__}). Check raw input locally.\n",
+            )
+    if args.cmd == "vision-targets":
+        from .vision_targets import VisionTargetsError, build_vision_targets
+
+        try:
+            build_vision_targets(data_dir)
+        except VisionTargetsError as exc:
+            p.exit(
+                1,
+                "Vision-target export failed; previous output is stale: "
+                f"{exc}.\n",
+            )
+        except Exception as exc:
+            p.exit(
+                1,
+                "Vision-target export failed; previous output is stale "
+                f"({type(exc).__name__}). Check inputs locally.\n",
             )
     if args.cmd in ("vision", "all"):
         from .vision_metrics import build_vision_table
