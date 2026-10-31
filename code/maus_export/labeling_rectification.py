@@ -22,6 +22,11 @@ PREPROCESSING_VERSION = "upstream-rectified-v1"
 EXPERIMENTAL_VERSION = "upstream-rectified-experimental-v1"
 COORDINATE_SPACE = "rectified_upstream"
 PILOT_SCHEMA_VERSION = 1
+PRIVATE_UMASK = 0o077  # new files readable by the owner only
+
+
+class SourceChangedError(ValueError):
+    """A source artifact moved, changed or became unsafe after extraction."""
 
 
 def _checked_source(root: Path, relative: str, expected_hash: str) -> Path:
@@ -33,7 +38,7 @@ def _checked_source(root: Path, relative: str, expected_hash: str) -> Path:
         or not path.is_file()
         or _hash_file(path) != expected_hash
     ):
-        raise ValueError("Unsafe or changed source artifact")
+        raise SourceChangedError("Unsafe or changed source artifact")
     return path
 
 
@@ -112,17 +117,14 @@ def _rectify_run(
         if relative.parent != directory or relative.suffix != ".png":
             raise ValueError("Inconsistent source image directory")
         source = _checked_source(pilot, frame["image"], frame["image_sha256"])
-        if frame["human_label"] is not None or frame["phase_suggestion"]:
-            raise ValueError("Only unannotated source pilots are supported")
         destination = output / relative
         valid_relative = Path("valid") / relative
         valid_path = output / valid_relative
-        if not destination.exists():
-            pixels, valid = rectify(read_image(source), transform)
-            for path, image in ((destination, pixels), (valid_path, valid)):
-                path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-                if not cv2.imwrite(str(path), image):
-                    raise OSError("Cannot write rectified labeling artifact")
+        pixels, valid = rectify(read_image(source), transform)
+        for path, image in ((destination, pixels), (valid_path, valid)):
+            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if not cv2.imwrite(str(path), image):
+                raise OSError("Cannot write rectified labeling artifact")
         _checked_source(pilot, frame["image"], frame["image_sha256"])
         generated.append(
             {
@@ -168,11 +170,46 @@ def prepare_rectified(
         "preprocessing"
     ):
         raise ValueError("Expected an original unrectified pilot")
+    if any(
+        frame["human_label"] is not None or frame["phase_suggestion"]
+        for run in manifest["runs"]
+        for frame in run.get("frames", [])
+    ):
+        raise ValueError("Only unannotated source pilots are supported")
     if shutil.disk_usage(parent).free < MIN_FREE_BYTES:
         raise ValueError("Insufficient free disk space")
-    os.umask(0o077)
+    previous_umask = os.umask(PRIVATE_UMASK)
+    try:
+        return _publish(
+            data_dir,
+            pilot,
+            output,
+            content,
+            manifest,
+            experimental=experimental,
+        )
+    finally:
+        os.umask(previous_umask)
+
+
+def _publish(
+    data_dir: Path,
+    pilot: Path,
+    output: Path,
+    content: bytes,
+    manifest: dict[str, Any],
+    *,
+    experimental: bool,
+) -> dict:
+    """Write the new pilot; the caller has validated inputs and umask."""
     output.mkdir(mode=0o700)
-    summary = {"selected": len(manifest["runs"]), "ok": 0, "rejected": 0}
+    summary = {
+        "selected": len(manifest["runs"]),
+        "ok": 0,
+        "alignment_rejected": 0,
+        "source_changed": 0,
+        "unavailable": 0,
+    }
     try:
         bank: dict[Any, list[Path]] = {}
         if experimental:
@@ -227,13 +264,19 @@ def prepare_rectified(
                             artifact.replace(destination)
                     summary["ok"] += 1
                 except (ValueError, cv2.error) as error:
+                    changed = isinstance(error, SourceChangedError)
                     candidate["status"] = "alignment_rejected"
                     candidate["rectification_rejection"] = str(error)
-                    summary["rejected"] += 1
+                    candidate["rectification_rejection_kind"] = (
+                        "source_changed" if changed else "alignment"
+                    )
+                    summary[
+                        "source_changed" if changed else "alignment_rejected"
+                    ] += 1
                 finally:
                     shutil.rmtree(staging)
             else:
-                summary["rejected"] += 1
+                summary["unavailable"] += 1
             runs.append(candidate)
         result["runs"] = runs
         for run in runs:
