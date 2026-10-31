@@ -118,3 +118,28 @@ def test_planted_effect_is_found_with_the_right_direction() -> None:
     # Safe range spans only values that produced successes
     lo, hi = top[0]["safe_range"]["dispense.batter.fan_power"]
     assert lo >= GOOD_FAN and hi == max(FAN_LEVELS)
+
+
+def test_find_data_dir_walks_up_and_follows_worktrees(
+    tmp_path, monkeypatch
+) -> None:
+    from maus_export.analysis import DATA_ENV, find_data_dir
+
+    monkeypatch.delenv(DATA_ENV, raising=False)
+    main = tmp_path / "repo"
+    (main / "data").mkdir(parents=True)
+    (main / "data" / "runs.parquet").write_bytes(b"")
+    nested = main / "code" / "notebooks"
+    nested.mkdir(parents=True)
+    assert find_data_dir(nested) == main / "data"
+
+    # A worktree has a .git file pointing at <main>/.git/worktrees/<name>
+    wt = main / "worktrees" / "feat" / "x"
+    (wt / "code" / "notebooks").mkdir(parents=True)
+    (main / ".git" / "worktrees" / "x").mkdir(parents=True)
+    gitdir = main / ".git" / "worktrees" / "x"
+    (wt / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+    assert find_data_dir(wt / "code" / "notebooks") == main / "data"
+
+    monkeypatch.setenv(DATA_ENV, str(tmp_path / "elsewhere"))
+    assert find_data_dir(nested) == tmp_path / "elsewhere"

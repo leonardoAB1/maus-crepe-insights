@@ -28,6 +28,9 @@ pixi run -e ml notebook    # opens JupyterLab on code/notebooks/
     gluten-free recipe variants (a separate recipe with few runs).
   - A setting that is unset in older runs gets an "unset" indicator, not
     an invented value.
+- **Where the data comes from:** `$MAUS_DATA_DIR` if set, else a `data/` folder
+  in the current folder or a parent, else the main checkout's `data/` when
+  running inside a worktree (`find_data_dir`).
 - **Covariates:** robot, topping, hotplate setpoint and room temperature.
   Humidity is left out because it tracks room temperature (r = -0.87).
 
