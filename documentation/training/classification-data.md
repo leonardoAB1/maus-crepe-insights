@@ -35,8 +35,8 @@ Each model starts from a different step:
 
 - **Frame heads** (check verdict, fold class, failure reason) use frames from
   the 160 runs with camera checks.
-- **Fold risk** (the fold-risk analysis, #94) needs a spread, a later fold
-  and overlay scores, which gives 113 runs, or 106 in the fit.
+- **Fold risk** ([analysis](../analysis/fold-risk.md)) needs a spread, a
+  later fold and overlay scores, which gives 113 runs, or 106 in the fit.
 
 Counts per model are in each model card.
 
@@ -88,44 +88,51 @@ counts once per error:
 
 | Check | Robot error | Train | Test |
 |---|---|---:|---:|
-| spread | crepe too small | 13 | 5 |
-| spread | large hole in the centre | 5 | 4 |
-| spread | large hole off-center | 5 | 5 |
-| spread | batter left on the plate | 7 | 2 |
+| spread | crepe too small | 14 | 4 |
+| spread | large hole in the centre | 7 | 2 |
+| spread | large hole off-center | 8 | 2 |
+| spread | batter left on the plate | 4 | 5 |
 | spread | no crepe in the plate | 1 | 1 |
-| fold1 | not a half fold | 8 | 6 |
-| fold1 | wrong fold shape | 6 | 4 |
-| fold1 | batter left on the plate | 3 | 3 |
+| fold1 | not a half fold | 10 | 4 |
+| fold1 | wrong fold shape | 8 | 2 |
+| fold1 | batter left on the plate | 6 | 0 |
 | fold1 | no crepe detected | 1 | 0 |
-| fold2 | not a quarter fold | 12 | 2 |
-| fold2 | wrong fold shape | 18 | 5 |
-| fold2 | batter left on the plate | 9 | 0 |
+| fold2 | not a quarter fold | 11 | 3 |
+| fold2 | wrong fold shape | 19 | 4 |
+| fold2 | batter left on the plate | 7 | 2 |
 | fold2 | no crepe detected | 2 | 0 |
-| push_off | crepe not aligned with the plate | 110 | 21 |
+| push_off | crepe not aligned with the plate | 99 | 32 |
 | push_off | serving plate not found | 6 | 0 |
-| push_off | no crepe detected | 4 | 1 |
+| push_off | no crepe detected | 5 | 0 |
 
 Most reasons have 5 to 20 examples. 131 of 140 failed push_off frames are
 "crepe not aligned", so a push_off reason model mostly learns the majority.
 
 ## What the split covers
 
+The split is `robot-chrono-v2` (#102): within each robot, the latest 20% of
+its runs with camera checks are held out, and tied start times stay on one
+side. Every robot with camera checks is therefore in both train and test.
+
 | Robot | Train runs | Test runs | Train frames | Test frames |
 |---|---:|---:|---:|---:|
-| maus-quin | 83 | 0 | 697 | 0 |
-| maus-otto | 11 | 0 | 61 | 0 |
-| maus-pixi | 34 | 32 | 178 | 192 |
+| maus-quin | 66 | 17 | 570 | 127 |
+| maus-otto | 8 | 3 | 46 | 15 |
+| maus-pixi | 52 | 14 | 274 | 96 |
 
-The current split holds out the latest 20% of runs with camera checks. Robot
-follows time, so **the whole test set is maus-pixi**. A test score is
-therefore a score on one robot in its last three days. It says nothing about
-maus-quin or maus-otto, and it cannot separate "the model works" from "the
-model learned maus-pixi".
-
-The mixed-robot split (#102) holds out the latest runs **within each
-robot**, so every robot with enough runs appears in both train and test, and
-adds leave-one-robot-out checks. These tables will be refreshed when it
-lands.
+- **A test score now covers all three robots.** Each robot is tested on its
+  own latest runs. Per-robot test scores are still small: 3 maus-otto runs
+  tell you little on their own.
+- **The previous split** held out the latest 20% of all runs with camera
+  checks. Robot follows time, so its whole test set was maus-pixi (32 runs,
+  192 frames), and a test score said nothing about maus-quin or maus-otto.
+  Model cards trained before #102 cite that split.
+- **Still not a fix for robot = era.** The split mixes robots, but each
+  robot's runs still come from its own few days. Leave-one-robot-out checks
+  (in the shared harness) test transfer to a robot the model has not seen.
+- **Small reasons get thinner in test.** Some failure reasons now have 0 test
+  frames (fold1 residue, push_off "serving plate not found"), so the table
+  above decides which reasons can be scored at all.
 
 ## Where more data could come from
 

@@ -13,6 +13,9 @@ card and code are in [`code/models/fold-risk/`](../../code/models/fold-risk/).
 
 ## Data
 
+Why these are 113 of 828 runs, step by step and per robot, is on
+[classification data coverage](../training/classification-data.md).
+
 - **Rows:** one per run with a spread check, overlay scores for it in
   `vision.parquet`, and at least one fold check. There are 113 such runs.
 - **Features:** these come from the last spread attempt and were fixed before
