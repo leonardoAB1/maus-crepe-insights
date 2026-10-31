@@ -29,7 +29,21 @@ def main() -> None:
         "fold-class", help="fold state head -> models/fold-class (ml env)"
     )
     fc.add_argument("--out", type=Path, default=None, help="model folder")
+    fx = sub.add_parser(
+        "fold-class-example", help="example grid -> assets/ (ml env)"
+    )
+    fx.add_argument("--out", type=Path, default=None, help="image path")
     args = p.parse_args()
+
+    if args.cmd == "fold-class-example":
+        from .fold_class import EXAMPLE_ASSET, example_figure
+
+        path = example_figure(
+            args.data_dir,
+            REPO_ROOT / "code" / "models" / "fold-class",
+            args.out or REPO_ROOT / EXAMPLE_ASSET,
+        )
+        print(f"example figure -> {path}")
 
     if args.cmd == "fold-class":
         from .fold_class import FoldClassError, train_fold_class

@@ -19,6 +19,14 @@ exported with the shared harness in `maus_classify.harness`.
   confidence check, sanity checks and caveats
 - `train.py` - rebuilds both files
 
+## Example
+
+![fold-class examples](../../../assets/fold-class-example.jpg)
+
+One typical correct holdout frame per class (median confidence, not the
+best), the documented FAIL (a sideways half fold read as quarter) and one
+holdout error. Rebuild with `pixi run -e ml fold-class-example`.
+
 ## Pipeline
 
 ```

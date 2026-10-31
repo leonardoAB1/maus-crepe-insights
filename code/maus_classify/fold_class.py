@@ -442,3 +442,79 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
     card["out_of_scope"] = "edge angle for plate alignment"
     dump_json(card, out_dir / "model.json")
     return card
+
+
+EXAMPLE_ASSET = Path("assets") / "fold-class-example.jpg"
+
+
+def _typical(rows: pd.DataFrame) -> pd.Series:
+    """The row with the median confidence: typical, not cherry-picked."""
+    order = rows.sort_values("confidence", kind="stable")
+    return order.iloc[len(order) // 2]
+
+
+def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
+    """Example grid for the PR and README: one typical correct holdout
+    frame per class, the documented geometry FAIL and a holdout error."""
+    from maus_export.frame_preprocess import crop_plate, load_frame
+
+    from .figures import Example, example_grid
+
+    df = load_frames(data_dir)
+    cols = embedding_columns(df)
+    sess = ort.InferenceSession(
+        str(model_dir / "model.onnx"), providers=["CPUExecutionProvider"]
+    )
+    classes = list(CLASSES)  # sklearn order, as in model.json
+
+    def scored(rows: pd.DataFrame) -> pd.DataFrame:
+        proba = predict(sess, rows[cols].to_numpy())
+        return rows.assign(
+            predicted=np.asarray(classes)[proba.argmax(axis=1)],
+            confidence=proba.max(axis=1),
+        )
+
+    def tile(row: pd.Series, truth: str, note: str = "") -> Example:
+        return Example(
+            image=load_frame(data_dir / row["frame_path"]),
+            truth=truth,
+            predicted=row["predicted"],
+            confidence=float(row["confidence"]),
+            robot=str(row["robot"]),
+            note=note,
+        )
+
+    test = scored(df[(df["split"] == TEST) & df["label"].notna()])
+    tiles = [
+        tile(_typical(g), cls, "holdout")
+        for cls in CLASSES
+        if len(g := test[(test["label"] == cls) & (test["predicted"] == cls)])
+    ]
+    vision_path = data_dir / VISION
+    if vision_path.is_file():
+        case = GEOMETRY_CASES["fold2_no_change"]
+        fails = scored(no_change_frames(df, pd.read_parquet(vision_path), case))
+        fails = fails[fails["predicted"] != case["expected"]]
+        if len(fails):
+            row = fails.sort_values("confidence").iloc[-1]
+            tiles.append(
+                tile(
+                    row,
+                    f"{case['expected']} (fold2 did nothing)",
+                    "known FAIL: sideways half",
+                )
+            )
+    errors = test[test["predicted"] != test["label"]]
+    if len(errors):
+        row = errors.sort_values("confidence").iloc[-1]
+        tiles.append(tile(row, row["label"], "holdout error"))
+    return example_grid(
+        tiles,
+        out,
+        title="fold-class: crepe fold state from one frame",
+        subtitle=(
+            "Robot label vs model answer (confidence), robot. Green = "
+            "agree, red = disagree. Frames cropped to the plate."
+        ),
+        crop=crop_plate,
+    )
