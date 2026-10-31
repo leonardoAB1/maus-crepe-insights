@@ -19,6 +19,43 @@ from maus_export.phase_pilot import (
     prepare,
 )
 
+VIDEO_TIMESCALE = 12000
+VIDEO_START_SECONDS = 3
+
+
+def write_synthetic_video(
+    path: Path, *, rate: str = "2", duration: int = 11
+) -> None:
+    # Explicit frame durations and muxer timescales avoid build-specific
+    # MP4 edit-list rounding and a zero-duration final sample on FFmpeg 7.
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            f"testsrc2=size=32x32:rate={rate}:duration={duration}",
+            "-c:v",
+            "libx264",
+            "-bf",
+            "0",
+            "-r",
+            rate,
+            "-output_ts_offset",
+            str(VIDEO_START_SECONDS),
+            "-video_track_timescale",
+            str(VIDEO_TIMESCALE),
+            "-movie_timescale",
+            str(VIDEO_TIMESCALE),
+            "-pix_fmt",
+            "yuv420p",
+            str(path),
+        ],
+        check=True,
+    )
+
 
 def test_pilot_selects_newest_and_preserves_decoded_pts(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
@@ -33,25 +70,7 @@ def test_pilot_selects_newest_and_preserves_decoded_pts(tmp_path: Path) -> None:
         (runs / f"{index}.json").write_text(json.dumps(run))
     media = raw / "media"
     (media / "51").mkdir(parents=True)
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-loglevel",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc2=size=32x32:rate=2:duration=11",
-            "-vf",
-            "setpts=PTS+3/TB",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            str(media / "51" / "video.mp4"),
-        ],
-        check=True,
-    )
+    write_synthetic_video(media / "51" / "video.mp4")
     (media / "50").mkdir()
     (media / "50" / "video.mp4").write_bytes(b"not a video")
     output = tmp_path / "labeling" / "pilot"
@@ -80,10 +99,12 @@ def test_pilot_selects_newest_and_preserves_decoded_pts(tmp_path: Path) -> None:
     assert counts == {"ok": 1, "missing_video": 48, "invalid_video": 1}
     assert manifest["classes"] == ["cook", "unclear"]
     run = next(r for r in manifest["runs"] if r["status"] == "ok")
-    assert run["duration_ticks"] * 1 / 16384 == 11
+    base = Fraction(run["time_base"])
+    assert base == Fraction(1, VIDEO_TIMESCALE)
+    assert run["start_pts"] * base == VIDEO_START_SECONDS
+    assert run["duration_ticks"] * base == 11
     assert [f["requested_seconds"] for f in run["frames"]] == [0, 5, 10]
-    assert [f["decoded_pts"] for f in run["frames"]] == [49152, 131072, 212992]
-    assert run["time_base"] == "1/16384"
+    assert [f["decoded_pts"] * base for f in run["frames"]] == [3, 8, 13]
     for frame in run["frames"]:
         assert (output / frame["image"]).is_file()
         assert (
@@ -124,21 +145,7 @@ def test_sampling_uses_displayed_frame_before_off_grid_target(
     tmp_path: Path,
 ) -> None:
     video = tmp_path / "video.mp4"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-loglevel",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc2=size=32x32:rate=3/2:duration=11",
-            "-vf",
-            "setpts=PTS+3/TB",
-            str(video),
-        ],
-        check=True,
-    )
+    write_synthetic_video(video, rate="3/2")
     result = _extract(video, tmp_path / "frames")
     base = Fraction(result["time_base"])
     offsets = [
@@ -153,19 +160,7 @@ def test_probe_rejects_synthesized_or_disagreeing_frame_pts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     video = tmp_path / "video.mp4"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-loglevel",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc2=size=32x32:rate=2:duration=1",
-            str(video),
-        ],
-        check=True,
-    )
+    write_synthetic_video(video, duration=1)
     real_run = subprocess.run
 
     def inconsistent_probe(
@@ -225,19 +220,7 @@ def test_extraction_reserves_space_for_decoded_frames(
         (runs / f"{index}.json").write_text(json.dumps(run))
     video = tmp_path / "raw" / "media" / "49" / "video.mp4"
     video.parent.mkdir(parents=True)
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-loglevel",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc2=size=32x32:rate=2:duration=11",
-            str(video),
-        ],
-        check=True,
-    )
+    write_synthetic_video(video)
     usage = namedtuple("usage", "total used free")
     monkeypatch.setattr(
         "maus_export.phase_pilot.shutil.disk_usage",
