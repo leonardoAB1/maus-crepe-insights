@@ -105,3 +105,29 @@ run, sorted by `id`. Image metric and analysis columns join on `id`.
 | Checks | `check.<name>.ok`, `.error`, `.n` | last attempt; `n` counts attempts (`push_off` retries) |
 | Parameters | `param.<key>` | every key that varies across runs; constant keys are dropped, lists are JSON text |
 | Config | `config_id`, `segment_id` | hash of all `param.*`; consecutive runs on one robot with the same config |
+
+## Vision score columns
+
+`pixi run vision` reads the robot's check overlays in
+`data/raw/media/<id>/` (download them with `pixi run fetch --media`) and
+writes `data/vision.parquet`, one row per run, joined to the run table on
+`id`. Each overlay is a rectified top-down view of the plate with the
+robot's own analysis drawn in fixed colours; the scores read those
+annotations back as numbers. The last attempt of each check is used.
+
+Sizes are relative to the analysis zone (the blue circle, 396.5 px on every
+robot), since no millimetre scale is published for the plate.
+
+| Column | Meaning |
+|---|---|
+| `vision.spread.diameter_rel` | equivalent crepe diameter / zone diameter |
+| `vision.spread.area_rel` | crepe area / zone area |
+| `vision.spread.offset_rel` | crepe centroid distance from zone centre / zone radius |
+| `vision.spread.circularity` | 4 pi area / perimeter^2 of the outline (1 = circle) |
+| `vision.spread.hole_frac` | hole (red) area / crepe area |
+| `vision.spread.residue_frac` | residue (orange) area / zone area |
+| `vision.spread.circle_diameter_rel`, `circle_offset_rel` | robot's fitted circle, same scale |
+| `vision.spread.l_mean`, `l_std` | CIE L* of the batter, holes excluded |
+| `vision.fold1.iou`, `vision.fold2.iou` | overlap of the crepe with the robot's ideal fold shape |
+| `vision.fold1.area_rel`, `vision.fold2.area_rel` | folded crepe area / zone area |
+| `vision.fold1.l_mean`, `l_std` (and fold2) | browning: CIE L* mean and spread of the crepe |
