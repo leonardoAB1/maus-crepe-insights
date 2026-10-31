@@ -18,6 +18,7 @@ Browse the guides by subject:
 - [Private phase labeling](phase-labeling-pilot.md)
 - [Crêpe material and hole masks](mask-labeling.md)
 - [Simple pixel-mask suggestions](pixel-masks.md)
+- [Mask assistance for either annotator](mask-assist.md)
 - [Two-person labeling handoff](labeling-collaboration.md)
 
 ## Analysis

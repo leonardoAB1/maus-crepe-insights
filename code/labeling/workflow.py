@@ -16,6 +16,8 @@ from xml.etree import ElementTree as ET
 
 HUMAN_TAXONOMY_VERSION = "crepe-visual-v2"
 MASK_TAXONOMY_VERSION = "crepe-material-holes-v1"
+PIXEL_SUGGESTION_VERSION = "pixel-colour-components-v1"
+PIXEL_SUGGESTION_MARKER = "; suggestions=" + PIXEL_SUGGESTION_VERSION
 ORIGINAL_FRAME_VERSION = "original-video-frames-v1"
 ProjectKind = Literal["phase", "masks"]
 RECTIFICATION_VERSION = "upstream-rectified-v1"
@@ -181,11 +183,20 @@ def setup_project(
             )
             project.summary.update_data_columns(plan["tasks"])
         project.refresh_from_db()
+        pixel_suggestions = kind == "masks" and (
+            project.description == description + PIXEL_SUGGESTION_MARKER
+        )
         if (
             project.label_config != plan["config"]
-            or project.description != description
+            or project.description
+            != description
+            + (PIXEL_SUGGESTION_MARKER if pixel_suggestions else "")
             or project.created_by_id != owner.id
-            or project.show_collab_predictions
+            or project.show_collab_predictions != pixel_suggestions
+            or (
+                pixel_suggestions
+                and project.model_version != PIXEL_SUGGESTION_VERSION
+            )
             or project.sampling != Project.SEQUENCE
             or project.maximum_annotations != 1
             or project.min_annotations_to_start_training
@@ -206,7 +217,16 @@ def setup_project(
                 "existing project tasks differ; refusing to overwrite"
             )
         if project.tasks.filter(predictions__isnull=False).exists():
-            raise ValueError("predictions are not allowed in labeling pilots")
+            if not pixel_suggestions:
+                raise ValueError(
+                    "predictions require explicit pixel-suggestion opt-in"
+                )
+            for prediction in project.predictions.select_related("task"):
+                if prediction.model_version != PIXEL_SUGGESTION_VERSION:
+                    raise ValueError("unexpected prediction source")
+                validate_pixel_result(
+                    prediction.result, prediction.task.data["image_size"]
+                )
         if created and (
             project.tasks.filter(annotations__isnull=False).exists()
             or project.tasks.filter(drafts__isnull=False).exists()
@@ -218,6 +238,55 @@ def setup_project(
             "storage_roots": len(roots),
             "created": created,
         }
+
+
+def validate_pixel_result(result: list, size: list[int]) -> None:
+    """Permit brush proposals only, never preselected human review choices."""
+    if not result:
+        raise ValueError("empty output must not become a reviewed negative")
+    width, height = size
+    for region in result:
+        value = region.get("value", {})
+        rle = value.get("rle", [])
+        if (
+            region.get("from_name") != "segmentation"
+            or region.get("to_name") != "image"
+            or region.get("type") != "brushlabels"
+            or region.get("original_width") != width
+            or region.get("original_height") != height
+            or region.get("image_rotation", 0) != 0
+            or value.get("brushlabels") not in [["crepe_material"], ["hole"]]
+            or value.get("format") != "rle"
+            or len(rle) < 4
+            or any(type(v) is not int or not 0 <= v <= 255 for v in rle)
+            or int.from_bytes(bytes(rle[:4]), "big") != width * height * 4
+        ):
+            raise ValueError("invalid pixel brush prediction")
+
+
+def prefill_context(workspace: Path, set_number: int) -> tuple[dict, dict]:
+    """Require explicit ownership and the unchanged bootstrapped workspace."""
+    if type(set_number) is not int or set_number not in {1, 2}:
+        raise ValueError("Select set 1 or set 2 explicitly")
+    workspace = workspace.absolute()
+    if workspace != workspace.resolve(strict=True):
+        raise ValueError("Use the canonical workspace path, not a symlink")
+    state_path = workspace / "workspace.json"
+    if not state_path.exists():
+        raise ValueError(
+            "Start label-set and complete local signup/import first"
+        )
+    state = json.loads(state_path.read_text())
+    plan = build_plan(workspace / "pilot", kind="masks")
+    if (
+        plan.get("assignment", {}).get("set_number") != set_number
+        or state.get("assignment") != plan["assignment"]
+        or state.get("pilot_sha256") != plan["digest"]
+        or state.get("app_path", str(workspace / "app"))
+        != str(workspace / "app")
+    ):
+        raise ValueError("Wrong set, changed pilot or moved app workspace")
+    return state, plan
 
 
 def _validate_manifest(pilot: Path, manifest: dict) -> None:
