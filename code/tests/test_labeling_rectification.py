@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 from test_labeling_workflow import load_workflow
 
+from maus_export import labeling_rectification as rect
 from maus_export.labeling_rectification import prepare_rectified
 
 SIZE = 64
@@ -240,6 +241,16 @@ def test_annotated_pilot_is_refused_before_any_output(
     with pytest.raises(ValueError, match="unannotated"):
         prepare_rectified(data, pilot, output)
     assert not output.exists()
+
+
+def test_version_constants_match_the_labeling_workflow() -> None:
+    """The workflow runs in its own environment, so it keeps copies."""
+    workflow = load_workflow()
+    assert rect.PREPROCESSING_VERSION == workflow.RECTIFICATION_VERSION
+    assert (
+        rect.EXPERIMENTAL_VERSION == workflow.EXPERIMENTAL_RECTIFICATION_VERSION
+    )
+    assert rect.COORDINATE_SPACE == workflow.RECTIFIED_COORDINATE_SPACE
 
 
 def test_process_umask_is_restored(source_pilot: tuple) -> None:
