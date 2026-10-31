@@ -119,7 +119,11 @@ class ViewerApp:
         if producer not in self.producers:
             raise ViewerError(f"unknown producer {producer}")
         self.producer = producer
-        self.html = (Path(__file__).with_name(HTML_NAME)).read_text()
+
+    @property
+    def page(self) -> str:
+        """The page, read per request so an edit shows up on a refresh."""
+        return (Path(__file__).with_name(HTML_NAME)).read_text()
 
     @property
     def frames(self) -> int:
@@ -243,7 +247,7 @@ class ViewerApp:
         if method not in {"GET", "HEAD"}:
             return Response(405, "text/plain", b"method not allowed\n")
         if path in {"/", "/index.html"}:
-            return Response(200, HTML_CONTENT, self.html.encode())
+            return Response(200, HTML_CONTENT, self.page.encode())
         if path == STATUS_ROUTE:
             return _json(self.status())
         if path == RECORDS_ROUTE:

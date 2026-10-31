@@ -20,19 +20,22 @@ are.
 
 ## The page
 
-- **The video**, with a canvas overlay on top.
-- **The side panel**: the state and where it came from, the model state, the
-  deviation score, the check and its recorded verdict, the phase sequence marked
-  `UNALIGNED`, and the notes the producer attached.
-- **The timeline** under the header: one coloured segment per recorded frame, in
-  the unified state colours, with the playhead. Click to jump.
-- **The layer controls**: which producer answers, and whether material, holes and
-  the labels are drawn.
+Kept deliberately small: three cards, big text, and the masks drawn on the
+video. More layers can be added without touching what is there.
 
-The overlay draws material as a translucent green tint and holes as red, the
-same colours the labeling project uses, so a reviewer reads both the same way.
-The header line is drawn on the canvas: frame index, state, model state and
-deviation, check and verdict, and the unaligned phase sequence.
+- **The video** with a canvas overlay. Only the masks are drawn on it: material
+  in a translucent green, holes in red, the colours the labeling project uses.
+- **Right now**: the fold state in large type, then the model state, the
+  deviation score, the check and its recorded verdict, with the phase sequence
+  and the producer's notes as small print underneath.
+- **States in this clip**: a ring of the states in the recorded frames with the
+  share of each, so a run reads at a glance.
+- **Layers**: which producer answers, and whether material and holes are drawn.
+- **The timeline**, under the video: one coloured segment per recorded frame,
+  click to jump.
+
+The page is re-read on every request, so an edit to `viewer.html` shows up on a
+refresh without restarting the app.
 
 ## What is drawn today
 
