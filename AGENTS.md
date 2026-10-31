@@ -37,7 +37,7 @@ change.
 - **Data: MCAP, ROS 2 profile.** Multimodal robot data is stored as MCAP (`ros2msg` schemas,
   `cdr` messages). Prefer standard ROS 2 message types (`rcl_interfaces`, `sensor_msgs`,
   `std_msgs`) and only add `maus_msgs` types when none fits. Document every topic in
-  `documentation/mcap.md`
+  `documentation/data/mcap.md`
 - **Models: ONNX.** Train with any framework, but every shipped model is exported to `.onnx` and run
   with `onnxruntime`, with a model card next to it. See `code/models/README.md`
 - **Tables:** flat analysis tables are Parquet (CSV only as a convenience copy)
@@ -57,7 +57,12 @@ code/              # all code
   maus_export/     # dashboard -> raw JSON -> MCAP / tables (importable package)
   models/          # one folder per model: model.onnx, model.json, train.py
   tests/           # pytest suite only - must run offline, without dashboard access
-documentation/     # data description, formats, diagrams
+documentation/     # guides, diagrams and legacy section links
+  data/            # dashboard data, MCAP and pipeline
+  training/        # training datasets and audit
+  analysis/        # historical settings analysis
+  system/          # robot system and stages
+  diagrams/        # shared Mermaid sources
 assets/            # pitch slides, videos, images
 data/              # local exports, gitignored
 worktrees/         # git worktrees, gitignored
