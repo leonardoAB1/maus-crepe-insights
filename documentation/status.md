@@ -65,6 +65,11 @@ and the offline tests, not the counts.
   scores onto a video and is covered by offline tests, but no producer feeds
   it yet and no live stream has been tested. See
   [live overlay](vision/live-overlay.md).
+- **The run viewer shows what exists and nothing more.**
+  `pixi run maus-export view` serves a video with the pixel-mask suggestion
+  drawn on it and the record fields in the side panel, and it names the
+  producers it does not have. No model answers yet. See
+  [run viewer](vision/review-app.md).
 - **No model has been trained on human labels.** Every model metric above comes
   from labels derived from robot check verdicts, not from the labeling work.
 - **A fresh clone produces no artifacts.** Fetching runs needs dashboard access,

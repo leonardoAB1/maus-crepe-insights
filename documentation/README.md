@@ -25,6 +25,8 @@ page per question.
   consistent image view
 - [Live overlay](vision/live-overlay.md): drawing every layer onto a video or
   a stream, and what each source has to emit
+- [Run viewer](vision/review-app.md): a local web app that plays a run with the
+  pipeline beside it, and how a model plugs in
 
 ## Labeling
 

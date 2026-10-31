@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crepe run viewer</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --char: #17130f;
+    --grill: #221b15;
+    --grill-2: #2c231b;
+    --line: #3d3126;
+    --batter: #f7e8c8;
+    --caramel: #d9a05b;
+    --browned: #a3652f;
+    --toast: #6f4520;
+    --text: #f4ead9;
+    --muted: #b9a288;
+    --material: #7cc45f;
+    --hole: #d4554a;
+    --model: #6aa9e0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, Segoe UI, sans-serif;
+    background:
+      radial-gradient(1100px 520px at 12% -10%, #3a2a1c 0%, transparent 60%),
+      radial-gradient(900px 480px at 100% 0%, #2f2418 0%, transparent 55%),
+      var(--char);
+  }
+  header {
+    display: flex; gap: 14px; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(217,160,91,.10), transparent);
+  }
+  .logo {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%, var(--batter) 0 28%,
+      var(--caramel) 29% 62%, var(--browned) 63% 100%);
+    box-shadow: 0 0 0 2px #4a3627, 0 0 18px rgba(217,160,91,.35);
+  }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: .01em; }
+  header .meta { color: var(--muted); font-size: 12px; }
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 18px; padding: 18px 20px 26px; align-items: start;
+  }
+  .stage {
+    position: relative; border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--line); line-height: 0;
+    box-shadow: inset 0 0 0 1px rgba(247,232,200,.06),
+      0 18px 40px rgba(0,0,0,.45);
+    background: #000;
+  }
+  .stage::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 90px 20px rgba(0,0,0,.55);
+  }
+  video, canvas { width: 100%; height: auto; display: block; }
+  canvas { position: absolute; inset: 0; pointer-events: none; }
+  aside { display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: linear-gradient(180deg, var(--grill-2), var(--grill));
+    border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  }
+  .card h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--caramel); margin: 0 0 10px; font-weight: 700;
+  }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .field { display: grid; grid-template-columns: 104px 1fr; gap: 3px 10px; }
+  .field dt { color: var(--muted); font-size: 12px; }
+  .field dd { margin: 0; font-size: 13px; word-break: break-word; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: 999px; font-weight: 650;
+    font-size: 17px; border: 1px solid var(--line);
+    background: rgba(247,232,200,.05);
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .muted { color: var(--muted); }
+  .empty { color: var(--muted); font-size: 12px; }
+  select, button {
+    background: #2a2118; color: inherit; border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 9px; font: inherit; max-width: 100%;
+  }
+  label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+  .bar { height: 9px; border-radius: 999px; background: #191410;
+         border: 1px solid var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; }
+  .bar-label { display: flex; justify-content: space-between;
+               font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  #timeline {
+    position: relative; height: 30px; margin: 16px 20px 0;
+    background: linear-gradient(180deg, #241c15, #1c1611);
+    border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+    overflow: hidden;
+  }
+  #timeline .seg { position: absolute; top: 4px; bottom: 4px; border-radius: 3px; }
+  #timeline .playhead {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--batter); box-shadow: 0 0 10px rgba(247,232,200,.8);
+  }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .wide { grid-column: 1 / -1; }
+  ul.notes { margin: 0; padding-left: 18px; }
+  ul.notes li { margin-bottom: 4px; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px;
+            color: var(--muted); margin-top: 8px; }
+  .legend span { display: flex; gap: 6px; align-items: center; }
+  footer { padding: 0 20px 26px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" aria-hidden="true"></div>
+  <div>
+    <h1>Crepe run viewer</h1>
+    <div class="meta" id="meta">loading</div>
+  </div>
+</header>
+
+<div id="timeline" title="Fold states across the clip; click to jump"></div>
+
+<main>
+  <div>
+    <div class="stage">
+      <video id="video" controls preload="metadata" muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h2>This frame</h2>
+      <div class="row" style="justify-content:space-between">
+        <span class="badge" id="state_badge">
+          <i class="dot" id="state_dot"></i><span id="state">-</span>
+        </span>
+        <svg id="gauge" width="84" height="60" viewBox="0 0 84 60"></svg>
+      </div>
+      <dl class="field" style="margin-top:12px">
+        <dt>state from</dt><dd id="state_source">-</dd>
+        <dt>model says</dt><dd id="prediction_state">-</dd>
+        <dt>deviation</dt><dd id="deviation">-</dd>
+        <dt>check</dt><dd id="check">-</dd>
+        <dt>verdict</dt><dd id="verdict">-</dd>
+        <dt>phases</dt><dd id="phase_context">-</dd>
+        <dt>frame</dt><dd id="frame">-</dd>
+      </dl>
+      <div class="bar-label"><span>material area</span><span id="material_txt">-</span></div>
+      <div class="bar"><span id="material_bar" style="width:0%;background:var(--material)"></span></div>
+      <div class="bar-label"><span>hole area</span><span id="holes_txt">-</span></div>
+      <div class="bar"><span id="holes_bar" style="width:0%;background:var(--hole)"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Layers</h2>
+      <label>producer
+        <select id="producer"></select>
+      </label>
+      <div class="row" style="margin-top:10px">
+        <label><input type="checkbox" id="show_material" checked> material</label>
+        <label><input type="checkbox" id="show_holes" checked> holes</label>
+        <label><input type="checkbox" id="show_hud" checked> labels</label>
+      </div>
+      <p class="empty" id="producer_note" style="margin:8px 0 0"></p>
+    </div>
+
+    <div class="card">
+      <h2>Notes</h2>
+      <ul class="notes" id="notes"></ul>
+      <p class="empty" id="error" style="margin:8px 0 0"></p>
+    </div>
+  </aside>
+
+  <div class="card wide">
+    <h2>Across the clip</h2>
+    <div class="grid2">
+      <div>
+        <div id="donut"></div>
+        <div class="legend" id="donut_legend"></div>
+      </div>
+      <div>
+        <div id="spark"></div>
+        <div class="legend" id="spark_legend"></div>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div>
+        <div class="bar-label"><span>frames with a record</span><span id="cov_records">-</span></div>
+        <div class="bar"><span id="cov_records_bar" style="width:0%;background:var(--caramel)"></span></div>
+        <div class="bar-label"><span>frames with a model state</span><span id="cov_pred">-</span></div>
+        <div class="bar"><span id="cov_pred_bar" style="width:0%;background:var(--model)"></span></div>
+      </div>
+      <div>
+        <div class="bar-label"><span>frames with a deviation score</span><span id="cov_dev">-</span></div>
+        <div class="bar"><span id="cov_dev_bar" style="width:0%;background:var(--batter)"></span></div>
+        <div class="bar-label"><span>frames with a human state</span><span id="cov_state">-</span></div>
+        <div class="bar"><span id="cov_state_bar" style="width:0%;background:var(--material)"></span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Local only, bound to loopback. Masks and video stay in the private data
+  directory; nothing is uploaded. Suggestions are drawn, not verified.
+</footer>
+
+<script>
+const STATE_COLOURS = {
+  emptyplate: '#6f6558', flat: '#6aa9e0', cooking: '#e0a640',
+  halffold: '#7cc45f', 'quarter fold': '#c07de0', ugly: '#d4554a'
+};
+const NO_STATE_COLOUR = '#3d3126';
+const MATERIAL_RGB = '124,196,95';
+const HOLE_RGB = '212,85,74';
+const TINT_ALPHA = 0.42;
+const HUD_PADDING = 10;
+const HUD_LINE = 18;
+const POLL_MS = 250;
+const REVIEW_THRESHOLD = 0.5;
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const el = (id) => document.getElementById(id);
+const els = {
+  meta: el('meta'), state: el('state'), state_badge: el('state_badge'),
+  state_dot: el('state_dot'), state_source: el('state_source'),
+  prediction_state: el('prediction_state'), deviation: el('deviation'),
+  check: el('check'), verdict: el('verdict'), phase_context: el('phase_context'),
+  frame: el('frame'), producer: el('producer'), producer_note: el('producer_note'),
+  notes: el('notes'), error: el('error'), timeline: el('timeline'),
+  material_txt: el('material_txt'), material_bar: el('material_bar'),
+  holes_txt: el('holes_txt'), holes_bar: el('holes_bar'),
+  cov_records: el('cov_records'), cov_records_bar: el('cov_records_bar'),
+  cov_pred: el('cov_pred'), cov_pred_bar: el('cov_pred_bar'),
+  cov_dev: el('cov_dev'), cov_dev_bar: el('cov_dev_bar'),
+  cov_state: el('cov_state'), cov_state_bar: el('cov_state_bar'),
+  donut: el('donut'), donut_legend: el('donut_legend'),
+  spark: el('spark'), spark_legend: el('spark_legend'), gauge: el('gauge'),
+  show_material: el('show_material'), show_holes: el('show_holes'),
+  show_hud: el('show_hud')
+};
+
+let status = null;
+let recordIndex = new Map();
+let cache = new Map();
+let maskCache = new Map();
+let lastKey = null;
+
+async function boot() {
+  status = await (await fetch('/api/status')).json();
+  els.meta.textContent =
+    `${status.video} - ${status.frames} frames at ${status.fps.toFixed(2)} fps`
+    + ` - ${status.records} records - ${status.width}x${status.height}`;
+  video.src = '/api/video';
+  for (const producer of status.producers) {
+    const option = document.createElement('option');
+    option.value = producer.name;
+    option.textContent = `${producer.name} - ${producer.describes}`;
+    if (producer.name === status.producer) option.selected = true;
+    els.producer.appendChild(option);
+  }
+  const payload = await (await fetch('/api/records')).json();
+  const records = payload.records || [];
+  records.forEach((record) => recordIndex.set(record.frame, record));
+  drawTimeline(records);
+  drawDonut(records);
+  drawSpark(records);
+  drawCoverage(records);
+  video.addEventListener('seeked', () => refresh(true));
+  video.addEventListener('pause', () => refresh(true));
+  video.addEventListener('timeupdate', () => refresh());
+  els.producer.addEventListener('change', () => { cache.clear(); refresh(true); });
+  for (const id of ['show_material', 'show_holes', 'show_hud']) {
+    el(id).addEventListener('change', () => refresh(true));
+  }
+  els.timeline.addEventListener('click', (event) => {
+    const ratio = event.offsetX / els.timeline.clientWidth;
+    video.currentTime = ratio * (status.frames / status.fps);
+  });
+  setInterval(() => { if (!video.paused) refresh(); }, POLL_MS);
+  refresh(true);
+}
+
+function drawTimeline(records) {
+  els.timeline.innerHTML = '';
+  if (!records.length || !status.frames) return;
+  const width = Math.max(2, (8 / status.frames) * 100);
+  for (const record of records) {
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    seg.style.left = `${(record.frame / status.frames) * 100}%`;
+    seg.style.width = `${width}%`;
+    seg.style.background = STATE_COLOURS[record.state] || NO_STATE_COLOUR;
+    seg.title = `frame ${record.frame}: ${record.state || 'no state'}`
+      + (record.deviation === null || record.deviation === undefined
+        ? '' : `, deviation ${record.deviation.toFixed(2)}`);
+    els.timeline.appendChild(seg);
+  }
+  const head = document.createElement('div');
+  head.className = 'playhead';
+  head.id = 'playhead';
+  els.timeline.appendChild(head);
+}
+
+function drawDonut(records) {
+  const counts = new Map();
+  for (const record of records) {
+    if (!record.state) continue;
+    counts.set(record.state, (counts.get(record.state) || 0) + 1);
+  }
+  const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  if (!total) {
+    els.donut.innerHTML = '<p class="empty">no labelled frames in this clip</p>';
+    return;
+  }
+  const size = 190, radius = 78, thickness = 26, centre = size / 2;
+  let angle = -Math.PI / 2, arcs = '';
+  for (const [name, value] of entries) {
+    const sweep = (value / total) * Math.PI * 2;
+    const end = angle + sweep;
+    const large = sweep > Math.PI ? 1 : 0;
+    const x1 = centre + radius * Math.cos(angle);
+    const y1 = centre + radius * Math.sin(angle);
+    const x2 = centre + radius * Math.cos(end);
+    const y2 = centre + radius * Math.sin(end);
+    arcs += `<path d="M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 `
+      + `${x2} ${y2}" stroke="${STATE_COLOURS[name] || NO_STATE_COLOUR}"`
+      + ` stroke-width="${thickness}" fill="none" stroke-linecap="butt" />`;
+    angle = end;
+  }
+  els.donut.innerHTML =
+    `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
+    + arcs
+    + `<text x="${centre}" y="${centre - 6}" text-anchor="middle"`
+    + ` style="font-size:22px;fill:var(--batter)">${total}</text>`
+    + `<text x="${centre}" y="${centre + 14}" text-anchor="middle">`
+    + `labelled frames</text></svg>`;
+  els.donut_legend.innerHTML = entries.map(([name, value]) =>
+    `<span><i class="swatch" style="background:${STATE_COLOURS[name] || NO_STATE_COLOUR}"></i>`
+    + `${name} ${Math.round((value / total) * 100)}%</span>`).join('');
+}
+
+function drawSpark(records) {
+  const points = records
+    .map((record) => [record.frame, record.deviation])
+    .filter(([, value]) => value !== null && value !== undefined)
+    .sort((a, b) => a[0] - b[0]);
+  if (points.length < 2) {
+    els.spark.innerHTML =
+      '<p class="empty">no deviation scores in this clip yet</p>';
+    return;
+  }
+  const width = 420, height = 170, pad = 26;
+  const maxFrame = Math.max(status.frames - 1, 1);
+  const x = (frame) => pad + (frame / maxFrame) * (width - pad * 2);
+  const y = (value) => height - pad - value * (height - pad * 2);
+  const line = points.map(([frame, value], index) =>
+    `${index ? 'L' : 'M'} ${x(frame).toFixed(1)} ${y(value).toFixed(1)}`).join(' ');
+  const area = `${line} L ${x(points[points.length - 1][0]).toFixed(1)} `
+    + `${y(0).toFixed(1)} L ${x(points[0][0]).toFixed(1)} ${y(0).toFixed(1)} Z`;
+  const mean = points.reduce((sum, [, value]) => sum + value, 0) / points.length;
+  els.spark.innerHTML =
+    `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
+    + `<defs><linearGradient id="dev" x1="0" y1="0" x2="0" y2="1">`
+    + `<stop offset="0%" stop-color="#d9a05b" stop-opacity=".55"/>`
+    + `<stop offset="100%" stop-color="#d9a05b" stop-opacity="0"/></linearGradient></defs>`
+    + `<rect x="${pad}" y="${pad}" width="${width - pad * 2}" `
+    + `height="${height - pad * 2}" fill="none" stroke="#3d3126"/>`
+    + `<line x1="${pad}" y1="${y(REVIEW_THRESHOLD)}" x2="${width - pad}" `
+    + `y2="${y(REVIEW_THRESHOLD)}" stroke="#d4554a" stroke-dasharray="4 4"/>`
+    + `<path d="${area}" fill="url(#dev)"/>`
+    + `<path d="${line}" fill="none" stroke="#f7e8c8" stroke-width="1.6"/>`
+    + `<line id="dev_marker" x1="0" y1="${pad}" x2="0" y2="${height - pad}" `
+    + `stroke="#7cc45f" stroke-width="1.5"/>`
+    + `<text x="${pad}" y="${pad - 8}">deviation per frame, 0 is a match</text>`
+    + `</svg>`;
+  els.spark_legend.innerHTML =
+    `<span><i class="swatch" style="background:#d9a05b"></i>score</span>`
+    + `<span><i class="swatch" style="background:#d4554a"></i>review at `
+    + `${REVIEW_THRESHOLD}</span>`
+    + `<span>mean ${mean.toFixed(3)} over ${points.length} frames</span>`;
+  els.spark.dataset.x = JSON.stringify({ pad, width, maxFrame });
+}
+
+function moveSparkMarker(frame) {
+  const marker = document.getElementById('dev_marker');
+  if (!marker || !els.spark.dataset.x) return;
+  const { pad, width, maxFrame } = JSON.parse(els.spark.dataset.x);
+  const x = pad + (frame / maxFrame) * (width - pad * 2);
+  marker.setAttribute('x1', x);
+  marker.setAttribute('x2', x);
+}
+
+function drawCoverage(records) {
+  const total = Math.max(1, status.frames);
+  const share = (count) => `${Math.round((count / total) * 100)}%`;
+  const withState = records.filter((r) => r.state).length;
+  const withPrediction = records.filter((r) => r.prediction_state).length;
+  const withDeviation = records.filter(
+    (r) => r.deviation !== null && r.deviation !== undefined).length;
+  const rows = [
+    ['cov_records', records.length], ['cov_pred', withPrediction],
+    ['cov_dev', withDeviation], ['cov_state', withState]
+  ];
+  for (const [id, count] of rows) {
+    const text = el(id); const bar = el(`${id}_bar`);
+    text.textContent = `${count} of ${total} (${share(count)})`;
+    bar.style.width = share(count);
+  }
+}
+
+function currentFrame() {
+  if (!status) return 0;
+  return Math.min(status.frames - 1,
+    Math.max(0, Math.round(video.currentTime * status.fps)));
+}
+
+async function layersFor(frame, producer) {
+  const key = `${producer}:${frame}`;
+  if (cache.has(key)) return cache.get(key);
+  const response = await fetch(
+    `/api/frame/${frame}?producer=${encodeURIComponent(producer)}`);
+  const payload = await response.json();
+  cache.set(key, payload);
+  if (cache.size > 400) cache.clear();
+  return payload;
+}
+
+async function maskImage(source) {
+  if (!maskCache.has(source)) {
+    const image = new Image();
+    const loaded = new Promise((resolve) => { image.onload = resolve; });
+    image.src = source;
+    maskCache.set(source, loaded.then(() => image));
+    if (maskCache.size > 200) maskCache.clear();
+  }
+  return maskCache.get(source);
+}
+
+async function refresh(force = false) {
+  if (!status) return;
+  const frame = currentFrame();
+  const producer = els.producer.value || status.producer;
+  const key = `${producer}:${frame}`;
+  if (!force && key === lastKey) return;
+  lastKey = key;
+  const payload = await layersFor(frame, producer);
+  const playhead = document.getElementById('playhead');
+  if (playhead) playhead.style.left = `${(frame / status.frames) * 100}%`;
+  moveSparkMarker(frame);
+  els.error.textContent = payload.error || '';
+  els.frame.textContent = `${frame} of ${status.frames}`;
+  const state = payload.state || 'unknown';
+  els.state.textContent = state;
+  els.state_dot.style.background = STATE_COLOURS[state] || NO_STATE_COLOUR;
+  els.state_badge.style.borderColor =
+    STATE_COLOURS[state] || NO_STATE_COLOUR;
+  els.state_source.textContent = payload.state_source || '-';
+  els.prediction_state.textContent = payload.prediction_state || 'none';
+  els.deviation.textContent = payload.deviation === null
+    || payload.deviation === undefined ? '-' : payload.deviation.toFixed(3);
+  els.check.textContent = payload.check || '-';
+  els.verdict.textContent = payload.verdict || '-';
+  els.phase_context.textContent = payload.phase_context
+    ? `UNALIGNED: ${payload.phase_context}` : '-';
+  els.notes.innerHTML = (payload.notes || [])
+    .map((note) => `<li>${note}</li>`).join('');
+  els.producer_note.textContent = payload.error ? '' :
+    (status.producers.find((p) => p.name === producer)?.describes || '');
+  const areas = payload.areas || {};
+  const framePixels = areas.frame_pixels || 0;
+  const material = areas.material_pixels || 0;
+  const holes = areas.holes_pixels || 0;
+  els.material_txt.textContent = framePixels
+    ? `${material} px (${((material / framePixels) * 100).toFixed(1)}%)` : '-';
+  els.material_bar.style.width = framePixels
+    ? `${Math.min(100, (material / framePixels) * 100 * 3)}%` : '0%';
+  els.holes_txt.textContent = framePixels
+    ? `${holes} px (${((holes / framePixels) * 100).toFixed(1)}%)` : '-';
+  els.holes_bar.style.width = framePixels
+    ? `${Math.min(100, (holes / framePixels) * 100 * 3)}%` : '0%';
+  drawGauge(payload.deviation);
+  await draw(payload);
+}
+
+function drawGauge(deviation) {
+  const size = 84, height = 60, centre = 42, radius = 30;
+  const start = Math.PI, end = Math.PI * 2;
+  const value = deviation === null || deviation === undefined ? null : deviation;
+  const colour = value === null ? '#3d3126'
+    : value < 0.35 ? '#7cc45f' : value < REVIEW_THRESHOLD ? '#d9a05b' : '#d4554a';
+  const arc = (fraction) => {
+    const angle = start + (end - start) * Math.max(0.0001, fraction);
+    const x = centre + radius * Math.cos(angle);
+    const y = 44 + radius * Math.sin(angle);
+    return `M ${centre - radius} 44 A ${radius} ${radius} 0 0 1 ${x} ${y}`;
+  };
+  els.gauge.innerHTML =
+    `<path d="${arc(1)}" stroke="#3d3126" stroke-width="8" fill="none"/>`
+    + `<path d="${arc(value === null ? 0.02 : value)}" stroke="${colour}"`
+    + ` stroke-width="8" fill="none" stroke-linecap="round"/>`
+    + `<text x="${centre}" y="40" text-anchor="middle"`
+    + ` style="font-size:15px;fill:var(--batter)">`
+    + `${value === null ? '-' : value.toFixed(2)}</text>`
+    + `<text x="${centre}" y="55" text-anchor="middle">deviation</text>`;
+}
+
+async function draw(payload) {
+  const width = video.videoWidth || status.width;
+  const height = video.videoHeight || status.height;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const masks = payload.masks || {};
+  if (els.show_material.checked && masks.material) {
+    await tint(masks.material, MATERIAL_RGB);
+  }
+  if (els.show_holes.checked && masks.holes) {
+    await tint(masks.holes, HOLE_RGB);
+  }
+  if (els.show_hud.checked) hud(payload);
+}
+
+async function tint(source, rgb) {
+  const image = await maskImage(source);
+  const off = document.createElement('canvas');
+  off.width = canvas.width;
+  off.height = canvas.height;
+  const offCtx = off.getContext('2d');
+  offCtx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  offCtx.globalCompositeOperation = 'source-in';
+  offCtx.fillStyle = `rgba(${rgb},${TINT_ALPHA})`;
+  offCtx.fillRect(0, 0, off.width, off.height);
+  ctx.drawImage(off, 0, 0);
+}
+
+function hud(payload) {
+  const lines = [
+    `frame ${payload.frame}`,
+    `state ${payload.state || 'unknown'}`,
+    `model ${payload.prediction_state || 'none'}`
+      + (payload.deviation === null || payload.deviation === undefined
+        ? '' : `  deviation ${payload.deviation.toFixed(2)}`),
+    payload.check
+      ? `check ${payload.check}`
+        + (payload.verdict ? ` recorded ${payload.verdict}` : '')
+      : 'check none'
+  ];
+  if (payload.phase_context) {
+    lines.push(`phases UNALIGNED: ${payload.phase_context}`);
+  }
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textBaseline = 'top';
+  const widest = Math.max(...lines.map((line) => ctx.measureText(line).width));
+  const boxWidth = widest + HUD_PADDING * 2;
+  const boxHeight = lines.length * HUD_LINE + HUD_PADDING * 2;
+  ctx.fillStyle = 'rgba(23,19,15,0.62)';
+  ctx.fillRect(HUD_PADDING, HUD_PADDING, boxWidth, boxHeight);
+  ctx.strokeStyle = 'rgba(217,160,91,0.5)';
+  ctx.strokeRect(HUD_PADDING, HUD_PADDING, boxWidth, boxHeight);
+  ctx.fillStyle = '#f7e8c8';
+  lines.forEach((line, index) => {
+    ctx.fillText(line, HUD_PADDING * 2, HUD_PADDING * 2 + index * HUD_LINE);
+  });
+}
+
+boot().catch((error) => { els.error.textContent = String(error); });
+</script>
+</body>
+</html>
