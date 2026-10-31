@@ -43,10 +43,11 @@ def test_only_fixed_recipe_candidates_are_exported(tmp_path: Path) -> None:
         "dispense.batter.centre_dispense_time",
         "dispense.batter.centre_flowrate",
         "dispense.batter.fan_power",
-        "dispense.batter.concentric_outer_radius_offset_mm",
-        "dispense.batter.concentric_inner_radius_offset_mm",
-        "dispense.batter.concentric_ring_count",
-        "dispense.batter.concentric_rings_enabled",
+        "dispense.batter.concentric_inner_radius_mm",
+        "dispense.batter.concentric_outer_radius_mm",
+        "dispense.batter.concentric_outer_fan_tail_deg",
+        "dispense.batter.concentric_inner_flowrate_g_s",
+        "dispense.batter.concentric_fan_inset_mm",
         "dispense.oil.grams",
     }
     assert {c for c in table.column_names if c.startswith("param.")} == {
@@ -68,10 +69,11 @@ def test_only_fixed_recipe_candidates_are_exported(tmp_path: Path) -> None:
         "dispense.batter.centre_dispense_time",
         "dispense.batter.centre_flowrate",
         "dispense.batter.fan_power",
-        "dispense.batter.concentric_outer_radius_offset_mm",
-        "dispense.batter.concentric_inner_radius_offset_mm",
-        "dispense.batter.concentric_ring_count",
-        "dispense.batter.concentric_rings_enabled",
+        "dispense.batter.concentric_inner_radius_mm",
+        "dispense.batter.concentric_outer_radius_mm",
+        "dispense.batter.concentric_outer_fan_tail_deg",
+        "dispense.batter.concentric_inner_flowrate_g_s",
+        "dispense.batter.concentric_fan_inset_mm",
         "dispense.oil.grams",
     ],
 )
@@ -185,10 +187,11 @@ def test_cli_exports_candidate_features_and_manifest(tmp_path: Path) -> None:
         "param.dispense.batter.centre_dispense_time",
         "param.dispense.batter.centre_flowrate",
         "param.dispense.batter.fan_power",
-        "param.dispense.batter.concentric_outer_radius_offset_mm",
-        "param.dispense.batter.concentric_inner_radius_offset_mm",
-        "param.dispense.batter.concentric_ring_count",
-        "param.dispense.batter.concentric_rings_enabled",
+        "param.dispense.batter.concentric_inner_radius_mm",
+        "param.dispense.batter.concentric_outer_radius_mm",
+        "param.dispense.batter.concentric_outer_fan_tail_deg",
+        "param.dispense.batter.concentric_inner_flowrate_g_s",
+        "param.dispense.batter.concentric_fan_inset_mm",
         "param.dispense.oil.grams",
     }
     assert row["terminal_status"] == "canceled"
@@ -535,3 +538,21 @@ def test_config_and_segment_identifiers_are_never_recipe_features(
     assert "param.config_id" not in table.column_names
     assert "param.segment_id" not in table.column_names
     assert "param.dispense.oil.grams" in table.column_names
+
+
+def test_renamed_candidate_is_read_from_its_old_name(tmp_path: Path) -> None:
+    raw = tmp_path / "raw" / "runs"
+    raw.mkdir(parents=True)
+    (raw / "run.json").write_text(
+        json.dumps(
+            {
+                "id": 1,
+                "tsStart": "2026-01-01T00:00:00Z",
+                "parameters": {"dispense.batter.concentric_fan_tail_deg": 20},
+            }
+        )
+    )
+    build_training_dataset(tmp_path)
+    table = pq.read_table(tmp_path / "training" / "run_start.parquet")
+    column = "param.dispense.batter.concentric_outer_fan_tail_deg"
+    assert table.column(column).to_pylist() == ["20"]

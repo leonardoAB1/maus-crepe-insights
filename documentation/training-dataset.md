@@ -66,11 +66,20 @@ The fixed parameter allowlist is:
 - `dispense.batter.centre_dispense_time`
 - `dispense.batter.centre_flowrate`
 - `dispense.batter.fan_power`
-- `dispense.batter.concentric_outer_radius_offset_mm`
-- `dispense.batter.concentric_inner_radius_offset_mm`
-- `dispense.batter.concentric_ring_count`
-- `dispense.batter.concentric_rings_enabled`
+- `dispense.batter.concentric_inner_radius_mm`
+- `dispense.batter.concentric_outer_radius_mm`
+- `dispense.batter.concentric_outer_fan_tail_deg`
+- `dispense.batter.concentric_inner_flowrate_g_s`
+- `dispense.batter.concentric_fan_inset_mm`
 - `dispense.oil.grams`
+
+These are the run-start settings of the current robot software (schema
+version 2). The radius offsets, ring count and rings-enabled flag of version 1
+were dropped: the October parameter change removed them, so a model could not
+use them for a new run. See the controllability table in [doe.md](doe.md).
+Older runs that recorded `concentric_fan_tail_deg` fill
+`concentric_outer_fan_tail_deg`, its new name. Runs from before the absolute
+radii existed leave those columns null.
 
 Only these keys receive `param.<key>` columns, regardless of what is present
 in any run. All other parameter keys are ignored, including nested or scalar
