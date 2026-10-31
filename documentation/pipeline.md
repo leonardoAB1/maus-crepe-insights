@@ -4,6 +4,8 @@
 
 How run data flows from the robots to our analysis. Everything after the
 dashboard runs locally; outputs land in the gitignored `data/` folder.
+For the preparation history and reproduction checklist, see the
+[data preparation handoff](data-preparation-handoff.md).
 
 <!-- diagram: pipeline -->
 ```mermaid
