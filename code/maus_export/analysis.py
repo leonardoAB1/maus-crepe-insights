@@ -14,6 +14,7 @@ the input for the designed experiment (#26).
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -71,6 +72,35 @@ OUTCOMES: dict[str, Outcome] = {
     # A good quarter fold halves the area; failures sit near 1
     "fold2_area_ratio": Outcome(f"{VISION_PREFIX}fold2.area_ratio", False, -1),
 }
+
+
+DATA_ENV = "MAUS_DATA_DIR"
+GITDIR_PREFIX = "gitdir:"
+
+
+def find_data_dir(start: Path | None = None) -> Path:
+    """The export folder holding runs.parquet: $MAUS_DATA_DIR, else a
+    `data/` in this folder or a parent, else the main checkout's `data/`
+    when running inside a git worktree (worktrees have no data of their
+    own)."""
+    if os.environ.get(DATA_ENV):
+        return Path(os.environ[DATA_ENV])
+    here = (start or Path.cwd()).resolve()
+    for folder in (here, *here.parents):
+        if (folder / "data" / "runs.parquet").is_file():
+            return folder / "data"
+        git = folder / ".git"
+        if git.is_file():  # a worktree: .git points into the main repo
+            text = git.read_text(encoding="utf-8").strip()
+            if text.startswith(GITDIR_PREFIX):
+                gitdir = Path(text.removeprefix(GITDIR_PREFIX).strip())
+                main = gitdir.resolve().parents[2]  # <main>/.git/worktrees/x
+                if (main / "data" / "runs.parquet").is_file():
+                    return main / "data"
+    raise FileNotFoundError(
+        f"no data/runs.parquet found from {here}; run `pixi run table` "
+        f"or set {DATA_ENV}"
+    )
 
 
 def short(factor: str) -> str:
