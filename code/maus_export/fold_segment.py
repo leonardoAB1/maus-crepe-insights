@@ -159,8 +159,7 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
                     key=lambda ref: (
                         ref["area"],
                         bool(
-                            pd.notna(ref["check_ok"])
-                            and bool(ref["check_ok"])
+                            pd.notna(ref["check_ok"]) and bool(ref["check_ok"])
                         ),
                     ),
                 )
