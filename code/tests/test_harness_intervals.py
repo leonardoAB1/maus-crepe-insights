@@ -333,7 +333,7 @@ def test_card_deployable_and_write_card(tmp_path):
     assert card["intervals"]["method"].startswith("descriptive")
     nested = tmp_path / "a" / "b.json"
     write_card({"x": 1}, nested)
-    assert nested.read_text(encoding="utf-8") == '{\n  "x": 1\n}\n'
+    assert nested.read_bytes() == b'{\n  "x": 1\n}\n'  # LF, never CRLF
 
 
 def test_per_robot_figure_renders_from_a_card(tmp_path):

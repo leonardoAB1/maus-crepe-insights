@@ -330,7 +330,10 @@ def holdout_null(
 def write_card(card: dict[str, Any], path: Path) -> None:
     """Write a model card as indented JSON with a trailing newline."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(card, indent=2) + "\n", encoding="utf-8")
+    # LF on every OS, so cards written on Windows never commit CRLF
+    path.write_text(
+        json.dumps(card, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
 
 
 def _quiet_metrics(
