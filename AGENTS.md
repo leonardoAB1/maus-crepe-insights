@@ -195,6 +195,14 @@ git pull
 
 (`-D` is needed because squash merges do not keep the branch commits in `main`.)
 
+## License
+
+- The repository is under PolyForm Noncommercial 1.0.0 (`license.txt`)
+- Noncommercial use is free; commercial use needs a separate license from
+  the copyright holders
+- Do not add code, models or assets that cannot be licensed on those terms
+- The Maus robot data is not ours to license and stays private in any case
+
 ## AI agents
 
 These apply to every agent, whatever tool runs it.

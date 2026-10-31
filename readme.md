@@ -4,6 +4,76 @@ Our BaselHack 2026 project on the **Maus Robotics** challenge. Maus builds auton
 Every run is logged with phases, machine logs, on-robot vision checks (with images), recipe parameters and video.
 We turn that data into insight: why runs fail, which settings and conditions matter, and how to catch problems early.
 
+**What is in the repository today.** 828 runs exported from the
+dashboard as raw JSON and as one ROS 2 MCAP per run, a 177-column runs
+table covering every run and its outcome, a per-check verdict model and
+a fold-state model shipped as ONNX with model cards, and a private
+labeling setup with phase, mask and pixel-prefill workflows. The exact
+state, including what does not work yet, is in
+[documentation/status.md](documentation/status.md).
+
+**Check it yourself in a minute.**
+
+```bash
+cd code && pixi install && pixi run test && pixi run lint
+```
+
+The suite runs offline, with no dashboard access and no private data.
+Every number in this repository names the command or file that produced
+it.
+
+**Where to look next.**
+
+- Data and pipeline: [pipeline](documentation/data/pipeline.md)
+- Models and their holdout numbers:
+  [code/models](code/models/README.md)
+- Why runs fail: [crêpe stages](documentation/system/crepe-stages.md)
+- Labeling:
+  [private phase pilot](documentation/labeling/phase-labeling-pilot.md) and
+  [material and hole masks](documentation/labeling/mask-labeling.md)
+- Fine-tuning against predictions: [project status](documentation/status.md)
+
+## Where the project stands
+
+<!-- diagram: status -->
+```mermaid
+flowchart LR
+    api[Dashboard API] --> raw[Raw run JSON]
+    raw --> mcap[MCAP per run]
+    raw --> table[Runs table]
+    raw --> vision[Vision scores]
+    vision --> table
+    table --> frames[Frame table]
+    frames --> models[ONNX models]
+    raw --> pilot[Frame pilot]
+    pilot --> labels[Human labels]
+    labels --> masks[Reviewed masks]
+    masks --> rectified[Rectified frames]
+    models --> predict[Model predictions]
+    predict --> compare[Deviation scoring]
+    rectified --> compare
+    compare --> weights[Weighted dataset]
+    weights --> finetune[Fine-tuned model]
+    finetune --> live[Live frame]
+    models --> live
+
+    classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
+    classDef partial fill:#ed6c02,stroke:#b53d00,color:#ffffff
+    classDef todo fill:#616161,stroke:#424242,color:#ffffff
+
+    class api,raw,mcap,table,vision,frames,models,pilot done
+    class labels,masks,rectified,compare,weights partial
+    class predict,finetune,live todo
+```
+<!-- /diagram -->
+
+Green is built and verified, amber is built but not yet proven end to
+end, grey is not built. The data path, the runs and frame tables, the
+vision scores, the ONNX models and the labeling app are green. A live
+frame needs two more things: a reviewed mask export, which is blocked
+on the frames whose hole brush overlaps the material brush, and a
+material-mask model to predict with. The gaps and the numbers behind
+each colour are in [documentation/status.md](documentation/status.md).
 ## How it works
 
 **The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
@@ -253,6 +323,8 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 
 [Browse all documentation](documentation/README.md) by subject.
 
+- [Project status: what works and what does not](documentation/status.md)
+
 - [What data the dashboard has](documentation/data/data.md)
 - [MCAP topics & schemas](documentation/data/mcap.md)
 - [Robot system](documentation/system/system.md)
@@ -263,11 +335,20 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Candidate run-start dataset](documentation/training/training-dataset.md)
 - [Data preparation handoff](documentation/training/data-preparation-handoff.md)
 - [Vision-target training dataset](documentation/training/vision-targets.md)
-- [Frame-level check dataset](documentation/frames.md)
-- [Frame embeddings](documentation/frame-embeddings.md)
-- [Private phase-labeling pilot](documentation/phase-labeling-pilot.md)
-- [Camera rectification](documentation/rectification.md)
-- [Per-robot correction](documentation/robot-correction.md)
+- [Frame-level check dataset](documentation/vision/frames.md)
+- [Frame embeddings](documentation/vision/frame-embeddings.md)
+- [Private phase-labeling pilot](documentation/labeling/phase-labeling-pilot.md)
+- [Camera rectification](documentation/vision/rectification.md)
+- [Per-robot correction](documentation/vision/robot-correction.md)
 
 ## License
-MIT - see [license.txt](license.txt).
+PolyForm Noncommercial 1.0.0 - see [license.txt](license.txt).
+
+The code, models and documentation here are free for noncommercial use:
+research, study, teaching, personal projects and noncommercial
+organizations. Commercial use, including shipping any of it inside a
+product or a paid service, needs a separate license from the copyright
+holders. Open an issue to ask for commercial terms.
+
+Revisions published before this change were released under MIT and keep
+their MIT terms for anyone who already has them.
