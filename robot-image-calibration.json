@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "image_size_px": [
+    900,
+    900
+  ],
+  "source_frame_size_px": [
+    900,
+    509
+  ],
+  "hotplate_roi": {
+    "maus-pixi": {
+      "shape": "circle",
+      "center_px": [
+        450,
+        450
+      ],
+      "radius_px": 396,
+      "center_share": [
+        0.5,
+        0.5
+      ],
+      "radius_share": 0.44,
+      "applies_to": "corrected_900x900_image"
+    },
+    "maus-quin": {
+      "shape": "circle",
+      "center_px": [
+        450,
+        450
+      ],
+      "radius_px": 396,
+      "center_share": [
+        0.5,
+        0.5
+      ],
+      "radius_share": 0.44,
+      "applies_to": "corrected_900x900_image"
+    },
+    "maus-otto": {
+      "shape": "circle",
+      "center_px": [
+        450,
+        450
+      ],
+      "radius_px": 396,
+      "center_share": [
+        0.5,
+        0.5
+      ],
+      "radius_share": 0.44,
+      "applies_to": "corrected_900x900_image"
+    }
+  },
+  "robot_corrections": {
+    "maus-pixi": {
+      "kind": "mean_robot_image_correction",
+      "source_size_px": [
+        900,
+        509
+      ],
+      "target_size_px": [
+        900,
+        900
+      ],
+      "matrix_mean": [
+        [
+          -1.247159658484558,
+          -1.4097687625774658,
+          1327.756522352526
+        ],
+        [
+          0.8615625302615899,
+          -1.9245049128670277,
+          519.6399830567198
+        ],
+        [
+          3.9922213812337134e-05,
+          -0.0008956725188975213,
+          1.0
+        ]
+      ],
+      "accepted_estimates": 118,
+      "candidate_pairs": 120,
+      "rejected_estimates": 2,
+      "corner_displacement_mean_px": [
+        9.402925491333008,
+        7.737538814544678,
+        32.7067985534668,
+        36.19620132446289
+      ],
+      "corner_displacement_max_px": [
+        38.77813720703125,
+        22.155820846557617,
+        92.34053039550781,
+        109.52951049804688
+      ],
+      "trusted_for_fft": false
+    },
+    "maus-quin": {
+      "kind": "mean_robot_image_correction",
+      "source_size_px": [
+        900,
+        509
+      ],
+      "target_size_px": [
+        900,
+        900
+      ],
+      "matrix_mean": [
+        [
+          -1.2814272117022827,
+          -1.4087384484561958,
+          1382.2952138422938
+        ],
+        [
+          0.9036599489987609,
+          -2.0484514783946266,
+          532.7306596719649
+        ],
+        [
+          0.00012521861227198254,
+          -0.0009373956218472188,
+          1.0
+        ]
+      ],
+      "accepted_estimates": 451,
+      "candidate_pairs": 475,
+      "rejected_estimates": 24,
+      "corner_displacement_mean_px": [
+        6.666114330291748,
+        3.5927326679229736,
+        9.039124488830566,
+        16.164257049560547
+      ],
+      "corner_displacement_max_px": [
+        52.55975341796875,
+        22.641592025756836,
+        56.58919906616211,
+        101.66808319091797
+      ],
+      "trusted_for_fft": true
+    },
+    "maus-otto": {
+      "kind": "mean_robot_image_correction",
+      "source_size_px": [
+        900,
+        509
+      ],
+      "target_size_px": [
+        900,
+        900
+      ],
+      "matrix_mean": [
+        [
+          -0.011287134959971187,
+          1.3935612748482766,
+          -82.76365453090132
+        ],
+        [
+          -1.487892322182063,
+          -0.41465652472433523,
+          1129.9941647455146
+        ],
+        [
+          5.5592221927707145e-06,
+          -0.0008745475599914067,
+          1.0
+        ]
+      ],
+      "accepted_estimates": 35,
+      "candidate_pairs": 35,
+      "rejected_estimates": 0,
+      "corner_displacement_mean_px": [
+        6.212131500244141,
+        10.992854118347168,
+        29.693994522094727,
+        34.12098693847656
+      ],
+      "corner_displacement_max_px": [
+        14.819295883178711,
+        25.85403060913086,
+        80.2957534790039,
+        70.8677749633789
+      ],
+      "trusted_for_fft": true
+    }
+  },
+  "notes": [
+    "Hotplate ROI is the fixed corrected-image circle used for FFT analysis.",
+    "Pixi correction is recorded for traceability but is known to be unreliable for some runs."
+  ]
+}
