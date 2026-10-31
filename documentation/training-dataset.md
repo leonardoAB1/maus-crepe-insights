@@ -30,8 +30,9 @@ order to split data.
 
 Empty input, duplicate IDs or JSON keys, malformed JSON, invalid required fields,
 and incompatible field types fail the command. A prior artifact is left intact
-on failure and is **stale**, not a successful new export. Inspect input locally;
-CLI errors do not print field values. The file and its manifest are written
+on failure and is **stale**, not a successful new export. For a bad input file
+the CLI error names the file and a fixed reason; it never prints field values.
+Inspect that file locally. The file and its manifest are written
 together with an atomic replacement; incomplete temporary files are cleaned up
 on ordinary write failures.
 

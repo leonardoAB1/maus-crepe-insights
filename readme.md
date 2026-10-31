@@ -177,18 +177,26 @@ pixi run table
 # 4. Vision scores from the check overlays (needs --media): data/vision.parquet
 pixi run vision
 
-# 5. Candidate run-start inputs and terminal status: data/training/run_start.parquet
+# 5. Candidate run-start inputs and terminal status (not part of `all`):
+#    data/training/run_start.parquet
 pixi run export training
 
 # Or fetch, mcap, table and vision together:
 pixi run export all --media
-# The all command excludes training; run it separately:
-pixi run export training
 ```
 
 Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
 
+Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
+See [documentation/analysis.md](documentation/analysis.md).
+
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
+
+**VS Code.** Run `pixi install -e ml` in `code/`, open the repo folder (or a worktree folder) and
+install the recommended extensions. The shared `.vscode/settings.json` points Python and notebooks
+at `code/.pixi/envs/ml`. On macOS or Linux, select `code/.pixi/envs/ml/bin/python` once
+("Python: Select Interpreter"). In a notebook, pick that same environment under "Select Kernel".
+JupyterLab works too: `pixi run -e ml notebook`.
 
 ## Standards we follow
 - **Data → [MCAP](https://mcap.dev) (ROS 2 profile)**, the standard container for multimodal robot logs.
@@ -204,6 +212,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [MCAP topics & schemas](documentation/mcap.md)
 - [Robot system](documentation/system.md)
 - [Crêpe stages and where runs fail](documentation/crepe-stages.md)
+- [Which settings matter (history analysis)](documentation/analysis.md)
 - [Data pipeline and data model](documentation/pipeline.md)
 - [Candidate run-start training dataset](documentation/training-dataset.md)
 
