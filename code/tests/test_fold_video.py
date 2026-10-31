@@ -65,3 +65,21 @@ def test_analyse_video_writes_timeline_without_seeking(
     assert timeline.iloc[-1]["video_t"] == pytest.approx(1.9)
     with pytest.raises(FileExistsError):
         analyse_video(tmp_path, 1)
+    original = (out / "timeline.csv").read_bytes()
+    (out / "old-marker").write_text("old output")
+    with monkeypatch.context() as patch:
+
+        def fail(*args: object, **kwargs: object) -> None:
+            raise ValueError("synthetic failure")
+
+        patch.setattr("maus_export.fold_video.annotate_frame", fail)
+        with pytest.raises(ValueError, match="synthetic failure"):
+            analyse_video(tmp_path, 1, replace=True)
+    assert (out / "timeline.csv").read_bytes() == original
+    assert (out / "old-marker").exists()
+    replacement = analyse_video(tmp_path, 1, replace=True)
+    assert replacement["frames"] == 20
+    assert "median_render_ms" in replacement
+    assert (out / "annotated.mp4").is_file()
+    assert "plate_fraction" in pd.read_csv(out / "timeline.csv").columns
+    assert not (out / "old-marker").exists()

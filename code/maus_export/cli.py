@@ -91,6 +91,11 @@ def main() -> None:
     live = sub.add_parser("fold-live", help="analyze one cached video")
     live.add_argument("run_id", type=int)
     live.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    live.add_argument(
+        "--replace",
+        action="store_true",
+        help="replace this run's existing analysis after successful processing",
+    )
     ex = sub.add_parser(
         "example", help="draw the annotated vision example figure"
     )
@@ -175,7 +180,7 @@ def main() -> None:
     if args.cmd == "fold-live":
         from .fold_video import analyse_video
 
-        print(analyse_video(data_dir, args.run_id))
+        print(analyse_video(data_dir, args.run_id, replace=args.replace))
     if args.cmd == "fold-live-eval":
         from .fold_live_eval import evaluate_live
 

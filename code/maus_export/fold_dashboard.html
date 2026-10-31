@@ -49,7 +49,13 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 <div class="notice">Experimental analysis. Results are not validated for robot control.
 Video may contain people. Do not share this page or its files.</div>
 <div class="grid"><div><section class="card"><h2>Playback</h2>
-<video id="video" controls preload="metadata"></video></section>
+<video id="video" controls preload="metadata"></video>
+<p class="sub">Overlay: <span style="color:#50d25f">green mask</span> ·
+<span style="color:#46c8eb">plate</span> ·
+<span style="color:#ffd21e">fold edges</span> ·
+<span style="color:#ffffff">centre</span> ·
+<span style="color:#f05af0">corner</span>. Measurements use corrected pixels.</p>
+</section>
 <section class="card chart"><h2>State timeline</h2><p>Click the chart to jump in the video.</p>
 <canvas id="chart" aria-label="Fold state timeline, click to seek"></canvas></section></div>
 <section class="card"><h2>Robot checks</h2><p>Choose a check to jump to its event.</p>
