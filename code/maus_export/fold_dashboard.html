@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fold insights</title>
+<style>
+:root {color-scheme: dark; font-family: Inter, system-ui, sans-serif;
+  background: #0a0f1d; color: #e8edf8}
+* {box-sizing: border-box} body {margin: 0} button {font: inherit}
+.layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh}
+aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828}
+.brand {font-weight: 800; letter-spacing: -.04em; font-size: 24px}
+.eyebrow {color: #8294b1; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .12em; margin: 30px 0 12px}
+#runs {display: grid; gap: 8px} .run {text-align: left; width: 100%; padding: 14px;
+  border: 1px solid #28374d; border-radius: 12px; color: #e9efff; background: #18243a;
+  cursor: pointer} .run:hover, .run.active {border-color: #77a5ff; background: #213455}
+.sub {display: block; margin-top: 5px; font-size: 12px; color: #a2b2c9}
+main {padding: 34px clamp(20px,4vw,60px); max-width: 1600px; width: 100%; margin: auto}
+header {display: flex; align-items: end; justify-content: space-between; gap: 16px}
+h1 {font-size: clamp(26px,3vw,38px); margin: 5px 0; letter-spacing: -.04em}
+h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
+.pill {border: 1px solid #2f4864; border-radius: 99px; color: #8cb9ff;
+  padding: 8px 12px; font-size: 12px; white-space: nowrap}
+.grid {display: grid; grid-template-columns: minmax(0,2fr) minmax(240px,1fr);
+  gap: 18px; margin-top: 26px}.card {background: #121d30; border: 1px solid #27364b;
+  border-radius: 18px; padding: 20px; min-width: 0} video {display: block; width: 100%;
+  max-height: 65vh; border-radius: 12px; background: #060a11}
+.chart {margin-top: 18px} canvas {display: block; width: 100%; height: 190px;
+  cursor: crosshair; border-radius: 10px; background: #0b1322}
+.event {display: block; width: 100%; margin-top: 9px; border: 1px solid #29394e;
+  background: #18263b; color: #eef3fe; text-align: left; padding: 12px;
+  border-radius: 10px; cursor: pointer} .event:hover {border-color: #75a7ff}
+.ok {color: #61d8a2} .fail {color: #ff8b95} .muted {color: #96a8c0}
+.notice {border: 1px solid #6b5634; color: #efcc83; padding: 12px;
+  border-radius: 10px; font-size: 13px; margin-top: 20px}
+@media(max-width: 850px) {.layout {grid-template-columns: 1fr} aside {border-right: 0;
+  border-bottom: 1px solid #263247} .grid {grid-template-columns: 1fr} main {padding: 25px}}
+</style>
+</head>
+<body>
+<div class="layout"><aside><div class="brand">◒ Fold insights</div>
+<div class="sub">Local video review</div><div class="eyebrow">Analysed runs</div>
+<div id="runs"><span class="muted">Loading videos...</span></div></aside>
+<main><header><div><div class="eyebrow" style="margin:0">Vision analysis</div>
+<h1 id="title">Run overview</h1><p>Review robot checks and fold transitions.</p></div>
+<span class="pill">Local data only</span></header>
+<div class="notice">Experimental analysis. Results are not validated for robot control.
+Video may contain people. Do not share this page or its files.</div>
+<div class="grid"><div><section class="card"><h2>Playback</h2>
+<video id="video" controls preload="metadata"></video></section>
+<section class="card chart"><h2>State timeline</h2><p>Click the chart to jump in the video.</p>
+<canvas id="chart" aria-label="Fold state timeline, click to seek"></canvas></section></div>
+<section class="card"><h2>Robot checks</h2><p>Choose a check to jump to its event.</p>
+<div id="events" class="muted">Select a run to see checks.</div></section></div></main></div>
+<script>
+'use strict';
+const states = ['empty', 'flat', 'half', 'quarter'];
+const colors = ['#7990ac', '#6dacf8', '#d4a56f', '#73d6ad'];
+const video = document.querySelector('#video');
+const canvas = document.querySelector('#chart');
+let selected = null;
+function textNode(tag, text, cls) {
+  const el = document.createElement(tag); el.textContent = text;
+  if (cls) el.className = cls; return el;
+}
+function draw() {
+  const rect = canvas.getBoundingClientRect(), scale = devicePixelRatio || 1;
+  canvas.width = rect.width * scale; canvas.height = rect.height * scale;
+  const c = canvas.getContext('2d'); c.scale(scale, scale);
+  if (!selected || !selected.timeline.length) return;
+  const width = rect.width, height = rect.height, pad = 55;
+  const duration = Math.max(video.duration || 0,
+    Number(selected.timeline[selected.timeline.length - 1].video_t), 1);
+  for (let i = 0; i < states.length; i++) {
+    const y = height - 20 - i * (height - 40) / 3;
+    c.fillStyle = '#91a4bd'; c.font = '11px system-ui'; c.fillText(states[i], 8, y + 4);
+    c.strokeStyle = '#203149'; c.beginPath(); c.moveTo(pad, y); c.lineTo(width, y); c.stroke();
+  }
+  const xAt = t => pad + Math.max(0, Math.min(1, t / duration)) * (width - pad);
+  const yAt = s => height - 20 - Math.max(0, states.indexOf(s)) * (height - 40) / 3;
+  const rows = selected.timeline;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i], x = xAt(Number(row.video_t));
+    const next = i + 1 < rows.length ? xAt(Number(rows[i + 1].video_t)) : width;
+    c.fillStyle = colors[Math.max(0, states.indexOf(row.state))];
+    c.fillRect(x, yAt(row.state) - 3, Math.max(1, next - x), 6);
+  }
+  for (const event of selected.events) {
+    c.strokeStyle = event.ok ? '#61d8a2' : '#ff8b95'; c.globalAlpha = .7;
+    c.beginPath(); c.moveTo(xAt(event.time), 10); c.lineTo(xAt(event.time), height - 10); c.stroke();
+  }
+  c.globalAlpha = 1; c.strokeStyle = '#ffffff'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(xAt(video.currentTime), 5);
+  c.lineTo(xAt(video.currentTime), height - 5); c.stroke();
+}
+canvas.addEventListener('click', event => {
+  if (!selected || !Number.isFinite(video.duration)) return;
+  const rect = canvas.getBoundingClientRect();
+  video.currentTime = Math.max(0, Math.min(1, (event.clientX - rect.left - 55) /
+    (rect.width - 55))) * video.duration;
+});
+video.addEventListener('timeupdate', draw); video.addEventListener('loadedmetadata', draw);
+window.addEventListener('resize', draw);
+async function showRun(id) {
+  const response = await fetch('/api/run/' + id); if (!response.ok) return;
+  selected = await response.json(); document.querySelector('#title').textContent = 'Run ' + id;
+  video.src = '/video/' + id; const events = document.querySelector('#events');
+  events.replaceChildren();
+  for (const event of selected.events) {
+    const button = textNode('button', event.name.replaceAll('_', ' '), 'event');
+    button.append(textNode('span', (event.ok ? 'Passed' : 'Failed') + ' · ' +
+      Math.max(0, event.time).toFixed(1) + 's', event.ok ? 'sub ok' : 'sub fail'));
+    button.onclick = () => {video.currentTime = Math.max(0, event.time);}; events.append(button);
+  }
+  if (!selected.events.length) events.textContent = 'No completed checks found.';
+  document.querySelectorAll('.run').forEach(el => el.classList.toggle('active', el.dataset.id == id));
+  draw();
+}
+async function init() {
+  const container = document.querySelector('#runs');
+  try {
+    const runs = await (await fetch('/api/runs')).json(); container.replaceChildren();
+    if (!runs.length) {container.textContent = 'No analysed videos yet.'; return;}
+    for (const run of runs) {
+      const failures = run.events.filter(event => !event.ok).length;
+      const button = textNode('button', 'Run ' + run.id, 'run'); button.dataset.id = run.id;
+      button.append(textNode('span', failures ? failures + ' failed checks' : 'No failed checks',
+        failures ? 'sub fail' : 'sub ok'));
+      button.onclick = () => showRun(run.id); container.append(button);
+    }
+    showRun(runs[0].id);
+  } catch (_) {container.textContent = 'Could not load local videos.';}
+}
+init();
+</script></body></html>

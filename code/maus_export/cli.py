@@ -68,6 +68,7 @@ def main() -> None:
         ("fold-frames", "extract rectified fold check frames"),
         ("fold-segment", "segment fold check frames"),
         ("fold-eval", "evaluate fold segmentation"),
+        ("fold-live-eval", "evaluate sampled live videos"),
     ):
         fold_command = sub.add_parser(name, help=help_text)
         fold_command.add_argument(
@@ -81,6 +82,11 @@ def main() -> None:
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
+    dashboard = sub.add_parser(
+        "fold-dashboard", help="serve local video review"
+    )
+    dashboard.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    dashboard.add_argument("--port", type=int, default=8765)
     live = sub.add_parser("fold-live", help="analyze one cached video")
     live.add_argument("run_id", type=int)
     live.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
@@ -169,6 +175,14 @@ def main() -> None:
         from .fold_video import analyse_video
 
         print(analyse_video(data_dir, args.run_id))
+    if args.cmd == "fold-live-eval":
+        from .fold_live_eval import evaluate_live
+
+        print(evaluate_live(data_dir))
+    if args.cmd == "fold-dashboard":
+        from .fold_dashboard import serve_dashboard
+
+        serve_dashboard(data_dir, args.port)
     if args.cmd == "training":
         from .training_dataset import (
             TrainingInputError,
