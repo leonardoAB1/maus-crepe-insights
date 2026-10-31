@@ -44,8 +44,6 @@ FIT_ROBOTS = ["maus-quin", "maus-pixi"]
 REPORT_ROBOTS = ["maus-otto"]
 C = 1.0
 MAX_ITER = 1000
-N_PERM = 100
-PERM_REPEATS = 5
 DEPLOYABLE = "deployable"
 RESEARCH = "research only"
 
@@ -72,31 +70,6 @@ def robot_counts(table: pd.DataFrame) -> list[dict[str, Any]]:
             }
         )
     return rows
-
-
-def permutation_null(table: pd.DataFrame, target: str) -> dict[str, Any]:
-    """Within-robot delta AUC when labels are shuffled inside each robot."""
-    rows = table[table[ROBOT].isin(FIT_ROBOTS) & table[target].notna()]
-    rows = rows.copy()
-    rng = np.random.default_rng(0)
-    vals = []
-    for i in range(N_PERM):
-        rows["_perm"] = rows.groupby(ROBOT)[target].transform(
-            lambda s: rng.permutation(s.to_numpy())
-        )
-        pm, _ = fold_cv.oof_predictions(
-            rows, "_perm", PRIMARY, n_repeats=PERM_REPEATS, seed=i
-        )
-        auc = fold_cv.within_auc(
-            rows["_perm"].to_numpy(float), pm, rows[ROBOT].to_numpy()
-        )
-        vals.append(auc - 0.5)
-    v = np.asarray(vals)
-    return {
-        "n_perm": N_PERM,
-        "mean": float(v.mean()),
-        "q05_q95": [float(np.quantile(v, 0.05)), float(np.quantile(v, 0.95))],
-    }
 
 
 def shared_holdout(table: pd.DataFrame, card: dict[str, Any]) -> dict:
@@ -142,11 +115,12 @@ def main() -> None:
         }
         for mech, target in MECHANISMS.items()
     }
-    checks["any"]["permutation_null"] = permutation_null(
-        table, MECHANISMS["any"]
-    )
-    delta = checks["any"]["pooled_cv"]["delta_auc_within_robot"]
-    verdict = DEPLOYABLE if delta["ci95"][0] > 0 else RESEARCH
+    for mech, target in MECHANISMS.items():
+        checks[mech]["permutation_test"] = fold_cv.permutation_test(
+            table, target, PRIMARY, FIT_ROBOTS
+        )
+    perm = checks["any"]["permutation_test"]
+    verdict = DEPLOYABLE if perm["beats_null"] else RESEARCH
 
     card = train_and_evaluate(
         model(),
@@ -164,8 +138,9 @@ def main() -> None:
     )
     card["fold_risk"] = {
         "verdict": verdict,
-        "verdict_rule": "deployable only if the 95% CI of within-robot "
-        "delta AUC over robot-only (any fold failure) is above 0",
+        "verdict_rule": "deployable only if within-robot delta AUC over "
+        "robot-only (any fold failure) beats labels shuffled within robot, "
+        f"one-sided permutation p < {fold_cv.ALPHA}",
         "target": {
             "any": "any fold1 or fold2 attempt not ok",
             "residue": "a fold error 'batter left on the plate'",
@@ -190,8 +165,9 @@ def main() -> None:
     dump_json(card, HERE / "model.json")
     print(
         f"{len(table)} runs. Within-robot delta AUC "
-        f"{delta['value']:+.2f} [{delta['ci95'][0]:+.2f}, "
-        f"{delta['ci95'][1]:+.2f}] -> {verdict}"
+        f"{perm['observed_delta_auc']:+.2f}, shuffled null "
+        f"{perm['null_q05_q95'][0]:+.2f} to {perm['null_q05_q95'][1]:+.2f}, "
+        f"p = {perm['p_one_sided']:.3f} -> {verdict}"
     )
 
 
