@@ -25,6 +25,25 @@ FULL_CYCLE_PHASE = "cook"
 CONFIG_ID_LEN = 10
 LOG_WARN = 30
 LOG_ERROR = 40
+# Change the version if canonical_json changes
+PARAMETER_ID_PREFIX = "v1:sha256:"
+
+
+def canonical_json(value: Any) -> str:
+    """Stable JSON text: sorted keys, compact, ASCII, finite numbers only."""
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    )
+
+
+def parameter_id(parameters: Any) -> str:
+    """Versioned digest of one run's raw parameters (see pipeline docs)."""
+    digest = hashlib.sha256(canonical_json(parameters).encode("utf-8"))
+    return PARAMETER_ID_PREFIX + digest.hexdigest()
 
 
 def _cell(value: Any) -> Any:
@@ -46,16 +65,7 @@ def run_row(run: dict[str, Any]) -> dict[str, Any]:
 
     row: dict[str, Any] = {
         "id": run["id"],
-        "parameter_id": "v1:sha256:"
-        + hashlib.sha256(
-            json.dumps(
-                run.get("parameters"),
-                sort_keys=True,
-                separators=(",", ":"),
-                ensure_ascii=True,
-                allow_nan=False,
-            ).encode("utf-8")
-        ).hexdigest(),
+        "parameter_id": parameter_id(run.get("parameters")),
         "robot": run.get("machineName"),
         "machine_id": run.get("machineId"),
         "ts_start": start,

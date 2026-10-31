@@ -177,7 +177,11 @@ pixi run table
 # 4. Vision scores from the check overlays (needs --media): data/vision.parquet
 pixi run vision
 
-# or everything at once
+# 5. Candidate run-start inputs and terminal status (not part of `all`):
+#    data/training/run_start.parquet
+pixi run export training
+
+# Or fetch, mcap, table and vision together:
 pixi run export all --media
 ```
 
@@ -210,6 +214,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Crêpe stages and where runs fail](documentation/crepe-stages.md)
 - [Which settings matter (history analysis)](documentation/analysis.md)
 - [Data pipeline and data model](documentation/pipeline.md)
+- [Candidate run-start training dataset](documentation/training-dataset.md)
 
 ## License
 MIT - see [license.txt](license.txt).

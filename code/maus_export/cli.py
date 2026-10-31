@@ -63,6 +63,7 @@ def main() -> None:
     )
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
+    sub.add_parser("training", help="export candidate run-start dataset")
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
@@ -112,6 +113,24 @@ def main() -> None:
         from .to_table import build_table
 
         build_table(data_dir)
+    if args.cmd == "training":
+        from .training_dataset import (
+            TrainingInputError,
+            build_training_dataset,
+        )
+
+        failed = "Training export failed, previous output left unchanged"
+        try:
+            build_training_dataset(data_dir)
+        except TrainingInputError as exc:
+            # Names the file and a fixed reason only, so safe to print
+            p.exit(1, f"{failed}: {exc}\n")
+        except Exception as exc:
+            # Other errors may quote private values, so print only the type
+            p.exit(
+                1,
+                f"{failed} ({type(exc).__name__}). Check raw input locally.\n",
+            )
     if args.cmd in ("vision", "all"):
         from .vision_metrics import build_vision_table
 
