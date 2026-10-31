@@ -22,7 +22,7 @@ import onnxruntime as ort
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import GroupKFold, cross_val_predict
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -126,6 +126,39 @@ def choose_c(
 
 def predict(sess: ort.InferenceSession, X: np.ndarray) -> np.ndarray:
     return sess.run([ONNX_PROBA], {ONNX_INPUT: X.astype(np.float32)})[0]
+
+
+def cv_by_robot(
+    X: np.ndarray,
+    y: np.ndarray,
+    groups: np.ndarray,
+    robots: np.ndarray,
+    c: float,
+) -> dict[str, Any]:
+    """Out-of-fold accuracy and log loss per robot, from run-grouped CV on
+    train rows. Every robot is in train, so this shows whether one robot
+    is much harder; it is not a leave-one-robot-out test."""
+    folds = GroupKFold(n_splits=min(CV_FOLDS, len(set(groups))))
+    labels = np.unique(y)
+    proba = cross_val_predict(
+        build_estimator(c),
+        X,
+        y,
+        groups=groups,
+        cv=folds,
+        method="predict_proba",
+    )
+    pred = labels[proba.argmax(axis=1)]
+    out: dict[str, Any] = {}
+    for robot in sorted(set(robots)):
+        m = robots == robot
+        out[str(robot)] = {
+            "n": int(m.sum()),
+            "accuracy": float((pred[m] == y[m]).mean()),
+            "log_loss": float(log_loss(y[m], proba[m], labels=labels)),
+            "label_counts": pd.Series(y[m]).value_counts().to_dict(),
+        }
+    return out
 
 
 def confidence_summary(
@@ -306,9 +339,11 @@ CAVEATS = {
         "Still-half crepes after a failed fold2 are never named half "
         "(fail): by eye they are half folds turned sideways, which no "
         "training frame shows, and the head reads the wedge as quarter "
-        "or the pan as empty. Half vs quarter is only shown to work in "
-        "the robot's normal fold pose. The stronger check against human "
-        "labels on video frames is tracked in #104."
+        "or the pan as empty. The likely cause is rotation: the head "
+        "reads the wedge's orientation, not the fold, so half vs quarter "
+        "is only shown to work in the robot's normal fold pose. Follow-up: "
+        "rotation augmentation (#103) and rotation robustness plus the "
+        "check against human labels on video frames (#104)."
     ),
     "empty": (
         "empty is learned from passed plate_clean frames only and tested "
@@ -385,6 +420,13 @@ def train_fold_class(data_dir: Path, out_dir: Path) -> dict[str, Any]:
         "cv": f"{CV_FOLDS}-fold run-grouped, train rows only",
         "rule": f"smallest C within {LOSS_TOL:.0%} of the best CV log loss",
         "cv_log_loss": cv_scores,
+        "cv_by_robot": cv_by_robot(
+            X[train],
+            y[train],
+            groups[train],
+            labeled.loc[train, "robot"].fillna("unknown").to_numpy(),
+            c,
+        ),
     }
     card["metrics"][TEST]["confidence"] = confidence_summary(
         y[test], predict(sess, X[test]), classes

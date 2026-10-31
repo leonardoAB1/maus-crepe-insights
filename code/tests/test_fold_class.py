@@ -195,6 +195,9 @@ def test_train_fold_class_card(data_dir: Path, tmp_path: Path) -> None:
     assert set(test["calibration"]["per_class"]) == set(CLASSES)
     assert test["confidence"]["accuracy"] > 0.9
     assert card["data"]["robots"]["test"] == [ROBOT]
+    by_robot = card["selection"]["cv_by_robot"]
+    assert set(by_robot) == {ROBOT}
+    assert by_robot[ROBOT]["accuracy"] > 0.9
 
     sanity = card["sanity_checks"]
     geo = sanity["geometry"]
@@ -206,6 +209,7 @@ def test_train_fold_class_card(data_dir: Path, tmp_path: Path) -> None:
 
     caveats = card["caveats"]
     assert "#87" in caveats["triangle_fold"]
+    assert "#103" in caveats["label_leakage"]
     assert "#91" in caveats["scope"]
     assert ROBOT in caveats["single_robot_holdout"]
 

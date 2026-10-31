@@ -52,6 +52,19 @@ chronological, run-grouped split fixed in the frame table.
 - **Holdout scope:** all holdout runs come from one robot (pixi); the other
   robots are only in train.
 
+Training CV per robot (run-grouped, out-of-fold, train rows only). Every
+robot is in train, so this is not a leave-one-robot-out test:
+
+| robot | frames | accuracy | log loss |
+|---|---|---|---|
+| quin | 360 | 1.00 | 0.01 |
+| pixi | 55 | 0.95 | 0.18 |
+| otto | 14 | 1.00 | 0.05 |
+
+Training is mostly quin. pixi is harder and has few half and quarter frames
+in train. Cross-robot generalization is unproven until the per-robot split
+and leave-one-robot-out metrics (#102) land.
+
 ## Sanity checks (frames the head never saw a label for)
 
 | check | expected | n | result |
@@ -69,10 +82,12 @@ check's class.
 - **Still-half crepes after a failed fold2:** never named half. By eye they
   are half folds turned sideways, which no training frame shows. The head
   reads the wedge as quarter, or the pan as empty.
-- **What this means:** half vs quarter is only shown to work in the robot's
-  normal fold pose.
-- **Sample size:** n is small, so this is evidence, not proof. The check
-  against human labels on video frames is tracked in #104.
+- **Likely cause:** rotation. The head reads the wedge's orientation, not
+  the fold, so half vs quarter is only shown to work in the robot's normal
+  fold pose.
+- **Sample size:** n is small, so this is evidence, not proof.
+- **Follow-up:** rotation augmentation (#103), and rotation robustness plus
+  the check against human labels on video frames (#104).
 
 On failed fold frames in general, the head spreads its answers over the
 classes at 0.77 to 0.92 mean confidence. High confidence does not mean the
