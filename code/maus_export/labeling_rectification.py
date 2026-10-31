@@ -120,12 +120,11 @@ def _rectify_run(
         destination = output / relative
         valid_relative = Path("valid") / relative
         valid_path = output / valid_relative
-        if not destination.exists():
-            pixels, valid = rectify(read_image(source), transform)
-            for path, image in ((destination, pixels), (valid_path, valid)):
-                path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-                if not cv2.imwrite(str(path), image):
-                    raise OSError("Cannot write rectified labeling artifact")
+        pixels, valid = rectify(read_image(source), transform)
+        for path, image in ((destination, pixels), (valid_path, valid)):
+            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if not cv2.imwrite(str(path), image):
+                raise OSError("Cannot write rectified labeling artifact")
         _checked_source(pilot, frame["image"], frame["image_sha256"])
         generated.append(
             {
