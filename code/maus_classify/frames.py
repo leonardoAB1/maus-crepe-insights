@@ -15,7 +15,7 @@ import pyarrow.parquet as pq
 
 from maus_export.to_mcap import Clock
 
-from .split import TEST, holdout_split
+from .split import SPLIT_VERSION, TEST, robot_split
 
 OUTPUT = Path("training") / "frames.parquet"
 RUNS_DIR = Path("raw") / "runs"
@@ -41,6 +41,7 @@ SCHEMA = pa.schema(
         ("fold_class", pa.string()),
         ("reason", pa.string()),
         ("split", pa.string()),
+        ("split_version", pa.string()),
     ]
 )
 
@@ -118,16 +119,21 @@ def runs_to_frames(runs: list[dict[str, Any]], data_dir: Path) -> pd.DataFrame:
     # The cutoff is set over runs that have checks, whatever their verdict,
     # so older runs from before images were recorded do not shift it
     with_checks = [r for r in runs if r.get("visionChecks")]
+    index = [r["id"] for r in with_checks]
     starts = pd.Series(
         pd.to_datetime([r["tsStart"] for r in with_checks], utc=True),
-        index=[r["id"] for r in with_checks],
+        index=index,
         dtype="datetime64[ns, UTC]",
     )
-    split = holdout_split(starts)
+    robots = pd.Series(
+        [r.get("machineName") for r in with_checks], index=index, dtype=object
+    )
+    split = robot_split(starts, robots)
     rows = []
     for run in sorted(runs, key=lambda r: r["id"]):
         for row in run_frames(run, data_dir):
             row["split"] = split[run["id"]]
+            row["split_version"] = SPLIT_VERSION
             rows.append(row)
     df = pd.DataFrame(rows, columns=SCHEMA.names)
     df["ts_utc"] = pd.to_datetime(df["ts_utc"], utc=True)
