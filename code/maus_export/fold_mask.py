@@ -62,6 +62,36 @@ def select_reference(
     )
 
 
+class CrepeSegmenter:
+    """Cache fixed plate and reference data for successive camera frames."""
+
+    def __init__(
+        self,
+        shape: tuple[int, int],
+        plate: PlateEllipse,
+        reference: np.ndarray | None = None,
+    ) -> None:
+        self.shape = shape
+        self.inside = ellipse_mask(shape, plate) != 0
+        self.plate_area = int(np.count_nonzero(self.inside))
+        if not self.plate_area:
+            raise ValueError("Plate mask is empty")
+        self.kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (KERNEL_SIZE, KERNEL_SIZE)
+        )
+        self.ref_l = None
+        if reference is not None:
+            if reference.shape != (*shape, 3):
+                raise ValueError("Reference dimensions must match the frame")
+            self.ref_l = cv2.cvtColor(reference, cv2.COLOR_BGR2LAB)[:, :, 0]
+
+    def segment(self, frame: np.ndarray) -> np.ndarray:
+        """Return a mask for a frame in the cached camera coordinates."""
+        if frame.shape != (*self.shape, 3):
+            raise ValueError("Frame dimensions must match the plate")
+        return _segment(frame, self)
+
+
 def segment_crepe(
     frame: np.ndarray, plate: PlateEllipse, reference: np.ndarray | None = None
 ) -> np.ndarray:
@@ -71,27 +101,23 @@ def segment_crepe(
     If no dark pixels can support exposure matching, fail rather than assume
     an unmeasured exposure shift.
     """
-    if reference is not None and reference.shape != frame.shape:
-        raise ValueError("Reference dimensions must match the frame")
-    plate_mask = ellipse_mask(frame.shape[:2], plate)
-    inside = plate_mask != 0
-    if not inside.any():
-        raise ValueError("Plate mask is empty")
+    return CrepeSegmenter(frame.shape[:2], plate, reference).segment(frame)
+
+
+def _segment(frame: np.ndarray, context: CrepeSegmenter) -> np.ndarray:
+    inside = context.inside
     grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     threshold, _ = cv2.threshold(
         grey[inside].reshape(-1, 1), 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU
     )
     bright = ((grey > max(threshold, GREY_FLOOR)) & inside).astype(np.uint8)
-    kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (KERNEL_SIZE, KERNEL_SIZE)
-    )
-    bright = cv2.morphologyEx(bright, cv2.MORPH_OPEN, kernel)
-    bright = cv2.morphologyEx(bright, cv2.MORPH_CLOSE, kernel)
+    bright = cv2.morphologyEx(bright, cv2.MORPH_OPEN, context.kernel)
+    bright = cv2.morphologyEx(bright, cv2.MORPH_CLOSE, context.kernel)
     bright &= inside.astype(np.uint8)
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     changed = None
-    if reference is not None:
-        ref_l = cv2.cvtColor(reference, cv2.COLOR_BGR2LAB)[:, :, 0]
+    if context.ref_l is not None:
+        ref_l = context.ref_l
         light = lab[:, :, 0]
         dark = inside & (light < DARK_L_LIMIT) & (ref_l < DARK_L_LIMIT)
         if not dark.any():
@@ -118,6 +144,6 @@ def segment_crepe(
         for label, area in keep:
             if area >= MIN_COMPONENT_FRACTION * largest:
                 result[labels == label] = 255
-    if np.count_nonzero(result) < MIN_PLATE_FRACTION * np.count_nonzero(inside):
+    if np.count_nonzero(result) < MIN_PLATE_FRACTION * context.plate_area:
         result.fill(0)
     return result

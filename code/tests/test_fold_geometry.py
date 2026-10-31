@@ -4,8 +4,24 @@ import cv2
 import numpy as np
 import pytest
 
-from maus_export.fold_geometry import measure_geometry
+from maus_export.fold_geometry import measure_geometry, prepare_geometry
 from maus_export.fold_plate import PlateEllipse
+
+
+def test_cached_geometry_matches_uncached() -> None:
+    mask = np.zeros((240, 240), np.uint8)
+    cv2.rectangle(mask, (80, 80), (160, 160), 255, -1)
+    plate = PlateEllipse(120, 120, 220, 220, 0)
+    context = prepare_geometry(mask.shape, plate)
+    assert measure_geometry(mask, plate, context=context) == measure_geometry(
+        mask, plate
+    )
+    with pytest.raises(ValueError, match="context"):
+        measure_geometry(mask[:100], plate, context=context)
+    with pytest.raises(ValueError, match="context"):
+        measure_geometry(
+            mask, PlateEllipse(100, 100, 220, 220, 0), context=context
+        )
 
 
 def test_circle_centre_diameter_and_holes() -> None:

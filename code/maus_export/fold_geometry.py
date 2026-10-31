@@ -47,15 +47,44 @@ class CrepeGeometry:
     corner_angle: float | None
 
 
+@dataclass(frozen=True)
+class GeometryContext:
+    """Cached plate raster and rim distance for a fixed camera view."""
+
+    plate: PlateEllipse
+    plate_mask: np.ndarray
+    rim_distance: np.ndarray
+    plate_area: float
+
+
+def prepare_geometry(
+    shape: tuple[int, int], plate: PlateEllipse
+) -> GeometryContext:
+    """Precompute plate data for repeated geometry measurements."""
+    plate_mask = ellipse_mask(shape, plate)
+    plate_area = float(np.count_nonzero(plate_mask))
+    if plate_area == 0:
+        raise ValueError("Plate mask is empty")
+    distance = cv2.distanceTransform(
+        plate_mask, cv2.DIST_L2, DISTANCE_MASK_SIZE
+    )
+    return GeometryContext(plate, plate_mask, distance, plate_area)
+
+
 def _edges(
-    contour: np.ndarray, plate_mask: np.ndarray, plate_diameter: float
+    contour: np.ndarray,
+    plate_mask: np.ndarray,
+    plate_diameter: float,
+    rim_distance: np.ndarray | None = None,
 ) -> tuple[FoldEdge, ...]:
     perimeter = cv2.arcLength(contour, True)
     polygon = cv2.approxPolyDP(contour, POLYGON_EPSILON * perimeter, True)
     points = contour[:, 0, :]
     vertices = polygon[:, 0, :]
-    distance = cv2.distanceTransform(
-        plate_mask, cv2.DIST_L2, DISTANCE_MASK_SIZE
+    distance = (
+        rim_distance
+        if rim_distance is not None
+        else cv2.distanceTransform(plate_mask, cv2.DIST_L2, DISTANCE_MASK_SIZE)
     )
     indices = [
         int(np.flatnonzero(np.all(points == p, axis=1))[0]) for p in vertices
@@ -120,10 +149,23 @@ def _corner(
     return (float(corner[0]), float(corner[1])), angle
 
 
-def measure_geometry(mask: np.ndarray, plate: PlateEllipse) -> CrepeGeometry:
+def measure_geometry(
+    mask: np.ndarray,
+    plate: PlateEllipse,
+    *,
+    context: GeometryContext | None = None,
+) -> CrepeGeometry:
     """Measure filled components, holes, shape, position and fold edges."""
-    plate_mask = ellipse_mask(mask.shape, plate)
-    plate_area = float(np.count_nonzero(plate_mask))
+    if context is not None and (
+        context.plate != plate or context.plate_mask.shape != mask.shape
+    ):
+        raise ValueError("Geometry context does not match mask and plate")
+    plate_mask = (
+        context.plate_mask if context else ellipse_mask(mask.shape, plate)
+    )
+    plate_area = (
+        context.plate_area if context else float(np.count_nonzero(plate_mask))
+    )
     if plate_area == 0:
         raise ValueError("Plate mask is empty")
     binary = ((mask != 0) & (plate_mask != 0)).astype(np.uint8) * 255
@@ -155,7 +197,10 @@ def measure_geometry(mask: np.ndarray, plate: PlateEllipse) -> CrepeGeometry:
         4 * math.pi * contour_area / perimeter**2 if perimeter else None
     )
     edges = _edges(
-        max(contours, key=cv2.contourArea), plate_mask, plate_diameter
+        max(contours, key=cv2.contourArea),
+        plate_mask,
+        plate_diameter,
+        context.rim_distance if context else None,
     )
     corner, corner_angle = _corner(edges)
     return CrepeGeometry(

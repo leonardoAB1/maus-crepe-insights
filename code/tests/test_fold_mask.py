@@ -5,11 +5,29 @@ import numpy as np
 import pytest
 
 from maus_export.fold_mask import (
+    CrepeSegmenter,
     EmptyReference,
     segment_crepe,
     select_reference,
 )
 from maus_export.fold_plate import PlateEllipse
+
+
+def test_cached_segmentation_matches_uncached() -> None:
+    plate = PlateEllipse(100, 100, 180, 180, 0)
+    reference = np.full((200, 200, 3), 25, np.uint8)
+    frame = reference.copy()
+    cv2.circle(frame, (100, 100), 40, (230, 230, 230), -1)
+    for ref in (None, reference):
+        cached = CrepeSegmenter(frame.shape[:2], plate, ref)
+        assert np.array_equal(
+            cached.segment(frame), segment_crepe(frame, plate, ref)
+        )
+        assert np.array_equal(
+            cached.segment(frame), segment_crepe(frame, plate, ref)
+        )
+        with pytest.raises(ValueError, match="dimensions"):
+            cached.segment(frame[:100])
 
 
 def test_reference_preserves_changed_component_and_removes_glare() -> None:
