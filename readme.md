@@ -275,6 +275,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Data pipeline and data model](documentation/pipeline.md)
 - [Candidate run-start training dataset](documentation/training-dataset.md)
 - [Vision-target training dataset](documentation/vision-targets.md)
+- [Frame-level check dataset](documentation/frames.md)
 
 ## License
 MIT - see [license.txt](license.txt).
