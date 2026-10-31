@@ -20,7 +20,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DIAGRAM_DIR = Path("documentation") / "diagrams"
 DIAGRAM_SUFFIX = ".mmd"
-SCANNED_GLOBS = ("readme.md", "documentation/*.md")
+SCANNED_GLOBS = ("readme.md", "documentation/**/*.md")
 FENCE = "```"
 LF = "\n"
 CRLF = "\r\n"

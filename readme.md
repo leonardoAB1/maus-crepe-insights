@@ -7,7 +7,8 @@ We turn that data into insight: why runs fail, which settings and conditions mat
 ## How it works
 
 **The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
-camera above the hotplate feeds the vision checks. More in [documentation/system.md](documentation/system.md).
+camera above the hotplate feeds the vision checks. More in the
+[robot system guide](documentation/system/system.md).
 
 <!-- diagram: system -->
 ```mermaid
@@ -43,7 +44,8 @@ flowchart LR
 <!-- /diagram -->
 
 **A crêpe run.** Four groups of stages, a vision check before each critical move, and four possible endings.
-Timings and check fail rates in [documentation/crepe-stages.md](documentation/crepe-stages.md).
+Timings and check fail rates are in the
+[stages guide](documentation/system/crepe-stages.md).
 
 <!-- diagram: crepe-stages -->
 ```mermaid
@@ -118,7 +120,7 @@ Not succeeded,No check data,116
 <!-- /diagram -->
 
 **Our pipeline.** From the Maus dashboard to MCAP, analysis tables and ONNX models.
-Details in [documentation/pipeline.md](documentation/pipeline.md).
+Details in [documentation/data/pipeline.md](documentation/data/pipeline.md).
 
 <!-- diagram: pipeline -->
 ```mermaid
@@ -139,7 +141,8 @@ flowchart LR
 **What the vision scores measure.** The robot's check overlays already mark the crêpe outline, holes,
 residue and the ideal fold shape. `pixi run vision` reads those marks back as numbers per run (diameter,
 centre offset, bare plate inside the crêpe, fold overlap, fold-2/fold-1 area ratio, browning), so failures become measurable
-instead of only pass/fail. Columns in [documentation/pipeline.md](documentation/pipeline.md#vision-score-columns).
+instead of only pass/fail. See the
+[vision score columns](documentation/data/pipeline.md#vision-score-columns).
 
 ![Annotated spread and fold checks with the measured vision scores](assets/vision-scores-example.jpg)
 
@@ -197,14 +200,14 @@ Removing `--limit` does not remove the fetch date defaults or account
 permission restrictions. Cached runs can also extend beyond the latest
 fetch. A successful fetch may still have missing media. For the complete
 private, account-specific fetch-to-vision-target workflow, see the
-[collaborator runbook](documentation/vision-targets.md).
+[collaborator runbook](documentation/training/vision-targets.md).
 
 Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
-See [documentation/analysis.md](documentation/analysis.md).
+See [documentation/analysis/analysis.md](documentation/analysis/analysis.md).
 
 Designed experiment for Maus: `pixi run doe --robot <robot>` writes a run sheet to `data/doe/`,
 `pixi run -e ml doe-analyze <sheet>` reads it back once the runs are done.
-See [documentation/doe.md](documentation/doe.md).
+See [documentation/analysis/doe.md](documentation/analysis/doe.md).
 
 Seen from above, this is a run-to-run feedback loop: the batch measures how
 each recipe setting moves the crêpe quality, read through camera, logs and
@@ -235,7 +238,7 @@ JupyterLab works too: `pixi run -e ml notebook`.
 
 ## Standards we follow
 - **Data → [MCAP](https://mcap.dev) (ROS 2 profile)**, the standard container for multimodal robot logs.
-  See [documentation/mcap.md](documentation/mcap.md).
+  See [documentation/data/mcap.md](documentation/data/mcap.md).
 - **Models → [ONNX](https://onnx.ai)**. Train with any framework, ship `.onnx` and run it with `onnxruntime`.
   See [code/models/README.md](code/models/README.md). Use the pixi `ml` environment: `pixi run -e ml ...`.
 
@@ -243,15 +246,19 @@ JupyterLab works too: `pixi run -e ml notebook`.
 Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 
 ## Documentation
-- [What data the dashboard has](documentation/data.md)
-- [MCAP topics & schemas](documentation/mcap.md)
-- [Robot system](documentation/system.md)
-- [Crêpe stages and where runs fail](documentation/crepe-stages.md)
-- [Which settings matter (history analysis)](documentation/analysis.md)
-- [Designed experiment (DoE batch)](documentation/doe.md)
-- [Data pipeline and data model](documentation/pipeline.md)
-- [Candidate run-start training dataset](documentation/training-dataset.md)
-- [Vision-target training dataset](documentation/vision-targets.md)
+
+[Browse all documentation](documentation/README.md) by subject.
+
+- [What data the dashboard has](documentation/data/data.md)
+- [MCAP topics & schemas](documentation/data/mcap.md)
+- [Robot system](documentation/system/system.md)
+- [Crêpe stages and where runs fail](documentation/system/crepe-stages.md)
+- [Which settings matter (history analysis)](documentation/analysis/analysis.md)
+- [Designed experiment (DoE batch)](documentation/analysis/doe.md)
+- [Data pipeline and data model](documentation/data/pipeline.md)
+- [Candidate run-start dataset](documentation/training/training-dataset.md)
+- [Data preparation handoff](documentation/training/data-preparation-handoff.md)
+- [Vision-target training dataset](documentation/training/vision-targets.md)
 
 ## License
 MIT - see [license.txt](license.txt).

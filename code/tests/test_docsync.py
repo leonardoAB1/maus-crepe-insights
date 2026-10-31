@@ -30,6 +30,16 @@ def test_fills_blocks_in_readme_and_docs(tmp_path: Path) -> None:
     assert text.startswith("intro\n") and text.endswith("end\n")
 
 
+def test_fills_blocks_in_nested_docs(tmp_path: Path) -> None:
+    root = make_repo(tmp_path, "")
+    page = root / "documentation" / "data" / "guides" / "page.md"
+    page.parent.mkdir(parents=True)
+    page.write_text(EMPTY_BLOCK, encoding="utf-8")
+
+    assert sync(root) == [page]
+    assert "a --> b" in page.read_text(encoding="utf-8")
+
+
 def test_second_run_changes_nothing(tmp_path: Path) -> None:
     root = make_repo(tmp_path, EMPTY_BLOCK)
     sync(root)
@@ -45,6 +55,34 @@ def test_check_reports_stale_without_writing(tmp_path: Path) -> None:
     stale = sync(root, check=True)
     assert len(stale) == 2
     assert "a --> b" in (root / "readme.md").read_text(encoding="utf-8")
+
+
+def test_nested_check_reports_stale_without_writing(tmp_path: Path) -> None:
+    root = make_repo(tmp_path, "")
+    page = root / "documentation" / "training" / "page.md"
+    page.parent.mkdir()
+    page.write_text(EMPTY_BLOCK, encoding="utf-8")
+
+    assert sync(root, check=True) == [page]
+    assert page.read_text(encoding="utf-8") == EMPTY_BLOCK
+    sync(root)
+    (root / "documentation" / "diagrams" / "demo.mmd").write_text(
+        "flowchart LR\n    a --> c\n", encoding="utf-8"
+    )
+    assert sync(root, check=True) == [page]
+    assert "a --> b" in page.read_text(encoding="utf-8")
+
+
+def test_nested_unknown_diagram_raises(tmp_path: Path) -> None:
+    root = make_repo(tmp_path, "")
+    page = root / "documentation" / "system" / "page.md"
+    page.parent.mkdir()
+    page.write_text(
+        "<!-- diagram: missing -->\n<!-- /diagram -->\n", encoding="utf-8"
+    )
+
+    with pytest.raises(UnknownDiagramError, match="missing"):
+        sync(root, check=True)
 
 
 def test_keeps_crlf_line_endings(tmp_path: Path) -> None:
