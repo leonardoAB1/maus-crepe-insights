@@ -64,10 +64,45 @@ def main() -> None:
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
     sub.add_parser("training", help="export candidate run-start dataset")
+    for name, help_text in (
+        ("fold-frames", "extract rectified fold check frames"),
+        ("fold-segment", "segment fold check frames"),
+        ("fold-eval", "evaluate fold segmentation"),
+        ("fold-live-eval", "evaluate sampled live videos"),
+        ("fold-review", "create a private contact sheet"),
+    ):
+        fold_command = sub.add_parser(name, help=help_text)
+        fold_command.add_argument(
+            "--data-dir",
+            type=Path,
+            default=argparse.SUPPRESS,
+            help="input and private output directory",
+        )
     sub.add_parser("vision-targets", help="join run-start and vision targets")
     sub.add_parser("audit", help="audit training and vision coverage")
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
+    )
+    dashboard = sub.add_parser(
+        "fold-dashboard", help="serve local video review"
+    )
+    dashboard.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    dashboard.add_argument("--port", type=int, default=8765)
+    live = sub.add_parser("fold-live", help="analyze one cached video")
+    from .fold_video import DEFAULT_ANALYSIS_FPS
+
+    live.add_argument("run_id", type=int)
+    live.add_argument(
+        "--fps",
+        type=float,
+        default=DEFAULT_ANALYSIS_FPS,
+        help="analysis frames per second (default: 5 for a 200 ms budget)",
+    )
+    live.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    live.add_argument(
+        "--replace",
+        action="store_true",
+        help="replace this run's existing analysis after successful processing",
     )
     ex = sub.add_parser(
         "example", help="draw the annotated vision example figure"
@@ -138,6 +173,41 @@ def main() -> None:
         from .to_table import build_table
 
         build_table(data_dir)
+    if args.cmd == "fold-frames":
+        from .fold_dataset import extract_frames
+
+        print(extract_frames(data_dir))
+    if args.cmd == "fold-segment":
+        from .fold_segment import segment_dataset
+
+        print(segment_dataset(data_dir))
+    if args.cmd == "fold-eval":
+        from .fold_eval import evaluate
+
+        print(evaluate(data_dir))
+    if args.cmd == "fold-live":
+        from .fold_video import analyse_video
+
+        print(
+            analyse_video(
+                data_dir,
+                args.run_id,
+                replace=args.replace,
+                analysis_fps=args.fps,
+            )
+        )
+    if args.cmd == "fold-live-eval":
+        from .fold_live_eval import evaluate_live
+
+        print(evaluate_live(data_dir))
+    if args.cmd == "fold-review":
+        from .fold_review import contact_sheet
+
+        print(f"Review frames: {contact_sheet(data_dir)}")
+    if args.cmd == "fold-dashboard":
+        from .fold_dashboard import serve_dashboard
+
+        serve_dashboard(data_dir, args.port)
     if args.cmd == "training":
         from .training_dataset import (
             TrainingInputError,

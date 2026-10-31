@@ -260,6 +260,7 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Data preparation handoff](documentation/training/data-preparation-handoff.md)
 - [Vision-target training dataset](documentation/training/vision-targets.md)
 - [Frame-level check dataset](documentation/frames.md)
+- [Experimental fold-state segmentation](documentation/fold-segmentation.md)
 - [Frame embeddings](documentation/frame-embeddings.md)
 - [Private phase-labeling pilot](documentation/phase-labeling-pilot.md)
 - [Camera rectification](documentation/rectification.md)
