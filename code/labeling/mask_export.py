@@ -218,6 +218,8 @@ def export_masks(
             },
             "records": records,
         }
+        if plan.get("assignment"):
+            result["assignment"] = plan["assignment"]
         (output / "manifest.json").write_text(json.dumps(result, indent=2))
     except BaseException:
         shutil.rmtree(output)
