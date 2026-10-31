@@ -64,6 +64,7 @@ def main() -> None:
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
     sub.add_parser("training", help="export candidate run-start dataset")
+    sub.add_parser("audit", help="audit training and vision coverage")
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
@@ -130,6 +131,17 @@ def main() -> None:
             p.exit(
                 1,
                 f"{failed} ({type(exc).__name__}). Check raw input locally.\n",
+            )
+    if args.cmd == "audit":
+        from .training_audit import build_training_audit
+
+        try:
+            build_training_audit(data_dir)
+        except Exception as exc:
+            p.exit(
+                1,
+                "Training audit failed; previous output is stale "
+                f"({type(exc).__name__}). Check inputs locally.\n",
             )
     if args.cmd in ("vision", "all"):
         from .vision_metrics import build_vision_table
