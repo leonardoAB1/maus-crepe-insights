@@ -1,6 +1,7 @@
 # Fold-state segmentation TODO
 
 - [ ] Apply the known camera perspective correction to extracted frames.
+  - [x] Implement a checked video-frame rectification primitive.
 - [ ] Extract check frames using phase-bound clock alignment.
   - [x] Implement phase clock bounds and check-event parsing.
 - [ ] Estimate a per-run plate ellipse.
