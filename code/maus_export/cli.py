@@ -63,7 +63,10 @@ def main() -> None:
     )
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
-    a = sub.add_parser("all", help="fetch + mcap + table")
+    sub.add_parser(
+        "vision", help="score check overlays -> vision.csv / vision.parquet"
+    )
+    a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
     args = p.parse_args()
@@ -92,6 +95,10 @@ def main() -> None:
         from .to_table import build_table
 
         build_table(data_dir)
+    if args.cmd in ("vision", "all"):
+        from .vision_metrics import build_vision_table
+
+        build_vision_table(data_dir)
 
 
 if __name__ == "__main__":
