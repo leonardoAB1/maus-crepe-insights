@@ -205,6 +205,20 @@ def test_changed_source_image_is_rejected_without_raw_fallback(
     assert not list(output.rglob("*.png"))
 
 
+def test_annotated_pilot_is_refused_before_any_output(
+    source_pilot: tuple,
+) -> None:
+    data, pilot = source_pilot
+    manifest = pilot / "manifest.json"
+    content = json.loads(manifest.read_text())
+    content["runs"][0]["frames"][0]["human_label"] = "cook"
+    manifest.write_text(json.dumps(content))
+    output = pilot.parent / "rectified"
+    with pytest.raises(ValueError, match="unannotated"):
+        prepare_rectified(data, pilot, output)
+    assert not output.exists()
+
+
 def test_public_or_unrelated_output_is_refused(source_pilot: tuple) -> None:
     data, pilot = source_pilot
     output = data.parent / "public"

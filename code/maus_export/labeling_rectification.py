@@ -112,8 +112,6 @@ def _rectify_run(
         if relative.parent != directory or relative.suffix != ".png":
             raise ValueError("Inconsistent source image directory")
         source = _checked_source(pilot, frame["image"], frame["image_sha256"])
-        if frame["human_label"] is not None or frame["phase_suggestion"]:
-            raise ValueError("Only unannotated source pilots are supported")
         destination = output / relative
         valid_relative = Path("valid") / relative
         valid_path = output / valid_relative
@@ -168,6 +166,12 @@ def prepare_rectified(
         "preprocessing"
     ):
         raise ValueError("Expected an original unrectified pilot")
+    if any(
+        frame["human_label"] is not None or frame["phase_suggestion"]
+        for run in manifest["runs"]
+        for frame in run.get("frames", [])
+    ):
+        raise ValueError("Only unannotated source pilots are supported")
     if shutil.disk_usage(parent).free < MIN_FREE_BYTES:
         raise ValueError("Insufficient free disk space")
     os.umask(0o077)
