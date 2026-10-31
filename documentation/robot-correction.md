@@ -76,6 +76,23 @@ supported by the source image.
 The apply script refuses to overwrite existing files. Use a new output folder
 for a new experiment.
 
+## Review best and worst cases
+
+Create contact sheets for visual inspection:
+
+```bash
+pixi run review-correction \
+  --data-dir /workspace/data \
+  --correction /workspace/data/rectification/corrections/maus-pixi.json \
+  --out /workspace/data/rectification/review/maus-pixi
+```
+
+The review script writes `best.jpg` and `worst.jpg`. Each row shows the raw
+frame, the mean-corrected frame, the robot overlay target and an absolute
+pixel-difference heatmap. Best and worst are ranked by maximum corner
+displacement from the mean transform, which highlights camera drift or bad
+matches.
+
 ## Limits
 
 Averaging homographies is an engineering shortcut. It can be useful when one
