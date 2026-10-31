@@ -5,6 +5,10 @@ PyTorch, XGBoost, ...), but the artifact the rest of the team (and the robot) co
 run with `onnxruntime`.
 
 ## Conventions
+- Sample sizes for the frame models and the fold-risk analysis, per robot and
+  time window, are explained on
+  [classification data coverage](../../documentation/training/classification-data.md).
+  Cite it in a model card instead of repeating why most runs drop out.
 - One folder per model: `models/<name>/`
   - `model.onnx` – the exported graph (opset ≥ 17)
   - `model.json` – model card: inputs (names, dtypes, shapes, feature order), outputs, training data range

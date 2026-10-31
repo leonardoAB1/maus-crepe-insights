@@ -9,6 +9,10 @@ The labels are the robot's recorded check results, not human ground truth. A
 `fail` can be a robot-side false alarm, and a `pass` can hide a defect the check
 does not look for.
 
+How many runs and frames each robot and model really has, and why most of the
+828 runs have no frames, is on
+[classification data coverage](training/classification-data.md).
+
 ## Build
 
 From `code/`, after a fetch with `--media`:
@@ -101,7 +105,8 @@ works the same for hand-made image features and embeddings:
 These are aggregate counts from one private, account-limited local export as of
 2026-10-31. Other exports will differ. In total there are 1,128 frames from 160
 runs, 799 of which are last attempts, and 16 frames whose image file is
-missing.
+missing. Per-robot breakdowns are on
+[classification data coverage](training/classification-data.md).
 
 | Check | pass | fail | train | test |
 |---|---:|---:|---:|---:|
