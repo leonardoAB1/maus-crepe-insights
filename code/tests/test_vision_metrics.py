@@ -206,3 +206,25 @@ def test_fold2_area_ratio(tmp_path: Path) -> None:
     (runs / "9.json").write_text(json.dumps(run), encoding="utf-8")
     df = build_vision_table(tmp_path)
     assert df.at[0, "vision.fold2.area_ratio"] == pytest.approx(0.5, rel=0.1)
+
+
+def test_uncovered_counts_unmarked_gaps_but_not_bubbles() -> None:
+    r, gap_r = 280, 90
+    img = blank()
+    cv2.circle(img, CENTRE, r, BATTER, -1)
+    # Bare plate the robot did not paint red, plus bubble specks
+    cv2.circle(img, (CENTRE[0] + 100, CENTRE[1]), gap_r, PLATE, -1)
+    for dx in range(-200, -60, 25):
+        cv2.circle(img, (CENTRE[0] + dx, CENTRE[1] - 120), 2, PLATE, -1)
+    cv2.circle(img, CENTRE, r, GREEN, 2)
+    cv2.circle(img, CENTRE, r + FIT_GAP, CYAN, 2)
+    cv2.circle(img, CENTRE, ZONE_R, BLUE, 2)
+    m = spread_metrics(jpeg(img))
+    assert m["hole_frac"] == pytest.approx(0, abs=TOL)
+    assert m["uncovered_frac"] == pytest.approx((gap_r / r) ** 2, rel=0.1)
+
+
+def test_uncovered_includes_red_marked_holes() -> None:
+    r, hole_r = 250, 100
+    m = spread_metrics(spread_overlay(r, hole_r=hole_r))
+    assert m["uncovered_frac"] == pytest.approx((hole_r / r) ** 2, rel=0.1)
