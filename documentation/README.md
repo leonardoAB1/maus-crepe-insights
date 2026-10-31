@@ -27,6 +27,8 @@ page per question.
   a stream, and what each source has to emit
 - [Fold segmentation](fold-segmentation.md): the classical video pipeline for
   fold-state features, evaluation and a local review dashboard
+- [Run viewer](vision/review-app.md): a local web app that plays a run with the
+  pipeline beside it, and how a model plugs in
 
 ## Labeling
 

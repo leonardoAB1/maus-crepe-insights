@@ -191,6 +191,16 @@ def main() -> None:
     ov.add_argument("--fps", type=float, default=15.0)
     ov.add_argument("--start", type=int, default=0)
     ov.add_argument("--limit", type=int, default=None)
+    vw = sub.add_parser(
+        "view", help="watch a run with the pipeline layers beside it"
+    )
+    vw.add_argument("--video", type=Path, required=True)
+    vw.add_argument("--records", type=Path, default=None)
+    vw.add_argument("--masks-dir", type=Path, default=None)
+    vw.add_argument("--producer", default="pixel_masks")
+    vw.add_argument("--run-id", type=int, default=None)
+    vw.add_argument("--host", default="127.0.0.1")
+    vw.add_argument("--port", type=int, default=8087)
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -392,6 +402,20 @@ def main() -> None:
             limit=args.limit,
         )
         print(json.dumps(result, indent=2))
+    if args.cmd == "view":
+        from .viewer import ViewerApp, load_record_file, serve
+
+        records = (
+            None if args.records is None else load_record_file(args.records)
+        )
+        app = ViewerApp(
+            video=args.video,
+            records=records,
+            masks_dir=args.masks_dir,
+            producer=args.producer,
+            run_id=args.run_id,
+        )
+        serve(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

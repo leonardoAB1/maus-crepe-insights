@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crepe run viewer</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #fdf6ea;
+    --panel: #fffbf2;
+    --line: #efe1ca;
+    --ink: #3b3229;
+    --ink-soft: #8a7a63;
+    --amber: #e39b3d;
+    --material: #7fbf6a;
+    --hole: #e8705f;
+    --shadow: 0 1px 2px rgba(150,120,80,.07), 0 10px 26px rgba(150,120,80,.10);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; overflow: hidden; background: var(--bg); color: var(--ink);
+    font: 16px/1.4 ui-rounded, "Quicksand", "Segoe UI", system-ui, sans-serif;
+  }
+  .app { height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+
+  .bar { display: flex; align-items: center; gap: 22px; padding: 12px 24px;
+         background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 700;
+           font-size: 19px; white-space: nowrap; }
+  .mark { width: 26px; height: 26px; border-radius: 50%; background: #fdeec9;
+          border: 3px dashed var(--amber); animation: turn 14s linear infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  .legend { display: flex; gap: 14px; overflow: hidden; color: var(--ink-soft);
+            font-size: 15px; }
+  .legend span { display: flex; gap: 7px; align-items: center; white-space: nowrap; }
+  .swatch { width: 13px; height: 13px; border-radius: 4px; display: inline-block; }
+  .clock { margin-left: auto; display: flex; align-items: baseline; gap: 8px;
+           font-family: var(--mono); white-space: nowrap; }
+  .clock b { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
+  .clock span { color: var(--ink-soft); font-size: 16px; }
+
+  .viewport { position: relative; display: grid; place-items: center;
+              padding: 10px 24px; min-height: 0; }
+  .wrap { position: relative; line-height: 0; }
+  video { max-width: 100%; max-height: 52vh; display: block; border-radius: 18px;
+          box-shadow: var(--shadow); background: #f6ecd9; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%;
+           pointer-events: none; border-radius: 18px; }
+  .wrap::before, .wrap::after {
+    content: ""; position: absolute; width: 24px; height: 24px;
+    border: 3px solid var(--amber); pointer-events: none;
+  }
+  .wrap::before { top: -9px; left: -9px; border-right: 0; border-bottom: 0;
+                  border-radius: 12px 0 0 0; }
+  .wrap::after { bottom: -9px; right: -9px; border-left: 0; border-top: 0;
+                 border-radius: 0 0 12px 0; }
+  .toast { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+           background: #fff4dd; border: 1px solid var(--line); color: #a86a1e;
+           padding: 6px 14px; border-radius: 999px; font-size: 15px;
+           max-width: 70vw; }
+  .toast:empty { display: none; }
+
+  .deck { background: var(--panel); border-top: 1px solid var(--line);
+          padding: 12px 24px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .vizes { display: flex; flex-direction: column; gap: 8px; }
+  .vize { position: relative; }
+  #ribbon { display: block; width: 100%; height: 30px; border-radius: 8px; }
+  #track { position: relative; height: 34px; background: #fbf3e2;
+           border: 1px solid var(--line); border-radius: 10px;
+           overflow: hidden; cursor: pointer; }
+  #track .seg { position: absolute; top: 7px; bottom: 7px; border-radius: 4px;
+                transition: transform .2s ease; }
+  #track .seg:hover { transform: scaleY(1.35); }
+  .roller { position: absolute; top: 50%; width: 24px; height: 24px;
+            margin: -12px 0 0 -12px; border-radius: 50%;
+            background: #fffdf6; border: 3px solid var(--amber);
+            box-shadow: 0 2px 8px rgba(150,120,80,.35);
+            transition: left .18s linear; pointer-events: none; }
+  .roller.spin { border-style: dashed; animation: turn 1.6s linear infinite; }
+  .deckline { display: flex; align-items: center; gap: 22px; }
+  .cells { display: flex; align-items: flex-end; gap: 24px; flex: 1 1 auto;
+           min-width: 0; }
+  .cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .cell b { font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+            color: var(--amber); font-weight: 700; }
+  .cell span { font-family: var(--mono); font-size: 20px; white-space: nowrap;
+               max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+  .cell.state span { font-family: inherit; font-weight: 700; font-size: 30px;
+                     line-height: 1.1; transition: color .25s ease; }
+  .cell.state.pop span { animation: pop .28s ease; }
+  @keyframes pop { 0% { transform: scale(.86); } 60% { transform: scale(1.06); }
+                   100% { transform: scale(1); } }
+  .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .ctl { display: flex; align-items: center; gap: 14px; flex: none;
+         border-left: 1px solid var(--line); padding-left: 20px; }
+  select { background: #fffbf2; color: var(--ink); border: 1px solid var(--line);
+           border-radius: 10px; padding: 7px 10px; font: inherit;
+           font-family: var(--mono); }
+  label { display: flex; gap: 7px; align-items: center; font-size: 15px;
+          white-space: nowrap; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>Crepe run viewer</div>
+    <div class="legend" id="legend"></div>
+    <div class="clock"><b id="frame">0</b><span id="of">/ 0</span></div>
+  </header>
+
+  <section class="viewport">
+    <div class="toast" id="toast"></div>
+    <div class="wrap">
+      <video id="video" controls preload="metadata" muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+  </section>
+
+  <footer class="deck">
+    <div class="vizes">
+      <div class="vize" title="deviation per recorded frame, 0 is a match">
+        <svg id="ribbon"></svg>
+      </div>
+      <div class="vize">
+        <div id="track" title="fold state per frame; click to jump"></div>
+        <div class="roller" id="roller"></div>
+      </div>
+    </div>
+    <div class="deckline">
+      <div class="cells">
+        <div class="cell state" id="state_cell">
+          <b>state</b><span><i class="dot" id="state_dot"></i> <span id="state">-</span></span>
+        </div>
+        <div class="cell"><b>model</b><span id="prediction_state">-</span></div>
+        <div class="cell"><b>deviation</b><span id="deviation">-</span></div>
+        <div class="cell"><b>check</b><span id="check">-</span></div>
+        <div class="cell"><b>recorded</b><span id="verdict">-</span></div>
+      </div>
+      <div class="ctl">
+        <select id="producer" title="which producer answers"></select>
+        <label><input type="checkbox" id="show_material" checked>material</label>
+        <label><input type="checkbox" id="show_holes" checked>holes</label>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+const STATE_COLOURS = {
+  emptyplate: '#c9b79b', flat: '#7ca9d6', cooking: '#f2b33d',
+  halffold: '#7fbf6a', 'quarter fold': '#a98bd8', ugly: '#e8705f'
+};
+const NO_STATE_COLOUR = '#f0e6d3';
+const MATERIAL_RGB = '127,191,106';
+const HOLE_RGB = '232,112,95';
+const RIBBON_LOW = [127, 191, 106];
+const RIBBON_MID = [242, 179, 61];
+const RIBBON_HIGH = [232, 112, 95];
+const FILL_ALPHA = 0.16;
+const RING_BLUR = 5;
+const POLL_MS = 300;
+const REVIEW_THRESHOLD = 0.5;
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const el = (id) => document.getElementById(id);
+const els = {
+  frame: el('frame'), of: el('of'), state: el('state'), state_dot: el('state_dot'),
+  state_cell: el('state_cell'), prediction_state: el('prediction_state'),
+  deviation: el('deviation'), check: el('check'), verdict: el('verdict'),
+  producer: el('producer'), legend: el('legend'), track: el('track'),
+  ribbon: el('ribbon'), roller: el('roller'), toast: el('toast'),
+  show_material: el('show_material'), show_holes: el('show_holes')
+};
+
+let status = null;
+let cache = new Map();
+let maskCache = new Map();
+let layerCache = new Map();
+let lastKey = null;
+let lastState = null;
+
+async function boot() {
+  status = await (await fetch('/api/status')).json();
+  els.of.textContent = `/ ${status.frames}`;
+  video.src = '/api/video';
+  els.legend.innerHTML = Object.entries(STATE_COLOURS).map(([name, colour]) =>
+    `<span><i class="swatch" style="background:${colour}"></i>${name}</span>`
+  ).join('') + '<span><i class="swatch" style="background:rgb(127,191,106)">'
+    + '</i>material</span><span><i class="swatch" style="background:'
+    + 'rgb(232,112,95)"></i>holes</span>';
+  for (const producer of status.producers) {
+    const option = document.createElement('option');
+    option.value = producer.name;
+    option.textContent = producer.name;
+    option.title = producer.describes;
+    if (producer.name === status.producer) option.selected = true;
+    els.producer.appendChild(option);
+  }
+  const records = (await (await fetch('/api/records')).json()).records || [];
+  drawTrack(records);
+  drawRibbon(records);
+  video.addEventListener('play', () => els.roller.classList.add('spin'));
+  video.addEventListener('pause', () => els.roller.classList.remove('spin'));
+  video.addEventListener('seeked', () => refresh(true));
+  video.addEventListener('pause', () => refresh(true));
+  video.addEventListener('timeupdate', () => refresh());
+  els.producer.addEventListener('change', () => { cache.clear(); refresh(true); });
+  for (const id of ['show_material', 'show_holes']) {
+    el(id).addEventListener('change', () => refresh(true));
+  }
+  els.track.addEventListener('click', (event) => {
+    const ratio = event.offsetX / els.track.clientWidth;
+    video.currentTime = ratio * (status.frames / status.fps);
+  });
+  setInterval(() => { if (!video.paused) refresh(); }, POLL_MS);
+  refresh(true);
+}
+
+function drawTrack(records) {
+  els.track.innerHTML = '';
+  if (!records.length || !status.frames) return;
+  const width = Math.max(1.5, (8 / status.frames) * 100);
+  for (const record of records) {
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    seg.style.left = `${(record.frame / status.frames) * 100}%`;
+    seg.style.width = `${width}%`;
+    seg.style.background = STATE_COLOURS[record.state] || NO_STATE_COLOUR;
+    seg.title = `frame ${record.frame}: ${record.state || 'no state'}`;
+    els.track.appendChild(seg);
+  }
+}
+
+function ribbonColour(value) {
+  const clamped = Math.min(1, Math.max(0, value));
+  const from = clamped < REVIEW_THRESHOLD ? RIBBON_LOW : RIBBON_MID;
+  const to = clamped < REVIEW_THRESHOLD ? RIBBON_MID : RIBBON_HIGH;
+  const span = clamped < REVIEW_THRESHOLD ? REVIEW_THRESHOLD : 1 - REVIEW_THRESHOLD;
+  const mix = (clamped - (clamped < REVIEW_THRESHOLD ? 0 : REVIEW_THRESHOLD)) / span;
+  const channel = (index) => Math.round(from[index] + (to[index] - from[index]) * mix);
+  return `rgb(${channel(0)},${channel(1)},${channel(2)})`;
+}
+
+function drawRibbon(records) {
+  const scored = records.filter((record) => record.deviation !== null
+    && record.deviation !== undefined);
+  const width = 1000, height = 30;
+  els.ribbon.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  els.ribbon.setAttribute('preserveAspectRatio', 'none');
+  if (!scored.length) {
+    els.ribbon.innerHTML =
+      '<text x="6" y="20" fill="#8a7a63" font-size="13">'
+      + 'no deviation scores in this clip</text>';
+    return;
+  }
+  const maxFrame = Math.max(status.frames - 1, 1);
+  const bar = Math.max(1, width / maxFrame);
+  const bars = scored.map((record) =>
+    `<rect x="${((record.frame / maxFrame) * width).toFixed(1)}" y="0" `
+    + `width="${bar.toFixed(1)}" height="${height}" `
+    + `fill="${ribbonColour(record.deviation)}" opacity=".85"/>`).join('');
+  els.ribbon.innerHTML = `<g>${bars}</g>`
+    + `<line id="ribbon_marker" x1="0" y1="0" x2="0" y2="${height}" `
+    + `stroke="#3b3229" stroke-width="2" opacity=".55"/>`;
+  els.ribbon.dataset.x = JSON.stringify({ width, maxFrame });
+  moveMarker(currentFrame());
+}
+
+function moveMarker(frame) {
+  const marker = el('ribbon_marker');
+  if (!marker || !els.ribbon.dataset.x) return;
+  const { width, maxFrame } = JSON.parse(els.ribbon.dataset.x);
+  const x = (frame / maxFrame) * width;
+  marker.setAttribute('x1', x);
+  marker.setAttribute('x2', x);
+}
+
+function currentFrame() {
+  if (!status) return 0;
+  return Math.min(status.frames - 1,
+    Math.max(0, Math.round(video.currentTime * status.fps)));
+}
+
+async function layersFor(frame, producer) {
+  const key = `${producer}:${frame}`;
+  if (cache.has(key)) return cache.get(key);
+  const response = await fetch(
+    `/api/frame/${frame}?producer=${encodeURIComponent(producer)}`);
+  const payload = await response.json();
+  cache.set(key, payload);
+  if (cache.size > 400) cache.clear();
+  return payload;
+}
+
+async function maskImage(source) {
+  if (!maskCache.has(source)) {
+    const image = new Image();
+    const loaded = new Promise((resolve) => { image.onload = resolve; });
+    image.src = source;
+    maskCache.set(source, loaded.then(() => image));
+    if (maskCache.size > 200) maskCache.clear();
+  }
+  return maskCache.get(source);
+}
+
+async function plate(source, rgb) {
+  const key = `${source}|${rgb}|${canvas.width}`;
+  if (layerCache.has(key)) return layerCache.get(key);
+  const image = await maskImage(source);
+  const fill = document.createElement('canvas');
+  const ring = document.createElement('canvas');
+  for (const shape of [fill, ring]) {
+    shape.width = canvas.width;
+    shape.height = canvas.height;
+  }
+  const fillCtx = fill.getContext('2d');
+  fillCtx.globalAlpha = FILL_ALPHA;
+  fillCtx.drawImage(image, 0, 0, fill.width, fill.height);
+  fillCtx.globalAlpha = 1;
+  fillCtx.globalCompositeOperation = 'source-in';
+  fillCtx.fillStyle = `rgb(${rgb})`;
+  fillCtx.fillRect(0, 0, fill.width, fill.height);
+
+  const ringCtx = ring.getContext('2d');
+  ringCtx.filter = `blur(${RING_BLUR}px)`;
+  ringCtx.drawImage(image, 0, 0, ring.width, ring.height);
+  ringCtx.filter = 'none';
+  ringCtx.globalCompositeOperation = 'source-in';
+  ringCtx.fillStyle = `rgb(${rgb})`;
+  ringCtx.fillRect(0, 0, ring.width, ring.height);
+  ringCtx.globalCompositeOperation = 'destination-out';
+  ringCtx.drawImage(image, 0, 0, ring.width, ring.height);
+  ringCtx.globalCompositeOperation = 'source-over';
+  ringCtx.drawImage(fill, 0, 0);
+
+  const ready = new Promise((resolve) => {
+    const composed = new Image();
+    composed.onload = () => resolve(composed);
+    composed.src = ring.toDataURL();
+  });
+  layerCache.set(key, ready);
+  if (layerCache.size > 60) layerCache.clear();
+  return ready;
+}
+
+async function refresh(force = false) {
+  if (!status) return;
+  const frame = currentFrame();
+  const producer = els.producer.value || status.producer;
+  const key = `${producer}:${frame}`;
+  if (!force && key === lastKey) return;
+  lastKey = key;
+  const payload = await layersFor(frame, producer);
+  const ratio = (frame / status.frames) * 100;
+  els.roller.style.left = `${ratio}%`;
+  moveMarker(frame);
+  els.frame.textContent = frame;
+  els.toast.textContent = payload.error || (payload.notes || []).join(' ');
+  const state = payload.state || 'unknown';
+  els.state.textContent = state;
+  const colour = STATE_COLOURS[state] || NO_STATE_COLOUR;
+  els.state.style.color = STATE_COLOURS[state] || 'var(--ink-soft)';
+  els.state_dot.style.background = colour;
+  if (state !== lastState) {
+    lastState = state;
+    els.state_cell.classList.remove('pop');
+    void els.state_cell.offsetWidth;
+    els.state_cell.classList.add('pop');
+  }
+  els.prediction_state.textContent = payload.prediction_state || 'none';
+  els.deviation.textContent = payload.deviation === null
+    || payload.deviation === undefined ? '-' : payload.deviation.toFixed(2);
+  els.check.textContent = payload.check || '-';
+  els.verdict.textContent = payload.verdict || '-';
+  els.check.title = payload.phase_context
+    ? `phases, not aligned to frames: ${payload.phase_context}` : '';
+  await draw(payload);
+}
+
+async function draw(payload) {
+  const width = video.videoWidth || status.width;
+  const height = video.videoHeight || status.height;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const masks = payload.masks || {};
+  if (els.show_material.checked && masks.material) {
+    ctx.drawImage(await plate(masks.material, MATERIAL_RGB), 0, 0,
+      canvas.width, canvas.height);
+  }
+  if (els.show_holes.checked && masks.holes) {
+    ctx.drawImage(await plate(masks.holes, HOLE_RGB), 0, 0,
+      canvas.width, canvas.height);
+  }
+}
+
+boot().catch((error) => { els.toast.textContent = String(error); });
+</script>
+</body>
+</html>
