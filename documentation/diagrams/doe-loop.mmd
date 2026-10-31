@@ -1,0 +1,8 @@
+flowchart TB
+    r([Quality target]) --> ctrl[DoE analysis]
+    ctrl -->|6 settings| robot[Crepe robot]
+    d[Disturbances] -.-> robot
+    robot --> sense[Camera, logs, sensors]
+    sense -->|quality, once per batch| ctrl
+
+    style ctrl fill:#2a78d6,stroke:#1c5cab,color:#ffffff

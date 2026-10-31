@@ -4,6 +4,29 @@ Our BaselHack 2026 project on the **Maus Robotics** challenge. Maus builds auton
 Every run is logged with phases, machine logs, on-robot vision checks (with images), recipe parameters and video.
 We turn that data into insight: why runs fail, which settings and conditions matter, and how to catch problems early.
 
+## The challenge: three tasks
+
+Maus's brief, "Recognize Crêpes": build a vision model that turns one camera frame of the hotplate into
+decisions for the spread, fold 1, fold 2 and push-off checks.
+
+| # | Task | Question | Output |
+|---|------|----------|--------|
+| 1 | **Spread quality** | Is the batter even and round? Find thin spots, holes and ragged edges | Crêpe mask, diameter, quality score |
+| 2 | **Position & orientation** | Where exactly is the crêpe on the rotating hotplate? | Centre (x, y) and angle, precise enough for the spatula |
+| 3 | **Fold detection** | Flat, folded in half, in quarters or into a triangle? | Fold class + confidence, edge angle to align with the plate |
+
+What makes it hard: steam, varying browning, shiny steel, a rotating plate, overlapping edges, changing
+room light, and it must run in real time.
+
+How results are scored:
+
+- **Level 1, works on Maus data:** model + notebook scored on frames from the API, compared with the
+  robot's own verdicts
+- **Level 2, works in real time:** under ~300 ms per frame on a Raspberry Pi 5 CPU, robust to steam and
+  light changes
+- **Bonus:** auto-labelling from run videos, a spread score that predicts a failed fold, detecting the
+  crêpe while the plate rotates
+
 ## How it works
 
 **The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
@@ -165,8 +188,8 @@ Requires [pixi](https://pixi.sh) and a Maus dashboard account.
 cd code
 pixi install
 
-# 1. Download runs (opens a browser to sign in the first time; tokens are cached in ~/.maus-export/)
-pixi run fetch --limit 10 --media    # drop --limit for all runs; add --video for mp4s
+# 1. Download runs; the first sign-in opens a browser.
+pixi run fetch --limit 10 --media  # add --video only if mp4s are needed
 
 # 2. Convert to ROS 2 MCAP (one file per run in data/mcap/) and open them in Foxglove
 pixi run mcap
@@ -181,14 +204,49 @@ pixi run vision
 #    data/training/run_start.parquet
 pixi run export training
 
+# 6. Run-start candidates and post-run vision targets
+pixi run export vision-targets
+
 # Or fetch, mcap, table and vision together:
 pixi run export all --media
+# The all command excludes both training datasets; run them separately:
+pixi run export training
+pixi run export vision-targets
 ```
 
 Set `MAUS_TOKEN=<bearer token>` to skip the browser sign-in.
 
+Removing `--limit` does not remove the fetch date defaults or account
+permission restrictions. Cached runs can also extend beyond the latest
+fetch. A successful fetch may still have missing media. For the complete
+private, account-specific fetch-to-vision-target workflow, see the
+[collaborator runbook](documentation/vision-targets.md).
+
 Which settings matter: `pixi run -e ml analyze` writes `data/analysis/` and prints a shortlist.
 See [documentation/analysis.md](documentation/analysis.md).
+
+Designed experiment for Maus: `pixi run doe --robot <robot>` writes a run sheet to `data/doe/`,
+`pixi run -e ml doe-analyze <sheet>` reads it back once the runs are done.
+See [documentation/doe.md](documentation/doe.md).
+
+Seen from above, this is a run-to-run feedback loop: the batch measures how
+each recipe setting moves the crêpe quality, read through camera, logs and
+sensors.
+
+<!-- diagram: doe-loop -->
+```mermaid
+flowchart TB
+    r([Quality target]) --> ctrl[DoE analysis]
+    ctrl -->|6 settings| robot[Crepe robot]
+    d[Disturbances] -.-> robot
+    robot --> sense[Camera, logs, sensors]
+    sense -->|quality, once per batch| ctrl
+
+    style ctrl fill:#2a78d6,stroke:#1c5cab,color:#ffffff
+```
+<!-- /diagram -->
+
+![Example DoE result on a simulated batch: which setting to change and which way](assets/doe-results-example.png)
 
 Tests and lint: `pixi run test`, `pixi run lint`, `pixi run fmt`
 
@@ -213,8 +271,10 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 - [Robot system](documentation/system.md)
 - [Crêpe stages and where runs fail](documentation/crepe-stages.md)
 - [Which settings matter (history analysis)](documentation/analysis.md)
+- [Designed experiment (DoE batch)](documentation/doe.md)
 - [Data pipeline and data model](documentation/pipeline.md)
 - [Candidate run-start training dataset](documentation/training-dataset.md)
+- [Vision-target training dataset](documentation/vision-targets.md)
 
 ## License
 MIT - see [license.txt](license.txt).
