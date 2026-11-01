@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import cv2
 import numpy as np
 
@@ -13,7 +11,6 @@ from .fold_plate import PlateEllipse
 MASK_COLOR = (80, 210, 95)
 EDGE_COLOR = (30, 210, 255)
 CENTRE_COLOR = (255, 255, 255)
-CORNER_COLOR = (240, 90, 240)
 TEXT_COLOR = (245, 245, 245)
 PANEL_COLOR = (15, 20, 25)
 MASK_OPACITY = 0.35
@@ -83,23 +80,6 @@ def annotate_frame(
                 MARKER_RADIUS * 2,
                 LINE_WIDTH,
             )
-        if geometry.corner is not None:
-            x, y = geometry.corner
-            height, width = frame.shape[:2]
-            if (
-                math.isfinite(x)
-                and math.isfinite(y)
-                and 0 <= x < width
-                and 0 <= y < height
-            ):
-                cv2.circle(
-                    output,
-                    _point(geometry.corner),
-                    MARKER_RADIUS,
-                    CORNER_COLOR,
-                    LINE_WIDTH,
-                    cv2.LINE_AA,
-                )
     if check is None:
         lines = [f"No logged-check evaluation | {status}"]
     else:
