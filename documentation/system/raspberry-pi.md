@@ -1,5 +1,9 @@
 # Raspberry Pi detection runtime
 
+The Pi-specific `detect` command uses `maus_export.fold_pi`, separate from
+the generic desktop entry point. Compression is enabled by default only in
+this Pi profile.
+
 The `pi` pixi environment targets `linux-aarch64`, with Python 3.12,
 headless OpenCV, NumPy and non-interactive Matplotlib. It excludes the
 project's default feature, export/auth clients, pandas, Parquet tools and
@@ -65,8 +69,31 @@ and restart the service to restore the original localhost port 8766 setup.
 ## Slow-network video playback
 
 Analysis writes a full-quality `annotated.mp4`; on a slow wireless link it
-can be too large to stream. Prepare a separate low-bandwidth copy without
-rerunning detection:
+can be too large to stream. The Pi profile automatically prepares a separate
+low-bandwidth copy after analysis. Its website also scans completed analyses
+every 15 seconds in a background worker, preparing missing or stale copies
+without blocking HTTP startup. Valid proxies are reused.
+
+One POSIX file lock per data directory serializes automatic encoders across
+Pi processes. The lock releases after a crash; a busy website worker retries
+later. In-flight encoding can finish when a scanner stops; stopping the
+systemd service stops its encoder processes too. Failed encoding preserves
+the original and the site can still serve it. Fine detail is intentionally
+reduced in the playback copy.
+
+Disable this behaviour explicitly when benchmarking end-to-end analysis
+without post-processing:
+
+```bash
+pixi run -e pi detect --data-dir /path/to/private/data 3351 \
+  --analyze-only --no-compress-playback
+```
+
+The recorded per-frame inference timings exclude compression either way,
+but the whole command takes longer when encoding is enabled. The generic
+desktop runtime and detection algorithms are unchanged.
+
+For manual preparation or custom quality settings, without rerunning vision:
 
 ```bash
 pixi run -e pi python -m maus_export.fold_playback \
@@ -90,8 +117,9 @@ On the private deployment, a 55.4-second video shrank from 11,983,439 bytes
 to 833,753 bytes (about 14 times smaller). Graph JSON shrank from 303,006 to
 26,789 bytes. These are transport reductions, not improved visual accuracy.
 The low-bitrate preview loses detail: inspect the original for fine geometry.
-Proxy encoding is an explicit post-processing step, separate from inference
-and its recorded frame timings. Newly analyzed videos need this step too.
+Proxy encoding is post-processing, separate from inference and its recorded
+frame timings. Newly analyzed videos are handled automatically by the Pi
+profile; generic desktop analyses retain manual, opt-in preparation.
 
 ## Performance interpretation
 
