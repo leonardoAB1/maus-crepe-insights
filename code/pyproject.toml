@@ -145,6 +145,7 @@ mask-assist = "python -m maus_export.mask_assist"
 docs = "maus-docs"
 docs-check = "maus-docs --check"
 test = "pytest"
+test-fast = "pytest -m 'not slow'"
 lint = "ruff check ."
 fmt = "ruff format ."
 fmt-check = "ruff format --check ."
@@ -158,3 +159,6 @@ select = ["E", "F", "W", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: tests that spawn the export CLI as a subprocess",
+]

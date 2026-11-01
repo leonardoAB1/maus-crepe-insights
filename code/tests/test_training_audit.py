@@ -67,6 +67,7 @@ def _cli(data: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+@pytest.mark.slow
 def test_cli_writes_aggregate_join_and_coverage(tmp_path: Path) -> None:
     _inputs(tmp_path)
     result = _cli(tmp_path)
@@ -101,6 +102,7 @@ def test_cli_writes_aggregate_join_and_coverage(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "kind", ["duplicate", "null", "zero", "string", "float"]
 )
+@pytest.mark.slow
 def test_invalid_ids_fail_privately_and_preserve_report(
     tmp_path: Path, source: str, kind: str
 ) -> None:
@@ -152,6 +154,7 @@ def test_invalid_ids_fail_privately_and_preserve_report(
         '"\\u0061"',
     ],
 )
+@pytest.mark.slow
 def test_invalid_encoded_parameter_preserves_report_privately(
     tmp_path: Path, encoded: str
 ) -> None:
@@ -174,6 +177,7 @@ def test_invalid_encoded_parameter_preserves_report_privately(
     assert not list(output.parent.glob(".audit-*"))
 
 
+@pytest.mark.slow
 def test_canonical_scalar_parameters_count_as_present(tmp_path: Path) -> None:
     _inputs(tmp_path)
     file = tmp_path / "training" / "run_start.parquet"
@@ -219,6 +223,7 @@ def test_canonical_scalar_parameters_count_as_present(tmp_path: Path) -> None:
         "empty_training",
     ],
 )
+@pytest.mark.slow
 def test_incompatible_inputs_fail_without_exposing_values(
     tmp_path: Path, case: str
 ) -> None:
@@ -275,6 +280,7 @@ def test_incompatible_inputs_fail_without_exposing_values(
     assert output.read_text() == "old report"
 
 
+@pytest.mark.slow
 def test_breakdowns_include_group_feature_and_vision_denominators(
     tmp_path: Path,
 ) -> None:
@@ -294,6 +300,7 @@ def test_breakdowns_include_group_feature_and_vision_denominators(
     assert report["breakdowns"]["test"]["unknown"]["runs"] == 1
 
 
+@pytest.mark.slow
 def test_report_identifies_inputs_and_utc_generation_time(
     tmp_path: Path,
 ) -> None:
@@ -308,6 +315,7 @@ def test_report_identifies_inputs_and_utc_generation_time(
     assert pd.Timestamp(report["generated_at_utc"]).tzname() == "UTC"
 
 
+@pytest.mark.slow
 def test_full_stdout_does_not_invalidate_completed_report(
     tmp_path: Path,
 ) -> None:
@@ -337,6 +345,7 @@ def test_full_stdout_does_not_invalidate_completed_report(
     assert json.loads(output.read_text())["join"]["training_rows"] == 3
 
 
+@pytest.mark.slow
 def test_success_does_not_echo_private_path(tmp_path: Path) -> None:
     _inputs(tmp_path)
     result = _cli(tmp_path)
@@ -344,6 +353,7 @@ def test_success_does_not_echo_private_path(tmp_path: Path) -> None:
     assert str(tmp_path) not in result.stdout + result.stderr
 
 
+@pytest.mark.slow
 def test_missing_vision_is_an_error_not_zero_coverage(tmp_path: Path) -> None:
     _inputs(tmp_path)
     (tmp_path / "vision.parquet").unlink()
@@ -374,6 +384,7 @@ def test_interrupted_atomic_write_preserves_old_report(
     assert not list(output.parent.glob(".audit-*"))
 
 
+@pytest.mark.slow
 def test_private_values_never_appear_in_report_or_cli(tmp_path: Path) -> None:
     _inputs(tmp_path)
     file = tmp_path / "training" / "run_start.parquet"
@@ -396,6 +407,7 @@ def test_private_values_never_appear_in_report_or_cli(tmp_path: Path) -> None:
     assert report["overall"]["status_counts"]["other"] == 3
 
 
+@pytest.mark.slow
 def test_null_metric_on_matched_row_is_not_missing_vision(
     tmp_path: Path,
 ) -> None:
@@ -414,6 +426,7 @@ def test_null_metric_on_matched_row_is_not_missing_vision(
     assert report["vision_metrics"]["vision.spread.area_rel"]["null_runs"] == 2
 
 
+@pytest.mark.slow
 def test_absent_metric_column_is_reported_as_unavailable(
     tmp_path: Path,
 ) -> None:
@@ -425,6 +438,7 @@ def test_absent_metric_column_is_reported_as_unavailable(
     assert "vision.spread.area_rel" not in report["unavailable_vision_metrics"]
 
 
+@pytest.mark.slow
 def test_status_breakdown_includes_vision_coverage(tmp_path: Path) -> None:
     _inputs(tmp_path)
     result = _cli(tmp_path)
