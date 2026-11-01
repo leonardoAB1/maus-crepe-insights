@@ -29,6 +29,32 @@
 - Raspberry Pi timing and held-out quality remain unmeasured.
 - All contact sheets and comparison artifacts remain private under data/.
 
+## Follow-up: fixed-camera glare replacement
+
+The positive-only reference test left a false hole where batter replaced a
+bright empty-plate reflection. Food can darken those pixels. The live mask
+now accepts non-saturated pale food with positive reference evidence and
+allows negative lightness changes only in components with majority direct
+food evidence. Standalone fading reflections remain rejected. This uses
+camera-coordinate background evidence, not estimated plate rotation.
+
+- 127 fold tests passed, 3 skipped; repository lint, format and docs checks
+  passed. The wider suite excluding `test_vision_targets.py` passed with
+  453 tests and 57 skips. The full suite timed out after 180 seconds in that
+  inherited vision-target test file.
+- Added rotating pale-food/fixed-glare, reference-envelope, pale-food and
+  connected darkening regressions, including isolated fading glare.
+- A private eight-crop contact-sheet smoke test retained zero foreground on
+  both empty samples and recovered the visible glare-position hole in later
+  food samples. This is not held-out accuracy or full-video validation.
+- Comparison: private `data/specular-pale-reference-comparison.jpg` in the
+  main data directory. No real frames are committed.
+- Saturated food remains excluded. Neutral tools can resemble pale food;
+  the live occlusion adapter is still required. The low-level comparison
+  bypasses that adapter and visibly includes tools in occluded samples.
+- Regenerated one complete cached video with the signed-reference detector
+  and verified dashboard availability. Labelled accuracy remains unmeasured.
+
 ## Findings
 
 The inspected empty plate has both neutral bright glints and a warm rim.

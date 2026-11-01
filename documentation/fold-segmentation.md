@@ -198,12 +198,21 @@ warm diffuse evidence per pixel inside the plate: Lab L > 100, b >= 134 and
 a <= 145 on OpenCV's byte scale. Saturated near-neutral pixels (L >= 245,
 b < 140) are removed even when attached to dough.
 
-With an empty reference, a pixel also needs either lightness at least 22
-above the exposure-matched highlight envelope, or a yellow-channel increase
-over the median empty reference greater than 10 with L > 125. This second
-path can recover warm food covering a formerly bright neutral reflection.
-Static warm rims are not changed food. Exposure correction requires jointly
-dark pixels; missing support causes abstention instead of inventing a shift.
+With an empty reference, warm pixels need lightness more than 22 above the
+exposure-matched highlight envelope, or a yellow-channel increase over the
+median reference greater than 10 with L > 125. Pale pixels with
+100 < L < 245, 120 <= a <= 145 and b >= 120 can also qualify through the
+positive lightness test. Without an empty reference the warm gate remains.
+
+Food can make a known reflection darker rather than brighter. Pixels with
+L > 125 that pass the warm or pale gate can therefore qualify through a
+negative exposure-corrected lightness change greater than 22. A retained
+component must have at least 50% direct positive-lightness or warm-colour
+evidence, so standalone fading glare cannot create a food component.
+Saturated near-neutral pixels remain excluded. Static warm rims are not
+changed food. Exposure correction requires jointly dark pixels; missing
+support causes abstention instead of inventing a shift. This uses a fixed
+camera reference, not a plate-rotation estimate.
 
 A 3-pixel opening and 7-pixel closing stabilize texture; saturated neutral
 pixels are excluded again after closing. Components smaller than 3% of the
@@ -212,8 +221,8 @@ causal mask average and occlusion handling operate on this new mask.
 
 This change applies to live video inference. The offline check-frame
 `fold-segment` procedure remains a historical baseline and must not be used
-to claim accuracy for the new foreground policy. White or blue-lit dough can
-still be rejected, and a moving warm object can still resemble food. Dark
+to claim accuracy for the new foreground policy. Saturated or blue-lit dough
+can still be rejected, and neutral or warm tools can resemble food. Dark
 brown food may fragment. Camera white balance, novel glints, shadows and
 highlight-envelope contamination remain limitations. No held-out accuracy
 or Raspberry Pi timing improvement is assumed from these synthetic tests.
@@ -279,8 +288,9 @@ smoothing and hole filling. The summary records the averaging window and
 `toppings_stage_logged`, not toppings detection or topping success.
 
 A bright reflection outside the sampled envelope can still pass; suppressing
-highlights can hide pale dough over a bright plate patch. Narrow-arm detection
-and the warmth gate are unchanged. Averaging can smear moving masks, and
+highlights can hide pale dough over a bright plate patch without enough
+connected direct evidence. Narrow-arm detection is unchanged. Averaging can
+smear moving masks, and
 three-frame reacquisition can reduce usable votes near a check. Inspect the
 unknown denominator, not only agreement or confidence. Raspberry Pi runtime
 and held-out detection quality have not been validated.
@@ -352,7 +362,7 @@ The original generated artifacts were preserved in a separate data directory.
 
 ## Limits
 
-The live warmth gate can miss pale or heavily browned dough. A coloured tool
+The live foreground gate can miss saturated or heavily browned dough. A coloured tool
 can still resemble food, and an arm merged into a broad foreground component
 may evade the narrow-object test. The adapter must be validated on held-out
 videos and replaced if these assumptions do not hold. Never treat unknown

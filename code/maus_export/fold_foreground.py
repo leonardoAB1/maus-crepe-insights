@@ -35,8 +35,9 @@ class LiveForeground:
     """Keep changed diffuse pixels; abstain on bright rim-crossing objects.
 
     Neutral highlights are removed pixel by pixel, even if attached to food.
-    Brightness alone cannot identify food. White dough and coloured tools
-    remain known limitations, not solved recognition problems.
+    Pale food requires a fixed-camera empty reference. Food darkening known
+    glare also needs connected direct evidence. Saturated white dough and
+    coloured tools remain limitations, not solved recognition problems.
     The adapter can be replaced without changing geometry or check voting.
     """
 

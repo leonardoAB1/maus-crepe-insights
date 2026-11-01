@@ -377,7 +377,7 @@ def analyse_video(
                             t > FRAME_BUDGET_MS for t in processing_times
                         ),
                         "analysis_fps": analysis_fps,
-                        "foreground_method": "diffuse_pixel_evidence_v1",
+                        "foreground_method": "diffuse_signed_reference_v2",
                         "initial_cleaning_prep_end": cleaning_end,
                         "mask_window_frames": temporal.history.maxlen,
                         "toppings_stage_logged": any(
