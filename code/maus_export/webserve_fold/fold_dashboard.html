@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fold insights</title>
+<style>
+:root {color-scheme: dark; font-family: Inter, system-ui, sans-serif;
+  background: #0a0f1d; color: #e8edf8}
+* {box-sizing: border-box} body {margin: 0} button {font: inherit}
+.layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh;
+  align-items: start}
+aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto}
+.run-heading {display: flex; align-items: center; justify-content: space-between; gap: 8px}
+.spinner {width: 15px; height: 15px; border: 2px solid #344864;
+  border-top-color: #8cb9ff; border-radius: 50%; animation: spin .8s linear infinite;
+  flex-shrink: 0}
+@keyframes spin {to {transform: rotate(360deg)}}
+@media(prefers-reduced-motion: reduce) {.spinner {animation: none; border-style: dotted}}
+#progress {margin-top: 14px} #progress:empty {display: none}
+#progress progress {display: block; width: 100%; margin-top: 8px; accent-color: #8cb9ff}
+.brand {font-weight: 800; letter-spacing: -.04em; font-size: 24px}
+.eyebrow {color: #8294b1; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .12em; margin: 30px 0 12px}
+#runs, #failed-runs {display: grid; gap: 8px}
+#failed-section {margin-top: 24px}
+#failed-section summary {cursor: pointer; color: #ff8b95; padding: 10px 0}
+.failure-reason {overflow-wrap: anywhere}
+ .run {text-align: left; width: 100%; padding: 14px;
+  border: 1px solid #28374d; border-radius: 12px; color: #e9efff; background: #18243a;
+  cursor: pointer} .run:hover, .run.active {border-color: #77a5ff; background: #213455}
+.sub {display: block; margin-top: 5px; font-size: 12px; color: #a2b2c9}
+main {padding: 34px clamp(20px,4vw,60px); max-width: 1600px; width: 100%; margin: 0 auto}
+header {display: flex; align-items: end; justify-content: space-between; gap: 16px}
+h1 {font-size: clamp(26px,3vw,38px); margin: 5px 0; letter-spacing: -.04em}
+h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
+.pill {border: 1px solid #2f4864; border-radius: 99px; color: #8cb9ff;
+  padding: 8px 12px; font-size: 12px; white-space: nowrap}
+.grid {display: grid; grid-template-columns: minmax(0,2fr) minmax(240px,1fr);
+  gap: 18px; margin-top: 26px}.card {background: #121d30; border: 1px solid #27364b;
+  border-radius: 18px; padding: 20px; min-width: 0} video {display: block; width: 100%;
+  max-height: 65vh; border-radius: 12px; background: #060a11}
+.chart {margin-top: 18px} canvas {display: block; width: 100%; height: 210px;
+  cursor: crosshair; border-radius: 10px; background: #0b1322}
+.event {display: block; width: 100%; margin-top: 9px; border: 1px solid #29394e;
+  background: #18263b; color: #eef3fe; text-align: left; padding: 12px;
+  border-radius: 10px; cursor: pointer} .event:hover {border-color: #75a7ff}
+.ok {color: #61d8a2} .fail {color: #ff8b95} .muted {color: #96a8c0}
+.notice {border: 1px solid #6b5634; color: #efcc83; padding: 12px;
+  border-radius: 10px; font-size: 13px; margin-top: 20px}
+@media(max-width: 850px) {.layout {grid-template-columns: 1fr} aside {border-right: 0;
+  border-bottom: 1px solid #263247; position: static; height: auto; max-height: 35vh} .grid {grid-template-columns: 1fr} main {padding: 25px}}
+</style>
+</head>
+<body>
+<div class="layout"><aside><div class="brand">◒ Fold insights</div>
+<div class="sub">Local video review</div><div class="eyebrow">Runs</div>
+<div id="connection" class="sub" role="status"></div>
+<div id="runs"><span class="muted">Loading videos...</span></div>
+<details id="failed-section" hidden><summary id="failed-summary">Failed runs</summary>
+<div id="failed-runs"></div></details></aside>
+<main><header><div><div class="eyebrow" style="margin:0">Vision analysis</div>
+<h1 id="title">Run overview</h1><p>Review logged checks and visual estimates.</p></div>
+<span class="pill">Local data only</span></header>
+<div class="notice">Experimental estimates, not ground truth or robot control.
+Robot verdicts can be wrong. Checks are shown after the robot tries each action;
+exact fold movement times are not logged. Video may contain people.</div>
+<div class="grid"><div><section class="card"><h2>Playback</h2>
+<video id="video" controls preload="metadata"></video>
+<div id="progress" aria-live="polite"></div>
+<p class="sub">Overlay: <span style="color:#50d25f">green mask</span> ·
+<span style="color:#46c8eb">plate</span> ·
+<span style="color:#ffd21e">fold edges</span> ·
+<span style="color:#ffffff">centre</span> ·
+<span style="color:#f05af0">corner</span>. Measurements use corrected pixels.</p>
+</section>
+<section class="card chart"><h2>Check snapshots</h2>
+<p>Dots are unverified vision estimates after logged checks, not continuous
+fold states. Grey lines are check starts. The top strip shows the logged
+phases and the bottom band traces dough plate coverage during dispensing
+against the 40% supervisor target. Click the chart to seek.</p>
+<canvas id="chart" aria-label="Check snapshots, click to seek"></canvas>
+<p class="sub" id="phase-legend" style="margin-top:8px"></p></section></div>
+<section class="card"><h2>Robot checks</h2><p>Expected state and robot verdict
+are reports, not ground truth. Select a check to review its visual estimate.</p>
+<div id="events" class="muted">Select a run to see checks.</div></section></div></main></div>
+<script>
+'use strict';
+const states = ['empty', 'flat', 'half', 'quarter'];
+const colors = ['#7990ac', '#6dacf8', '#d4a56f', '#73d6ad'];
+const phaseStyles = {
+  spread_batter: ['dough', '#e8a35d'],
+  cook: ['cooking', '#f2cf5b'],
+  fold_carefully: ['folding', '#9d8cff'],
+  wipe_spatula: ['cleaning', '#59c1e0'],
+  plate_handover: ['handover', '#61d8a2'],
+  discard_crepe: ['discard', '#8295ac']
+};
+function legend() {
+  const el = document.querySelector('#phase-legend');
+  el.replaceChildren();
+  el.append(textNode('span', 'Phases: ', 'muted'));
+  for (const [, [label, color]] of Object.entries(phaseStyles)) {
+    const dot = document.createElement('span');
+    dot.style.cssText = 'display:inline-block;width:9px;height:9px;border-radius:50%;background:' + color + ';margin:0 4px 0 10px';
+    el.append(dot, textNode('span', label));
+  }
+}
+const video = document.querySelector('#video');
+const canvas = document.querySelector('#chart');
+let selected = null;
+let selectedId = null;
+let cachedRuns = new Map();
+let progressJobs = new Map();
+const runButtons = new Map();
+function textNode(tag, text, cls) {
+  const el = document.createElement(tag); el.textContent = text;
+  if (cls) el.className = cls; return el;
+}
+function draw() {
+  const rect = canvas.getBoundingClientRect(), scale = devicePixelRatio || 1;
+  canvas.width = rect.width * scale; canvas.height = rect.height * scale;
+  const c = canvas.getContext('2d'); c.scale(scale, scale);
+  if (!selected || !selected.timeline.length) return;
+  const width = rect.width, height = rect.height, pad = 55;
+  const duration = Math.max(video.duration || 0,
+    Number(selected.timeline[selected.timeline.length - 1].video_t), 1);
+  for (let i = 0; i < states.length; i++) {
+    const y = 140 - i * 40;
+    c.fillStyle = '#91a4bd'; c.font = '11px system-ui'; c.fillText(states[i], 8, y + 4);
+    c.strokeStyle = '#203149'; c.beginPath(); c.moveTo(pad, y); c.lineTo(width, y); c.stroke();
+  }
+  const xAt = t => pad + Math.max(0, Math.min(1, t / duration)) * (width - pad);
+  const yAt = s => 140 - Math.max(0, states.indexOf(s)) * 40;
+  const styleFor = name => phaseStyles[name] ||
+    (name.startsWith('spread_batter') ? phaseStyles.spread_batter : null);
+  const phases = [...(selected.phases || [])].sort((a, b) => a.time - b.time);
+  for (let i = 0; i < phases.length; i++) {
+    const start = phases[i], end = phases[i + 1];
+    const x0 = xAt(start.time), x1 = end ? xAt(end.time) : width;
+    const style = styleFor(start.name);
+    c.globalAlpha = .85; c.fillStyle = style ? style[1] : '#243349';
+    c.fillRect(x0, 10, Math.max(0, x1 - x0), 16);
+    if (style && x1 - x0 > 40) {
+      c.globalAlpha = 1; c.fillStyle = '#0a0f1d'; c.font = '10px system-ui';
+      c.fillText(style[0], x0 + 4, 22);
+    }
+  }
+  c.globalAlpha = 1;
+  const doughRows = selected.timeline.filter(row =>
+    (row.phase || '').startsWith('spread_batter') && row.plate_fraction !== '');
+  if (doughRows.length) {
+    const dTop = height - 40, dBottom = height - 14;
+    const yF = f => dBottom - Math.max(0, Math.min(1, f)) * (dBottom - dTop);
+    c.strokeStyle = '#203149';
+    c.beginPath(); c.moveTo(pad, dBottom); c.lineTo(width, dBottom); c.stroke();
+    c.strokeStyle = '#33455f'; c.setLineDash([3, 3]);
+    c.beginPath(); c.moveTo(pad, yF(0.4)); c.lineTo(width, yF(0.4)); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#91a4bd'; c.font = '10px system-ui';
+    c.fillText('dough', 8, dBottom - 4);
+    const pts = doughRows.map(row => [xAt(Number(row.video_t)),
+      yF(Number(row.plate_fraction))]);
+    c.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      if (i === 0) c.moveTo(pts[i][0], pts[i][1]); else c.lineTo(pts[i][0], pts[i][1]);
+    }
+    c.strokeStyle = '#e8a35d'; c.globalAlpha = .95; c.lineWidth = 1.5; c.stroke();
+    c.lineWidth = 1;
+    c.lineTo(pts[pts.length - 1][0], dBottom);
+    c.lineTo(pts[0][0], dBottom); c.closePath();
+    c.globalAlpha = .22; c.fillStyle = '#e8a35d'; c.fill();
+    c.globalAlpha = 1;
+  }
+  for (const event of selected.events) {
+    c.strokeStyle = '#8295ac'; c.globalAlpha = .55;
+    c.beginPath(); c.moveTo(xAt(event.time), 10);
+    c.lineTo(xAt(event.time), height - 10); c.stroke();
+    if (event.observation && event.observed_at !== null) {
+      c.globalAlpha = 1; c.fillStyle = colors[states.indexOf(event.observation)] || '#fff';
+      c.beginPath(); c.arc(xAt(event.observed_at), yAt(event.observation), 5, 0, 2 * Math.PI);
+      c.fill();
+    }
+  }
+  c.globalAlpha = 1; c.strokeStyle = '#ffffff'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(xAt(video.currentTime), 5);
+  c.lineTo(xAt(video.currentTime), height - 5); c.stroke();
+}
+canvas.addEventListener('click', event => {
+  if (!selected || !Number.isFinite(video.duration)) return;
+  const rect = canvas.getBoundingClientRect();
+  video.currentTime = Math.max(0, Math.min(1, (event.clientX - rect.left - 55) /
+    (rect.width - 55))) * video.duration;
+});
+video.addEventListener('timeupdate', draw); video.addEventListener('loadedmetadata', draw);
+window.addEventListener('resize', draw);
+async function showRun(id) {
+  selectedId = id;
+  selected = null;
+  document.querySelector('#title').textContent = 'Run ' + id;
+  video.removeAttribute('src'); video.load();
+  const events = document.querySelector('#events');
+  events.textContent = 'Video and checks will be available after processing completes.';
+  renderSidebar(); renderProgress(); draw();
+  if (!cachedRuns.has(id)) return;
+  try {
+    const response = await fetch('/api/run/' + id);
+    if (!response.ok) throw new Error('Run unavailable');
+    const detail = await response.json();
+    if (selectedId !== id) return;
+    selected = detail;
+  } catch (_) {
+    if (selectedId === id) events.textContent = 'Could not load this run. Select it to retry.';
+    return;
+  }
+  video.src = '/video/' + id;
+  events.replaceChildren();
+  for (const event of selected.events) {
+    const button = textNode('button', event.name.replaceAll('_', ' '), 'event');
+    const robot = event.ok === true ? 'Robot reports pass' :
+      event.ok === false ? 'Robot reports fail' : 'Robot verdict unknown';
+    const visual = event.observation ? 'Vision estimate: ' + event.observation :
+      'Vision: unknown (' + String(event.observation_status || 'not evaluated')
+        .replaceAll('_', ' ') + ')';
+    button.append(textNode('span', 'Expected from log: ' + event.expected, 'sub'));
+    button.append(textNode('span', robot, event.ok === false ? 'sub fail' : 'sub muted'));
+    button.append(textNode('span', visual + ' (unverified)', 'sub'));
+    button.append(textNode('span', 'Check starts at ' + Math.max(0, event.time).toFixed(1) + 's', 'sub'));
+    button.onclick = () => {
+      video.currentTime = Math.max(0, event.observed_at ?? event.time);
+    }; events.append(button);
+  }
+  if (!selected.events.length) events.textContent = 'No check-start logs found.';
+  document.querySelectorAll('.run').forEach(el => el.classList.toggle('active', el.dataset.id == id));
+  legend();
+  draw();
+}
+function isProcessing(job) {
+  return job && ['starting', 'running', 'finalizing'].includes(job.state);
+}
+function failureReason(job) {
+  const type = job.error || 'Processing error';
+  return job.error_message ? type + ': ' + job.error_message :
+    type + ' (no detailed message recorded)';
+}
+function renderSidebar() {
+  const container = document.querySelector('#runs');
+  const failedContainer = document.querySelector('#failed-runs');
+  const ids = [...new Set([...cachedRuns.keys(), ...progressJobs.keys()])].sort((a, b) => a - b);
+  const visibleIds = new Set(ids);
+  for (const [id, button] of runButtons) {
+    if (!visibleIds.has(id)) {button.remove(); runButtons.delete(id);}
+  }
+  const failedIds = ids.filter(id => progressJobs.get(id)?.state === 'failed');
+  const regularIds = ids.filter(id => progressJobs.get(id)?.state !== 'failed');
+  document.querySelector('#failed-section').hidden = failedIds.length === 0;
+  document.querySelector('#failed-summary').textContent = 'Failed runs (' + failedIds.length + ')';
+  if (!container.children.length || !runButtons.size) container.replaceChildren();
+  for (const id of ids) {
+    let button = runButtons.get(id);
+    if (!button) {
+      button = textNode('button', '', 'run'); button.dataset.id = id;
+      button.onclick = () => showRun(id);
+      runButtons.set(id, button);
+    }
+    button.classList.toggle('active', id === selectedId);
+    button.setAttribute('aria-pressed', String(id === selectedId));
+    const run = cachedRuns.get(id), job = progressJobs.get(id);
+    const heading = textNode('span', '', 'run-heading');
+    heading.append(textNode('span', 'Run ' + id));
+    if (isProcessing(job) && !job.stale) {
+      const spinner = textNode('span', '', 'spinner');
+      spinner.setAttribute('role', 'status');
+      spinner.setAttribute('aria-label', 'Processing');
+      heading.append(spinner);
+    } else if (job && (job.stale || job.state === 'failed')) {
+      const warning = textNode('span', '!', 'fail');
+      warning.title = job.stale ? 'No recent runner update' : 'Processing failed';
+      heading.append(warning);
+    }
+    button.replaceChildren(heading);
+    if (job?.state === 'failed') {
+      button.append(textNode('span', failureReason(job), 'sub fail failure-reason'));
+    }
+    if (run) {
+      const failures = run.events.filter(event => event.ok === false).length;
+      button.append(textNode('span', failures ? failures + ' robot-reported failures' :
+        'No reported failures', failures ? 'sub fail' : 'sub muted'));
+      button.append(textNode('span', run.dispense_ok === true ? 'Dough: stable' :
+        run.dispense_ok === false ? 'Dough: flagged' : 'Dough: not measured',
+        run.dispense_ok === false ? 'sub fail' : 'sub muted'));
+    }
+  }
+  // Keep existing buttons in place while polling to preserve scroll and focus.
+  for (const [target, group] of [[container, regularIds], [failedContainer, failedIds]]) {
+    group.forEach((id, index) => {
+      const button = runButtons.get(id);
+      if (target.children[index] !== button)
+        target.insertBefore(button, target.children[index] || null);
+    });
+  }
+  if (!regularIds.length) container.textContent = 'No analysed videos or active runners yet.';
+}
+function renderProgress() {
+  const container = document.querySelector('#progress');
+  container.replaceChildren();
+  const job = progressJobs.get(selectedId);
+  if (!job) return;
+  const seconds = value => value == null ? '—' : value.toFixed(2) + ' s';
+  container.append(textNode('strong', 'Processing: ' + job.state +
+    (job.stale ? ' · no recent update (runner may have stopped)' : ''),
+    job.state === 'failed' ? 'fail' : ''));
+  const bar = document.createElement('progress');
+  bar.max = 1; bar.value = job.fraction;
+  bar.setAttribute('aria-label', 'Run ' + job.id + ' processing completion');
+  container.append(bar);
+  container.append(textNode('div', (100 * job.fraction).toFixed(1) + '% · ' +
+    job.frames_done + ' / ' + (job.frames_total ?? '—') + ' frames (estimated total)' +
+    ' · ' + (job.fps == null ? '—' : job.fps.toFixed(2)) + ' frames/s' +
+    ' · ' + seconds(job.seconds_per_frame) + '/frame' +
+    ' · elapsed ' + seconds(job.elapsed_seconds) + ' · ETA ' + seconds(job.eta_seconds) +
+    (job.state === 'failed' ? ' · ' + failureReason(job) : ''), 'sub'));
+  container.append(textNode('span', 'End-to-end analysed-frame speed, not source video FPS.', 'sub'));
+}
+async function refreshRuns() {
+  const response = await fetch('/api/runs');
+  if (!response.ok) throw new Error('Runs unavailable');
+  cachedRuns = new Map((await response.json()).map(run => [run.id, run]));
+}
+let completedRuns = null;
+async function pollProgress() {
+  const connection = document.querySelector('#connection');
+  try {
+    const response = await fetch('/api/progress');
+    if (!response.ok) throw new Error('Progress unavailable');
+    const jobs = await response.json();
+    const previous = progressJobs.get(selectedId);
+    progressJobs = new Map(jobs.map(job => [job.id, job]));
+    const completed = jobs.filter(job => job.state === 'completed').map(job =>
+      job.id + ':' + job.updated_at).join(',');
+    if (completedRuns === null || completed !== completedRuns) await refreshRuns();
+    completedRuns = completed;
+    connection.textContent = '';
+    renderSidebar(); renderProgress();
+    const current = progressJobs.get(selectedId);
+    if (selectedId === null) {
+      const active = jobs.find(job => isProcessing(job) && !job.stale);
+      const first = active ? active.id : cachedRuns.keys().next().value ?? jobs[0]?.id;
+      if (first != null) await showRun(first);
+    } else if (current?.state === 'completed' &&
+        (previous?.state !== 'completed' || previous.updated_at !== current.updated_at)) {
+      await showRun(selectedId);
+    }
+  } catch (_) {connection.textContent = 'Connection lost; retrying…';}
+  finally {setTimeout(pollProgress, 1000);}
+}
+pollProgress();
+</script></body></html>

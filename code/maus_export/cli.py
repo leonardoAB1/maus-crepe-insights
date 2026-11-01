@@ -153,6 +153,23 @@ def main() -> None:
         action="store_true",
         help="reprocess completed videos (default: skip them)",
     )
+    review = sub.add_parser(
+        "fold-webserve", help="serve independent fold review"
+    )
+    review.add_argument("--port", type=int, default=8767)
+    review.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    video = sub.add_parser(
+        "fold-webserve-live", help="analyze one cached video"
+    )
+    video.add_argument("run_id", type=int)
+    video.add_argument("--fps", type=float, default=10.0)
+    video.add_argument("--replace", action="store_true")
+    video.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    worker = sub.add_parser("fold-webserve-batch", help="analyze cached videos")
+    worker.add_argument("--threads", type=int, default=1)
+    worker.add_argument("--fps", type=float, default=10.0)
+    worker.add_argument("--replace", action="store_true")
+    worker.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
     ex = sub.add_parser(
         "example", help="draw the annotated vision example figure"
     )
@@ -369,6 +386,36 @@ def main() -> None:
         )
     if args.cmd == "fold-batch":
         from .experimental_fold.fold_batch import run_batch
+
+        try:
+            result = run_batch(
+                data_dir,
+                threads=args.threads,
+                analysis_fps=args.fps,
+                replace=args.replace,
+            )
+        except ValueError as error:
+            p.error(str(error))
+        print(result)
+        if result["failed"]:
+            raise SystemExit(1)
+    if args.cmd == "fold-webserve":
+        from .webserve_fold.fold_dashboard import serve_dashboard
+
+        serve_dashboard(data_dir, args.port)
+    if args.cmd == "fold-webserve-live":
+        from .webserve_fold.fold_video import analyse_video
+
+        print(
+            analyse_video(
+                data_dir,
+                args.run_id,
+                analysis_fps=args.fps,
+                replace=args.replace,
+            )
+        )
+    if args.cmd == "fold-webserve-batch":
+        from .webserve_fold.fold_batch import run_batch
 
         try:
             result = run_batch(
