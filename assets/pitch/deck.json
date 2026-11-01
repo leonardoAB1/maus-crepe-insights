@@ -5,37 +5,44 @@
     {
       "layout": "title",
       "title": "Maus Crepe Insights",
-      "hook": "Turn robot run records and camera checks into measurable crêpe-quality signals.",
-      "tagline": "A data-to-insight toolkit for the Maus Robotics challenge",
-      "notes": "Introduce the project as a practical data-to-insight toolkit: run records, camera checks and recipe settings become a structured view for analysis. Source: repository documentation and private Maus export. The project code is public; the run data remains private."
+      "hook": "Turn robot camera checks into measurable crêpe-quality signals.",
+      "tagline": "Spread, fold, pose and run metrics from real robot records",
+      "notes": "Open with the value: turn robot run records and camera checks into a structured set of measurements. The public project includes the code and model artifacts; the Maus export stays private."
     },
     {
       "layout": "cards",
-      "title": "One run. A richer view.",
+      "title": "What we can measure",
       "cards": [
         {"number": "828", "label": "run records", "sub": "JSON export + ROS 2 MCAP", "fill": "caramel"},
-        {"number": "177", "label": "fields per run", "sub": "one analysis table", "fill": "strawberry"},
-        {"number": "138", "label": "runs with vision metrics", "sub": "check-overlay measurements", "fill": "caramel"},
-        {"number": "4", "label": "camera checks", "sub": "spread / fold1 / fold2 / push-off", "fill": "strawberry"}
+        {"number": "177", "label": "analysis fields", "sub": "one row per run", "fill": "strawberry"},
+        {"number": "138", "label": "vision metric rows", "sub": "of 828 exported runs", "fill": "caramel"},
+        {"number": "257", "label": "push-off overlays", "sub": "248 passed the line-quality gate", "fill": "strawberry"}
       ],
       "caveats": [
-        "Join robot runs, recipe settings and check images in one analysis workflow.",
-        "Measure diameter, centre offset, holes and fold overlap from the robot's check overlays.",
-        "Review video alongside frame records, then explore model artifacts and follow-up experiments."
+        "Spread: diameter, area, centre offset and circularity.",
+        "Surface: robot-marked holes, uncovered plate, residue and browning.",
+        "Fold and pose: ideal-shape overlap, fold-area ratio, centre and axis angle.",
+        "Run context: stages, check attempts, outcomes and recipe settings."
       ],
-      "footer": "Sources: run table + vision metrics",
-      "notes": "The export contains 828 run records; the flat table has 177 columns; 138 runs have extracted vision measurements; and the workflow exposes four camera-check stages: spread, fold1, fold2 and push-off. Sources: private data/runs.parquet and data/vision.parquet, with the public schemas and commands in documentation/data/pipeline.md and documentation/status.md. The remaining callouts describe implemented data, measurement and review tools."
+      "footer": "Sources: private run tables + pipeline guide",
+      "notes": "The private export has 828 rows and 177 columns in runs.parquet. Vision.parquet has 138 rows. The current local export also has 257 push_off overlay attempts, with 248 passing the line detector's quality gate. Measurements include diameter, area, normalized centre offset, circularity, robot-marked holes, uncovered fraction, residue, CIE L* browning, ideal-fold IoU, folded area ratio, outline position and axis angle. Sources: the local aggregate export and documentation/data/pipeline.md. The push_off figures count attempts, not unique runs."
     },
     {
-      "layout": "title_content",
-      "title": "Make the next run more informative",
-      "bullets": [
-        {"text": "Explore the project: github.com/leonardoAB1/maus-crepe-insights", "size": 18, "bold": true, "color": "strawberry", "space_after": 24},
-        {"text": "Compare batches using the run table, camera-derived metrics and recipe settings.", "size": 18, "bold": true, "color": "caramel", "space_after": 22},
-        {"text": "Bring more run records and check images into the analysis, then use the evidence to shape the next experiment.", "size": 17, "space_after": 12}
+      "layout": "cards",
+      "title": "Model metrics, with their scope",
+      "cards": [
+        {"number": "0.966", "label": "mask IoU vs SAM 3", "sub": "225 held-out frames", "fill": "caramel"},
+        {"number": "0.944", "label": "median IoU vs human", "sub": "62 valid masks", "fill": "strawberry"},
+        {"number": "99.5%", "label": "fold-state agreement", "sub": "991 passed-check moments", "fill": "caramel"},
+        {"number": "0.67-0.92", "number_size": 31, "label": "check-head balanced accuracy", "sub": "31-61 frame holdouts", "fill": "strawberry"}
       ],
-      "footer": "Public code; run data stays private",
-      "notes": "Invite the audience to explore the public project and its pipeline, data schemas, vision measurements, model artifacts and review tools. Teams can use their own authorized run records to compare batches and shape follow-up experiments. The source code is public; private Maus run data is not included."
+      "caveats": [
+        "Teacher IoU compares with SAM 3 masks, not ground truth.",
+        "Human-mask review spans five runs on one robot; four were in student training.",
+        "Fold thresholds use the same passed-check frames; check-head labels are robot verdicts."
+      ],
+      "footer": "Explore the public repo",
+      "notes": "The segmentation student's 0.966 test IoU is against SAM 3 teacher masks on 225 frames from 57 held-out runs. The human comparison is median IoU 0.944 on 62 valid masks; it covers five consecutive runs of one robot, and four of those runs were in student training. The fold-state rule agrees with the robot's passed-check state on 991 frames, but thresholds were selected on those same frames, including the evaluation subset. Four check-verdict heads report balanced accuracy from 0.67 to 0.92 on holdouts of 31 to 61 frames; their labels are robot verdicts. Sources: code/models/crepe-student/model.json, documentation/vision/crepe-student.md and the check-verdict model cards. Repository: https://github.com/leonardoAB1/maus-crepe-insights."
     }
   ]
 }
