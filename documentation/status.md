@@ -29,7 +29,7 @@ incomplete, the row says so, and the section after it names what is missing.
 | Mask prefill suggestions | mask-assist helper | 301 editable predictions on set 2, applied only to untouched tasks |
 | One state vocabulary for labels and models | `code/maus_export/crepe_states.py` | six states, legacy labels and model labels mapped on |
 | Video overlay renderer | `pixi run maus-export overlay` | draws masks, states, checks and deviation scores onto a recorded video or a camera index, with a JSONL sidecar of exactly what was drawn, and never overwrites an output. Only the records sidecar feeds it so far |
-| Local run viewer | `pixi run maus-export view` | a loopback web app that plays a run with the mask suggestions and the frame record beside it. It names the producers it does not have, and no model answers yet |
+| Local run viewer | `pixi run maus-export view` | a loopback web app that plays a run with the mask suggestions and the frame record beside it. It names the producers it does not have, and no model answers yet. Live crêpe masks on video come from the fold video analysis and its review sites instead |
 | Fold segmentation from video | `pixi run fold-frames`, `fold-segment`, `fold-eval` | 1,183 frames from 286 runs, 88.5 percent agreement on the passed checks. Thresholds were tuned on the same export it is evaluated on |
 | Deviation and fine-tuning pipeline | `code/maus_export/label_deviation.py` | deviation scoring and a weighted fine-tuning dataset, 27 offline tests. It has never compared a real prediction with a real reviewed mask |
 
@@ -67,7 +67,8 @@ incomplete, the row says so, and the section after it names what is missing.
 - **Rectification is experimental upstream alignment, not camera
   calibration.** Lens distortion is not corrected, a planar homography cannot
   remove parallax, and metric pixel distances inherit that.
-- **The overlay renderer exists but nothing is wired to it.**
+- **The generic overlay renderer exists but nothing is wired to it.** Live
+  crêpe masks are drawn on video by the fold video analysis instead.
   `code/maus_export/overlay.py` draws masks, states, checks and deviation
   scores onto a video and is covered by offline tests, but no producer feeds
   it yet and no live stream has been tested. See
