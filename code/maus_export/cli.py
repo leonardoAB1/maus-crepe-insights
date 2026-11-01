@@ -244,6 +244,17 @@ def main() -> None:
         "fold-student-eval", help="crepe student state at the check frames"
     )
     data_dir_arg(fse)
+    fal = sub.add_parser(
+        "fold-all-live",
+        help="one run video with every vision model and the task outputs",
+    )
+    data_dir_arg(fal)
+    fal.add_argument("--ids", type=int, nargs="+", required=True)
+    fal.add_argument(
+        "--plates",
+        type=Path,
+        help="parquet of per-run plate ellipses (run_id, cx, cy, w, h, angle)",
+    )
     fsp = sub.add_parser(
         "fold-student-pose",
         help="crepe student centre and angle against the robot overlays",
@@ -559,6 +570,15 @@ def main() -> None:
         from .crepe_student import evaluate_check_frames
 
         print(evaluate_check_frames(data_dir).to_string(index=False))
+    if args.cmd == "fold-all-live":
+        from .crepe_pose import load_plate_ellipses
+        from .crepe_student import CrepeStudent
+        from .live_all import Heads, render_run
+
+        plates = load_plate_ellipses(args.plates) if args.plates else None
+        student, heads = CrepeStudent.load(), Heads.load()
+        for run_id in args.ids:
+            print(render_run(data_dir, run_id, student, heads, plates))
     if args.cmd == "fold-student-pose":
         from .crepe_pose import evaluate as evaluate_pose
 
