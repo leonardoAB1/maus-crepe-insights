@@ -1,5 +1,8 @@
 # Documentation
 
+- [Project report (PDF)](../assets/project-report.pdf), with the
+  [LaTeX source](../assets/project-report.tex)
+
 Start with [what works and what does not](status.md). It lists the capabilities,
 the gaps and the numbers behind each claim. Everything below goes deeper, one
 page per question.
