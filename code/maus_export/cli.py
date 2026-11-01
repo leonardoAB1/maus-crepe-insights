@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import anyio
@@ -10,6 +11,12 @@ import anyio
 from .fetch import DEFAULT_FROM, DEFAULT_TO, fetch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Coordinate spaces and the default score threshold live in label_deviation,
+# which needs numpy, OpenCV and pandas. They are repeated here so every CLI
+# command does not pay that import cost; label_deviation validates them again.
+LABEL_SPACES = ("rectified_upstream", "native")
+DEFAULT_SCORE_THRESHOLD = 0.35
 
 
 def main() -> None:
@@ -109,6 +116,91 @@ def main() -> None:
     )
     em.add_argument("--model", type=Path, default=None, help="model.onnx")
     em.add_argument("--batch-size", type=int, default=None)
+
+    def data_dir_arg(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument(
+            "--data-dir",
+            type=Path,
+            default=REPO_ROOT / "data",
+            help="output folder (default: <repo>/data)",
+        )
+
+    ff = sub.add_parser(
+        "fold-frames", help="extract corrected fold check frames"
+    )
+    data_dir_arg(ff)
+    ff.add_argument("--ids", type=int, nargs="*", help="only these run ids")
+    fs = sub.add_parser("fold-segment", help="segment fold frames and features")
+    data_dir_arg(fs)
+    fe = sub.add_parser("fold-eval", help="write fold metrics and report")
+    data_dir_arg(fe)
+    fl = sub.add_parser("fold-live", help="run live-style video inference")
+    data_dir_arg(fl)
+    fl.add_argument("--ids", type=int, nargs="*", help="only these run ids")
+    fd = sub.add_parser(
+        "fold-dashboard", help="write local fold review dashboard"
+    )
+    data_dir_arg(fd)
+    ls = sub.add_parser(
+        "label-states", help="print the unified crepe-state vocabulary"
+    )
+    ls.add_argument(
+        "--out", type=Path, default=None, help="write the JSON here as well"
+    )
+    ld = sub.add_parser(
+        "label-deviation",
+        help="deviation between human masks and model predictions",
+    )
+    ld.add_argument(
+        "--labels", type=Path, required=True, help="labeling mask export"
+    )
+    ld.add_argument(
+        "--predictions", type=Path, required=True, help="prediction index"
+    )
+    ld.add_argument("--out", type=Path, required=True, help="report folder")
+    ld.add_argument("--space", choices=LABEL_SPACES, default=LABEL_SPACES[0])
+    ld.add_argument(
+        "--prediction-space", choices=LABEL_SPACES, default=LABEL_SPACES[0]
+    )
+    ld.add_argument("--pilot", type=Path, default=None)
+    ld.add_argument("--transforms", type=Path, default=None)
+    ld.add_argument(
+        "--score-threshold", type=float, default=DEFAULT_SCORE_THRESHOLD
+    )
+    ld.add_argument("--worst", type=int, default=25)
+    fd = sub.add_parser(
+        "finetune-dataset",
+        help="weighted, run-grouped dataset from a deviation report",
+    )
+    fd.add_argument("--deviation", type=Path, required=True)
+    fd.add_argument("--labels", type=Path, required=True)
+    fd.add_argument("--predictions", type=Path, default=None)
+    fd.add_argument("--out", type=Path, required=True)
+    ov = sub.add_parser(
+        "overlay", help="draw the pipeline layers onto a video or a stream"
+    )
+    ov.add_argument(
+        "--input",
+        required=True,
+        help="video file, or device:N for a camera or stream index",
+    )
+    ov.add_argument("--output", type=Path, required=True, help=".mp4 output")
+    ov.add_argument("--records", type=Path, default=None)
+    ov.add_argument("--masks-dir", type=Path, default=None)
+    ov.add_argument("--run-id", type=int, default=None)
+    ov.add_argument("--fps", type=float, default=15.0)
+    ov.add_argument("--start", type=int, default=0)
+    ov.add_argument("--limit", type=int, default=None)
+    vw = sub.add_parser(
+        "view", help="watch a run with the pipeline layers beside it"
+    )
+    vw.add_argument("--video", type=Path, required=True)
+    vw.add_argument("--records", type=Path, default=None)
+    vw.add_argument("--masks-dir", type=Path, default=None)
+    vw.add_argument("--producer", default="pixel_masks")
+    vw.add_argument("--run-id", type=int, default=None)
+    vw.add_argument("--host", default="127.0.0.1")
+    vw.add_argument("--port", type=int, default=8087)
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
     fetch_args(a)
 
@@ -224,6 +316,26 @@ def main() -> None:
 
         for path in example_figures(data_dir, args.assets):
             print(path)
+    if args.cmd == "fold-frames":
+        from .fold_frames import build_frames
+
+        build_frames(data_dir, set(args.ids) if args.ids else None)
+    if args.cmd == "fold-segment":
+        from .fold_state import segment_frames
+
+        segment_frames(data_dir)
+    if args.cmd == "fold-eval":
+        from .fold_eval import write_report
+
+        write_report(data_dir)
+    if args.cmd == "fold-live":
+        from .fold_live import run_live
+
+        run_live(data_dir, set(args.ids) if args.ids else None)
+    if args.cmd == "fold-dashboard":
+        from .fold_dashboard import build_dashboard
+
+        print(build_dashboard(data_dir))
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,
@@ -237,6 +349,73 @@ def main() -> None:
             args.spread or DEFAULT_SPREAD_RUN,
             args.fold or DEFAULT_FOLD_RUN,
         )
+    if args.cmd == "label-states":
+        from .crepe_states import state_table
+
+        table = state_table()
+        if args.out is not None:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(table, indent=2) + "\n")
+        print(json.dumps(table, indent=2))
+    if args.cmd == "label-deviation":
+        from .label_deviation import run_comparison
+
+        out: Path = args.out
+        report = run_comparison(
+            labels_directory=args.labels,
+            prediction_index=args.predictions,
+            output=out,
+            space=args.space,
+            prediction_space=args.prediction_space,
+            pilot=args.pilot,
+            transforms=args.transforms,
+            score_threshold=args.score_threshold,
+            worst_frames=args.worst,
+        )
+        print(json.dumps(report, indent=2, allow_nan=False))
+    if args.cmd == "finetune-dataset":
+        from .finetune_dataset import build_dataset, usage_summary
+
+        dataset_out: Path = args.out
+        manifest = build_dataset(
+            deviation_directory=args.deviation,
+            labels_directory=args.labels,
+            predictions_directory=args.predictions,
+            output=dataset_out,
+        )
+        print(usage_summary(manifest))
+    if args.cmd == "overlay":
+        from .overlay import load_records, render_video
+
+        overlay_out: Path = args.output
+        records = None
+        if args.records is not None:
+            records = load_records(args.records)
+        result = render_video(
+            source=args.input,
+            output=overlay_out,
+            records=records,
+            masks_dir=args.masks_dir,
+            run_id=args.run_id,
+            fps=args.fps,
+            start=args.start,
+            limit=args.limit,
+        )
+        print(json.dumps(result, indent=2))
+    if args.cmd == "view":
+        from .viewer import ViewerApp, load_record_file, serve
+
+        records = (
+            None if args.records is None else load_record_file(args.records)
+        )
+        app = ViewerApp(
+            video=args.video,
+            records=records,
+            masks_dir=args.masks_dir,
+            producer=args.producer,
+            run_id=args.run_id,
+        )
+        serve(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

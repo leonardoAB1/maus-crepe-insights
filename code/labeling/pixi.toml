@@ -19,4 +19,5 @@ setup = "python workflow.py setup"
 export-masks = "python mask_export.py"
 label-sets = "python collaboration.py"
 label-set = "python collaboration.py start"
-test = { cmd = "python -m pytest ../tests/test_labeling_workflow.py ../tests/test_phase_pilot.py ../tests/test_mask_labeling.py ../tests/test_labeling_sets.py -q", env = { PYTHONPATH = ".." } }
+prefill-pixels = "python pixel_predictions.py"
+test = { cmd = "python -m pytest ../tests/test_labeling_workflow.py ../tests/test_phase_pilot.py ../tests/test_mask_labeling.py ../tests/test_labeling_sets.py ../tests/test_pixel_prefill.py -q", env = { PYTHONPATH = ".." } }

@@ -25,7 +25,7 @@ run with `onnxruntime`.
 Models must generalize across robots. Each robot ran in its own time window, so robot also stands
 for era, recipe and software version.
 - Every model trains on mixed robots. Use the shared split in `frames.parquet` (chronological
-  within each robot, see [documentation/frames.md](../../documentation/frames.md)).
+  within each robot, see [documentation/vision/frames.md](../../documentation/vision/frames.md)).
 - Every model card reports the robots it covers, per-robot metrics and a leave-one-robot-out check
   (`maus_classify.harness.train_and_evaluate` with `robots=`).
 - Scores carry 95% intervals from a bootstrap of runs, not frames.

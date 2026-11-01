@@ -11,7 +11,7 @@ does not look for.
 
 How many runs and frames each robot and model really has, and why most of the
 828 runs have no frames, is on
-[classification data coverage](training/classification-data.md).
+[classification data coverage](../training/classification-data.md).
 
 ## Build
 
@@ -105,7 +105,7 @@ image features and embeddings:
    model on the test rows.
 4. It writes `model.onnx` and the `model.json` card (inputs and feature order,
    outputs and classes, train and test run id and date ranges, metrics,
-   commit), following [models/README.md](../code/models/README.md).
+   commit), following [models/README.md](../../code/models/README.md).
 5. It adds `intervals`: 95% bootstrap intervals for balanced accuracy, macro
    F1 and, with `positive`, that class's recall. Whole runs are resampled,
    within each robot when robots are given.
@@ -126,7 +126,7 @@ These are aggregate counts from one private, account-limited local export as of
 2026-10-31. Other exports will differ. In total there are 1,128 frames from 160
 runs, 799 of which are last attempts, and 16 frames whose image file is
 missing. Per-robot breakdowns are on
-[classification data coverage](training/classification-data.md).
+[classification data coverage](../training/classification-data.md).
 
 | Check | pass | fail | train | test |
 |---|---:|---:|---:|---:|

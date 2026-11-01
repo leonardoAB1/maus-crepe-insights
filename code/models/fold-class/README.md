@@ -48,7 +48,7 @@ chronological, run-grouped split fixed in the frame table.
 ## Results (holdout, latest 20% of runs within each robot)
 
 The holdout mixes all three robots with data (quin, otto, pixi); see the
-per-robot split in [documentation/frames.md](../../../documentation/frames.md).
+per-robot split in [documentation/vision/frames.md](../../../documentation/vision/frames.md).
 
 | class | frames | recall |
 |---|---|---|

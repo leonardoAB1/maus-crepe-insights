@@ -1,0 +1,210 @@
+{
+  "slide_size": "16:9",
+  "repo": "https://github.com/leonardoAB1/maus-crepe-insights",
+  "slides": [
+    {
+      "layout": "title",
+      "title": "Maus Crepe Insights",
+      "subtitle": "Why crepe runs fail, and what to change\nBaselHack 2026, Maus Robotics challenge\nRepo: github.com/leonardoAB1/maus-crepe-insights",
+      "notes": "Open in one line: Maus robots make crepes on their own, every run is logged, and we turned those logs into measurements, models and next experiments. Everything in this deck comes from the repository's own documentation, its model cards, or its private data export. The repository is public; the Maus run data is not."
+    },
+    {
+      "layout": "title_content",
+      "title": "The problem, and what Maus asked for",
+      "bullets": [
+        {"text": "The robot decides everything on board: a Raspberry Pi 5, ROS 2, two Duet motion boards, a camera over the hotplate", "size": 15},
+        {"text": "Every run is logged: phases, ROS logs, about 110 recipe settings, camera checks with images, video", "size": 15},
+        {"text": "A failure is recorded as pass or fail plus one short message: no measurement, no reason, no direction to change", "size": 15},
+        {"text": "Maus asked for three things: spread quality (mask, diameter, quality score); position and orientation (centre and angle for the spatula); fold detection (flat / half / quarter / triangle plus edge angle)", "size": 15},
+        {"text": "Scored at two levels. Level 1: works on Maus data, scored against the robot's own checks. Level 2: real time, under about 300 ms per frame on a Raspberry Pi 5 CPU", "size": 15}
+      ],
+      "footer": "Source: repo challenge table (PR #86), system.md",
+      "notes": "The robot already sees a lot; the problem is that the outcome is a verdict, not a measurement. That gap is what the whole project works on. State the brief plainly here, because the next slides score it honestly."
+    },
+    {
+      "layout": "title_content",
+      "title": "What we had to work with",
+      "bullets": [
+        {"text": "828 runs, 2 September to 30 October 2026 (UTC), visible to one hackathon dashboard account", "size": 15},
+        {"text": "Three robots: maus-pixi 410 runs, maus-quin 384, maus-otto 34", "size": 15},
+        {"text": "633 test runs, 195 customer runs", "size": 15},
+        {"text": "Outcomes: 470 succeeded, 148 not_succeeded, 129 aborted, 81 canceled", "size": 15},
+        {"text": "Camera checks with images exist only from 13 October: 160 of the 828 runs, so 690 runs have no measurement at all", "size": 15},
+        {"text": "Every one of the 148 not_succeeded runs ends at plate_load, and 117 of them have no check data", "size": 15}
+      ],
+      "footer": "Source: runs.parquet (828 rows), audit report",
+      "notes": "The account window and the camera-check cutoff explain nearly every limitation later. The 690 runs without measurements are not evidence of anything; they are simply unmeasured."
+    },
+    {
+      "layout": "title_content",
+      "title": "What we built",
+      "bullets": [
+        {"text": "Export: a read-only dashboard client over MCP and OAuth, into raw run JSON plus check images and video", "size": 15},
+        {"text": "MCAP: one ROS 2 profile file per run, 828 of them, ready for Foxglove and ros2 bag tools", "size": 15},
+        {"text": "Tables: runs.parquet, 828 rows and 177 columns; vision.parquet, 138 scored runs", "size": 15},
+        {"text": "Vision scores: the robot's own check overlays read back as numbers per run", "size": 15},
+        {"text": "Models: ONNX heads with a model card each, trained and scored by one shared per-robot harness", "size": 15},
+        {"text": "Labeling: a private local Label Studio 1.23.2 app, phase labels and material/hole masks", "size": 15},
+        {"text": "Local run viewer: plays a run video and draws what the pipeline knows per frame", "size": 15}
+      ],
+      "footer": "Stays in the gitignored data/",
+      "notes": "Order matters: raw data, then a standard container, then tables, then measurements, then models, then a viewer to inspect all of it. The models are experiments with cards, not shipped products; the next slides say why."
+    },
+    {
+      "layout": "title_content",
+      "title": "Where runs fail",
+      "bullets": [
+        {"text": "Check fail rates over the runs that recorded a check (the robot's own verdicts):", "size": 15},
+        {"text": "plate_present 30/79, spread 38/163, fold1 19/138, fold2 34/135", "size": 15},
+        {"text": "plate_clean 20/182, plate_loaded 38/172", "size": 15},
+        {"text": "push_off 140/259: it usually fails once by design while the plate is rotated and rechecked", "size": 15},
+        {"text": "Among runs with check data, spread and the two folds explain most not_succeeded runs", "size": 15},
+        {"text": "Every not_succeeded run ends at plate_load: the robot finishes the cycle, so the reason must come from the checks and logs, not from where the run stopped", "size": 15},
+        {"text": "Cancels cluster in cook (34 of 66), the longest stage: likely a customer-facing wait", "size": 15}
+      ],
+      "footer": "Source: crepe-stages.md",
+      "notes": "Two consequences. A failed check does not stop the run, so failure analysis cannot use where a run stopped. And spread and folds are the weak points worth measuring properly. These counts are the robot's own verdicts over runs with check data."
+    },
+    {
+      "layout": "title_content",
+      "title": "Reading the check overlays",
+      "bullets": [
+        {"text": "The robot's check overlay is already a top-down view with its own marks: crepe outline, holes, ideal fold shape, bare plate", "size": 15},
+        {"text": "We read those marks back as numbers per run: diameter, area, centre offset, circularity, hole fraction, residue, fold overlap, fold2 / fold1 ratio, browning", "size": 15},
+        {"text": "So a failure becomes measurable instead of pass or fail", "size": 15},
+        {"text": "Sizes are relative to the robot's analysis zone; no millimetre scale for the plate is published", "size": 15}
+      ],
+      "images": [
+        {"path": "/data/maus-crepe-insights/assets/vision-scores-example.jpg", "left": 2.6, "top": 3.95, "width": 8.1}
+      ],
+      "footer": "Source: data/pipeline.md",
+      "notes": "The figure shows two annotated examples we may publish: left, a spread check flagged for a large off-centre hole; right, a fold 2 check flagged as not a quarter fold. These are the robot's own annotations read back as numbers, not a new model. This is the one place we turn a verdict into a measurement."
+    },
+    {
+      "layout": "title_content",
+      "title": "Models: what the numbers actually say",
+      "tables": [
+        {
+          "left": 0.45,
+          "top": 1.35,
+          "width": 12.45,
+          "height": 4.7,
+          "col_widths": [3.0, 3.2, 6.25],
+          "font_size": 11,
+          "rows": [
+            ["Model", "Task it answers", "Honest holdout read"],
+            ["check-verdict, 4 heads", "did the check pass", "31 to 61 frames per check, balanced accuracy 0.67 to 0.92. Three of four cards say generalizes: false; a logistic regression on the robot's own overlay beats the fold2 head, 0.88 to 0.67"],
+            ["fold-class", "empty / flat / half / quarter", "110 frames, balanced accuracy 0.99, but on weak labels. The card's own leakage probe fails, and holding out maus-quin drops quarter recall to 0.02 of 82 frames"],
+            ["failure-reason", "why the fold failed", "one deployable head: spread too_small, 13 holdout frames. The fold2 heads are research only, where the trivial rule scores set-F1 1.00 against the 0.73 the card quotes"],
+            ["frame-embedder", "an embedding per frame", "about 4 ms per frame on a desktop CPU; the Raspberry Pi figure is an unmeasured estimate, not a board reading"],
+            ["fold-risk", "spread predicts fold failure", "balanced accuracy 0.29, worse than chance; the permutation test reports beats_null: false. Research only"]
+          ]
+        }
+      ],
+      "footer": "Labels are robot verdicts, not ground truth",
+      "notes": "This is the honest read the repository's own weak-number pages support but its status table does not repeat. The point is not that the models are bad; it is that we know exactly how weak they are, and we say so. The next slide shows the cross-robot picture."
+    },
+    {
+      "layout": "title_content",
+      "title": "Cross-robot reality check",
+      "images": [
+        {"path": "/data/maus-crepe-insights/assets/check-verdict-robots.png", "left": 0.5, "top": 1.55, "width": 8.3},
+        {"path": "/data/maus-crepe-insights/assets/pixel-mask-example.png", "left": 9.1, "top": 1.55, "width": 3.6}
+      ],
+      "footer": "Holdout vs a robot held out entirely",
+      "notes": "Left: balanced accuracy per check, a robot's own holdout versus that robot held out entirely. push_off transfers well; spread and fold2 do not, which is the counterweight to any single headline number. Right: a deliberate failure case of the colour-and-connectivity pixel-mask suggester, which calls a dark stain a hole. That is why every suggestion is an editable draft a human confirms, never an accepted label."
+    },
+    {
+      "layout": "title_content",
+      "title": "Human labels, kept private",
+      "bullets": [
+        {"text": "Local Label Studio 1.23.2, one app per annotator; no run data, image or label leaves the machine or enters the public repository", "size": 15},
+        {"text": "Whole runs are split into set 1 (owner) and set 2 (collaborator), so no frame is labelled twice", "size": 15},
+        {"text": "Two projects per set: visual phase labels (six states) and material/hole masks", "size": 15},
+        {"text": "Set 2 today: 186 phase labels submitted, 113 mask submissions; set 1 is prepared but was never opened", "size": 15},
+        {"text": "Pixel-mask prefill adds 301 editable suggestions on set 2, applied only to untouched tasks", "size": 15}
+      ],
+      "footer": "Source: status.md (branch), labeling docs",
+      "notes": "The mask contract is strict on purpose: material and hole masks must not overlap, holes are enclosed gaps only, and an empty result is never recorded as no crepe. The prefill is plain colour and connectivity work, deliberately not a learned model. No model has been trained on these labels yet, which is the single biggest gap in the modelling story."
+    },
+    {
+      "layout": "title_content",
+      "title": "Brief coverage: three tasks, two levels",
+      "tables": [
+        {
+          "left": 0.45,
+          "top": 1.35,
+          "width": 12.45,
+          "height": 4.7,
+          "col_widths": [2.9, 3.5, 6.05],
+          "font_size": 11,
+          "rows": [
+            ["Brief item", "Asked", "Verdict"],
+            ["Task 1, spread quality", "mask, diameter, quality score", "partial: per-run vision metrics over 138 runs (diameter, centre offset, circularity, holes, uncovered fraction) and a classical pixel-mask suggester; no spread model"],
+            ["Task 2, position and orientation", "centre (x, y) and angle for the spatula", "not delivered: centre offset is a recorded metric; the fold geometry computes an edge angle but the straight-edge gate accepted 0 of the 854 measured frames"],
+            ["Task 3, fold detection", "flat / half / quarter / triangle plus edge angle", "partial: fold-class ONNX, four classes, on weak labels; the triangle fold is unsupported by design"],
+            ["Level 1, works on Maus data", "model scored against the robot verdicts", "partial: check-verdict heads with agreement metrics on holdouts of 31 to 61 frames; three of four cards do not generalize"],
+            ["Level 2, real time on a Pi 5", "under about 300 ms per frame", "not demonstrated: 4 ms per frame on a desktop CPU; the Pi figure is an unmeasured estimate and the arm64 environment lives in draft PR #162"]
+          ]
+        }
+      ],
+      "footer": "Source: status.md (branch), audit report",
+      "notes": "This is the map a jury looks for: the brief on the left, the verdict on the right. Be willing to say not delivered. Task 2 is the clearest miss; Level 2 is the second. Stating it plainly is stronger than a soft claim, because the repository's own status page says exactly this."
+    },
+    {
+      "layout": "title_content",
+      "title": "What does not work yet",
+      "bullets": [
+        {"text": "The end-to-end deliverable is missing: no single entry point turns one frame into all the decisions (issue #95 is still open)", "size": 15},
+        {"text": "The newest work is not on main: five draft pull requests (#137, #156, #158, #160, #162), 45 commits and 63 files ahead; the fold-segmentation PR has been open since Saturday and calls itself not fit for use", "size": 15},
+        {"text": "The models are weak: three of four check heads do not generalize, fold-risk is worse than chance, and no model has been trained on human labels", "size": 15},
+        {"text": "Coverage: vision measurements cover 138 of 828 runs, all in October, and 117 of the 148 failed runs have no check data at all", "size": 15},
+        {"text": "The material-mask model does not exist; the deviation pipeline has only ever run on stand-in masks", "size": 15},
+        {"text": "A fresh clone reproduces the code and the offline tests, not the numbers: the machine data is private", "size": 15}
+      ],
+      "footer": "Source: audit report, status.md",
+      "notes": "This slide exists on purpose. One unsupported claim in a judged repository discredits everything around it, so the weak numbers go up front with the file or command that produced them. The biggest single item left is landing the draft stack; the second is the missing inference entry point."
+    },
+    {
+      "layout": "title_content",
+      "title": "What would change the answer",
+      "bullets": [
+        {"text": "More check records: 117 of the 148 failed runs have none, so why runs fail is unanswerable from this export for about 79 percent of them", "size": 15},
+        {"text": "More runs per robot, interleaved in time: about 140 to 150 would separate robot from era, which today coincide", "size": 15},
+        {"text": "A held-out evaluation on human labels: every current metric is agreement with the robot, not with reality", "size": 15},
+        {"text": "A reviewed mask export plus a material-mask model, so the deviation pipeline sees a real prediction against a real mask", "size": 15},
+        {"text": "Real Raspberry Pi 5 timing: 4 ms is a desktop number, and the Level 2 claim needs a measured board", "size": 15},
+        {"text": "A designed batch, not more history: 19 runs varying six settings independently, run sheet ready for Maus", "size": 15}
+      ],
+      "footer": "Source: fold-risk.md, doe.md, audit report",
+      "notes": "The DoE is a Definitive Screening Design: three levels per setting, main effects independent of each other and of curvature, plus three centre runs for noise. We never send anything to a robot; the sheet is a file someone runs by hand. The honest message is that the next answer comes from new data, not from more modelling on 138 runs."
+    },
+    {
+      "layout": "title_content",
+      "title": "Check it yourself in a minute",
+      "bullets": [
+        {"text": "Repo: github.com/leonardoAB1/maus-crepe-insights (public; the Maus run data is private and stays out of Git)", "size": 15},
+        {"text": "Offline check, no data needed: cd code && pixi install && pixi run test && pixi run lint", "size": 15},
+        {"text": "The suite runs in about four minutes: 625 passed, 66 skipped, exit 0", "size": 15},
+        {"text": "Model cards with holdouts, per-robot and leave-one-robot-out checks, and explicit generalization verdicts: code/models/", "size": 15},
+        {"text": "Status page, every number with its source: documentation/status.md", "size": 15},
+        {"text": "Licence: PolyForm Noncommercial 1.0.0", "size": 15}
+      ],
+      "footer": "Sourced in the repository",
+      "notes": "Close on the one-minute check. Everything else in this deck should be verifiable from the repository; anything not verifiable is labelled as unverified in the docs. Be honest that the tests take about four minutes, not one, but they run offline exactly as claimed."
+    },
+    {
+      "layout": "title_content",
+      "title": "Where to look",
+      "bullets": [
+        {"text": "documentation/status.md: what works and what does not, every number with its source", "size": 15},
+        {"text": "code/models/: model cards with holdout metrics and explicit generalization verdicts", "size": 15},
+        {"text": "documentation/system/crepe-stages.md: the robot's stages, and where runs fail", "size": 15},
+        {"text": "documentation/data/pipeline.md: dashboard to MCAP to tables, and the vision score columns", "size": 15},
+        {"text": "Take away: an honest, documented pipeline with real measurements; the models are experiments, and the next runs are the fix", "size": 15}
+      ],
+      "footer": "CrepeFlow, BaselHack 2026",
+      "notes": "End on the repository and the status page, not on a model number. The value we bring Maus is a measured, documented pipeline and a clear list of what the next runs would settle."
+    }
+  ]
+}

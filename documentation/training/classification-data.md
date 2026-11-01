@@ -71,7 +71,7 @@ this export. 90 of the 160 runs with camera checks are test runs.
 
 A frame is one check attempt. Checks repeat within a run (push_off retries
 by design), which is why push_off has the most frames. See
-[frames](../frames.md) for the table and its labels.
+[frames](../vision/frames.md) for the table and its labels.
 
 ## Label support
 
@@ -150,6 +150,6 @@ side. Every robot with camera checks is therefore in both train and test.
 - **Phases and labels:** frames at the spread and fold moments could be cut
   from these videos using the phase timings. The labels would then have to
   come from people, because these runs have no robot verdicts. The
-  [phase labeling pilot](../phase-labeling-pilot.md) is the starting point.
+  [phase labeling pilot](../labeling/phase-labeling-pilot.md) is the starting point.
 - **New runs:** runs on all robots, interleaved in time, would separate robot
   from era. That is the biggest single improvement for every model here.
