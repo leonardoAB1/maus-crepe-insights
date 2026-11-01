@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import cv2
 import numpy as np
 
@@ -11,10 +9,8 @@ from .fold_geometry import CrepeGeometry
 from .fold_plate import PlateEllipse
 
 MASK_COLOR = (80, 210, 95)
-PLATE_COLOR = (235, 200, 70)
 EDGE_COLOR = (30, 210, 255)
 CENTRE_COLOR = (255, 255, 255)
-CORNER_COLOR = (240, 90, 240)
 TEXT_COLOR = (245, 245, 245)
 PANEL_COLOR = (15, 20, 25)
 MASK_OPACITY = 0.35
@@ -48,8 +44,10 @@ def annotate_frame(
 ) -> np.ndarray:
     """Draw the current mask and measurements without modifying the input.
 
-    On failed inference, pass no mask or geometry so stale detections are not
-    shown. All positions and dimensions are in corrected-image pixels.
+    The estimated plate boundary and corner marker are not drawn: they can
+    misalign with the video. On failed inference, pass no mask or geometry so
+    stale detections are not shown. All positions and dimensions are in
+    corrected-image pixels.
     """
     output = frame.copy()
     if mask is not None:
@@ -64,14 +62,6 @@ def annotate_frame(
             mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
         cv2.drawContours(output, contours, -1, MASK_COLOR, LINE_WIDTH)
-    if plate is not None:
-        cv2.ellipse(
-            output,
-            ((plate.x, plate.y), (plate.width, plate.height), plate.angle),
-            PLATE_COLOR,
-            LINE_WIDTH,
-            cv2.LINE_AA,
-        )
     if geometry is not None:
         for edge in geometry.edges:
             cv2.line(
@@ -91,23 +81,6 @@ def annotate_frame(
                 MARKER_RADIUS * 2,
                 LINE_WIDTH,
             )
-        if geometry.corner is not None:
-            x, y = geometry.corner
-            height, width = frame.shape[:2]
-            if (
-                math.isfinite(x)
-                and math.isfinite(y)
-                and 0 <= x < width
-                and 0 <= y < height
-            ):
-                cv2.circle(
-                    output,
-                    _point(geometry.corner),
-                    MARKER_RADIUS,
-                    CORNER_COLOR,
-                    LINE_WIDTH,
-                    cv2.LINE_AA,
-                )
     if check is None:
         lines = [f"Vision frame: {state or 'unknown'} | {status}"]
     else:
