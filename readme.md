@@ -84,6 +84,13 @@ flowchart LR
     weights --> finetune[Fine-tuned model]
     finetune --> live[Live frame]
     models --> live
+    raw --> foldseg[Fold segmentation]
+    foldseg --> compare
+    masks --> overlay[Overlay renderer]
+    models --> overlay
+    overlay --> live
+    raw --> viewer[Run viewer]
+    masks --> viewer
 
     classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
     classDef partial fill:#ed6c02,stroke:#b53d00,color:#ffffff
@@ -91,17 +98,25 @@ flowchart LR
 
     class api,raw,mcap,table,vision,frames,models,pilot done
     class labels,masks,rectified,compare,weights partial
+    class foldseg,overlay,viewer partial
     class predict,finetune,live todo
 ```
 <!-- /diagram -->
 
 Green is built and verified, amber is built but not yet proven end to
 end, grey is not built. The data path, the runs and frame tables, the
-vision scores, the ONNX models and the labeling app are green. A live
-frame needs two more things: a reviewed mask export, which is blocked
-on the frames whose hole brush overlaps the material brush, and a
-material-mask model to predict with. The gaps and the numbers behind
-each colour are in [documentation/status.md](documentation/status.md).
+vision scores, the ONNX models and the labeling app are green. The
+overlay renderer, the run viewer and the fold segmentation are amber for
+the same reason, working code without an end-to-end proof: the overlay
+draws the layers onto a video and only the records sidecar feeds it, the
+viewer plays a run and answers with the pixel-mask suggestion only, and
+the fold segmentation is merged and evaluated on the same export it was
+tuned on. A live frame still needs two more things: a reviewed mask
+export, which is blocked on the frames whose hole brush overlaps the
+material brush, and a material-mask model to predict with. The gaps and
+the numbers behind each colour are in
+[documentation/status.md](documentation/status.md).
+
 ## How it works
 
 **The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
@@ -350,6 +365,10 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 ## Documentation
 
 [Browse all documentation](documentation/README.md) by subject.
+
+Pitch deck: [assets/pitch/pitch-deck.pptx](assets/pitch/pitch-deck.pptx),
+with the talk track and the source of every number on a slide in
+[assets/pitch/notes.md](assets/pitch/notes.md).
 
 - [Project status: what works and what does not](documentation/status.md)
 
