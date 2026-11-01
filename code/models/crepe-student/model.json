@@ -126,7 +126,47 @@
       "caveat": "rule thresholds were read off the same frames, including test runs"
     },
     "leave_one_robot_out": null,
-    "leave_one_robot_out_note": "not run: needs a retrain per robot; maus-otto has only 6 runs"
+    "leave_one_robot_out_note": "not run: needs a retrain per robot; maus-otto has only 6 runs",
+    "human_labels": {
+      "command": "pixi run -e ml fold-student-human --labels <private folder>",
+      "source": "reviewed Label Studio exports, 2 sets, frames every 5 s of 5 consecutive runs of one robot; 4 of the 5 runs are student training runs",
+      "mask_iou_valid": {
+        "frames": 62,
+        "median": 0.944,
+        "mean": 0.859
+      },
+      "mask_iou_needs_review": {
+        "frames": 29,
+        "median": 0.925,
+        "mean": 0.73
+      },
+      "mask_iou_human_vs_human": {
+        "frames": 10,
+        "median": 0.933
+      },
+      "empty_plate_frames_with_false_crepe": {
+        "frames": 51,
+        "share": 0.0
+      },
+      "human_hole_pixels_called_crepe": {
+        "frames": 29,
+        "median": 0.996
+      },
+      "live_state_agreement": {
+        "frames": 178,
+        "agreement": 0.983,
+        "per_state": {
+          "empty": 1.0,
+          "flat": 1.0,
+          "half": 0.818,
+          "quarter": 0.9
+        }
+      },
+      "single_frame_state_agreement": {
+        "frames": 178,
+        "agreement": 0.994
+      }
+    }
   },
   "parity": {
     "sample": "first test-run frame",
@@ -153,7 +193,7 @@
     "pi5_estimate_method": "single-thread preprocess+model median x 4 (rough Cortex-A76 vs x86 factor, not measured)"
   },
   "known_limits": [
-    "small fresh batter at the start of spreading and very small failed spreads are often missed (never in the training frames)",
+    "small fresh batter at the start of spreading is often missed (13 of 30 human 'spreading' frames read as empty) and very small failed spreads are missed",
     "a crepe being pushed off the plate and hands or tools over the plate are not trained",
     "no hole class: holes inside the crepe count as crepe",
     "position and angle are not derived yet"

@@ -195,6 +195,16 @@ def main() -> None:
         "fold-student-eval", help="crepe student state at the check frames"
     )
     data_dir_arg(fse)
+    fsh = sub.add_parser(
+        "fold-student-human", help="crepe student against human labels"
+    )
+    data_dir_arg(fsh)
+    fsh.add_argument(
+        "--labels",
+        type=Path,
+        required=True,
+        help="private folder with set-*/phase-v1.json and masks-v1.json",
+    )
     ls = sub.add_parser(
         "label-states", help="print the unified crepe-state vocabulary"
     )
@@ -444,6 +454,10 @@ def main() -> None:
         from .crepe_student import evaluate_check_frames
 
         print(evaluate_check_frames(data_dir).to_string(index=False))
+    if args.cmd == "fold-student-human":
+        from .human_eval import evaluate
+
+        print(evaluate(data_dir, args.labels).to_string(index=False))
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,
