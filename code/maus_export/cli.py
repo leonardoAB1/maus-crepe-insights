@@ -131,6 +131,28 @@ def main() -> None:
         action="store_true",
         help="replace this run's existing analysis after successful processing",
     )
+    batch = sub.add_parser(
+        "fold-batch",
+        help="analyze all cached videos with the experimental pipeline",
+    )
+    batch.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    batch.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="number of videos processed concurrently (default: 1)",
+    )
+    batch.add_argument(
+        "--fps",
+        type=float,
+        default=DEFAULT_ANALYSIS_FPS,
+        help="analysed frames per second of video (default: 10)",
+    )
+    batch.add_argument(
+        "--replace",
+        action="store_true",
+        help="reprocess completed videos (default: skip them)",
+    )
     ex = sub.add_parser(
         "example", help="draw the annotated vision example figure"
     )
@@ -340,6 +362,21 @@ def main() -> None:
                 model=args.model,
             )
         )
+    if args.cmd == "fold-batch":
+        from .experimental_fold.fold_batch import run_batch
+
+        try:
+            result = run_batch(
+                data_dir,
+                threads=args.threads,
+                analysis_fps=args.fps,
+                replace=args.replace,
+            )
+        except ValueError as error:
+            p.error(str(error))
+        print(result)
+        if result["failed"]:
+            raise SystemExit(1)
     if args.cmd == "fold-live-eval":
         from .experimental_fold.fold_live_eval import evaluate_live
 
