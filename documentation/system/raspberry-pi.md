@@ -42,8 +42,25 @@ For browser access from another machine, keep private data off the LAN:
 ssh -L 8766:127.0.0.1:8766 raspi@PI_ADDRESS
 ```
 
-Then open `http://127.0.0.1:8766/` locally. Do not bind the unauthenticated
-website to all network interfaces or expose it through a public proxy.
+Then open `http://127.0.0.1:8766/` locally. Keep this private default unless
+the operator explicitly authorizes unauthenticated network access.
+
+## Explicit LAN access
+
+`--host 0.0.0.0 --port 80` exposes the website on IPv4 network interfaces.
+It serves private videos and run data with no authentication or encryption.
+Use only on a trusted network with the data owner's explicit authorization;
+no router port forwarding or internet exposure is configured.
+
+The authorized Pi deployment uses a `maus-fold-web.service` drop-in with
+`AmbientCapabilities=CAP_NET_BIND_SERVICE` and
+`CapabilityBoundingSet=CAP_NET_BIND_SERVICE`. This permits port 80 while
+keeping the service under its unprivileged user rather than running Python
+as root. The service stays enabled across reboots. Localhost remains the
+program's default whenever `--host` is omitted.
+
+Remove `/etc/systemd/system/maus-fold-web.service.d/lan.conf`, reload systemd
+and restart the service to restore the original localhost port 8766 setup.
 
 ## Performance interpretation
 

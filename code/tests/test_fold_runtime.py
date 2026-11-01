@@ -48,10 +48,12 @@ def test_website_only_does_not_load_video(
     calls = []
     monkeypatch.setattr(
         "maus_export.fold_dashboard.serve_dashboard",
-        lambda *args: calls.append(args),
+        lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     main(["--data-dir", str(tmp_path), "--port", "8767"])
-    assert calls == [(tmp_path, 8767)]
+    assert calls == [((tmp_path, 8767), {"host": "127.0.0.1"})]
+    main(["--data-dir", str(tmp_path), "--host", "0.0.0.0", "--port", "80"])
+    assert calls[-1] == ((tmp_path, 80), {"host": "0.0.0.0"})
 
 
 def test_invalid_runtime_arguments(tmp_path: Path) -> None:

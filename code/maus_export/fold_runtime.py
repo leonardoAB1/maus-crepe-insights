@@ -18,6 +18,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--fps", type=float, default=DEFAULT_FPS)
     parser.add_argument("--threads", type=int, default=DEFAULT_THREADS)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="bind address; non-loopback exposes unauthenticated private data",
+    )
     parser.add_argument("--replace", action="store_true")
     parser.add_argument("--analyze-only", action="store_true")
     args = parser.parse_args(argv)
@@ -42,7 +47,7 @@ def main(argv: list[str] | None = None) -> None:
     if not args.analyze_only:
         from .fold_dashboard import serve_dashboard
 
-        serve_dashboard(args.data_dir, args.port)
+        serve_dashboard(args.data_dir, args.port, host=args.host)
 
 
 if __name__ == "__main__":

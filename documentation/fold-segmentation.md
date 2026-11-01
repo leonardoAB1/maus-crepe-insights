@@ -12,8 +12,11 @@ For the minimal ARM64 detection and website environment, see
 
 Video frames can show people. Frames, masks, contact sheets, per-run tables,
 timelines and annotated videos stay in the private, gitignored `data/`
-directory. The dashboard binds to `127.0.0.1` and has no authentication.
-Do not expose it through a proxy or share its output. Close it when finished.
+directory. The dashboard defaults to `127.0.0.1` and has no authentication.
+The minimal runtime accepts an explicit `--host` override only for authorized
+network access; see the Raspberry Pi guide for the exposure warning and
+service setup. Never expose it to the internet or share its private output.
+Close it when finished.
 
 ## Rebuild
 

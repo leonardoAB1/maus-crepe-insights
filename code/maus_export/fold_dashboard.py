@@ -205,11 +205,17 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
 
 
 def serve_dashboard(
-    data_dir: Path, port: int = 8765, *, open_browser: bool = False
+    data_dir: Path,
+    port: int = 8765,
+    *,
+    open_browser: bool = False,
+    host: str = "127.0.0.1",
 ) -> None:
-    """Serve private data only on localhost until interrupted."""
-    server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(data_dir))
-    url = f"http://127.0.0.1:{server.server_port}/"
+    """Serve private data, defaulting to localhost unless explicitly changed."""
+    server = ThreadingHTTPServer((host, port), make_handler(data_dir))
+    if host not in {"127.0.0.1", "localhost"}:
+        print("WARNING: unauthenticated private run data exposed to network")
+    url = f"http://{host}:{server.server_port}/"
     print(f"Private dashboard: {url}", flush=True)
     try:
         if open_browser:
