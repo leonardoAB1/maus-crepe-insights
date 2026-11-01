@@ -221,6 +221,11 @@ def main() -> None:
         "fold-student-eval", help="crepe student state at the check frames"
     )
     data_dir_arg(fse)
+    fsp = sub.add_parser(
+        "fold-student-pose",
+        help="crepe student centre and angle against the robot overlays",
+    )
+    data_dir_arg(fsp)
     fsh = sub.add_parser(
         "fold-student-human", help="crepe student against human labels"
     )
@@ -499,6 +504,10 @@ def main() -> None:
         from .crepe_student import evaluate_check_frames
 
         print(evaluate_check_frames(data_dir).to_string(index=False))
+    if args.cmd == "fold-student-pose":
+        from .crepe_pose import evaluate as evaluate_pose
+
+        print(evaluate_pose(data_dir).to_string(index=False))
     if args.cmd == "fold-student-human":
         from .human_eval import evaluate
 
