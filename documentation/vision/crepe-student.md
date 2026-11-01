@@ -114,6 +114,25 @@ positions are in plate radii, no millimetre scale is published; a crêpe
 hanging over the plate rim and the robot's mean image correction per robot
 both shift the centre a little.
 
+## One video with every model
+
+`pixi run -e ml fold-all-live --ids <run> [--plates <parquet>]` renders a
+run video at 10 frames per second with every vision model, laid out by the
+three challenge tasks: the raw frame with the student mask and the robot's
+logged check results, the top view with the pose drawn, and one panel per
+task (spread quality from the `check-verdict` spread head and the
+`failure-reason` too-small head; centre, axis and heading; student state,
+`fold-class` head with its probability, fold edge and corner angle and the
+fold1 or fold2 verdict head). A check head is only read on frames of the
+state its check expects and its last value is held. Output:
+`fold_segmentation/all/<run>/annotated.mp4` and `frames.csv`.
+
+`--plates` takes per-run plate ellipses in raw frame pixels (run_id, cx,
+cy, w, h, angle). With one, the top view is an affine map of that ellipse
+to a circle; without, the robot's mean image correction is used, which does
+not fit runs recorded before the camera setup of mid-October. The frame
+heads were trained on check stills, so between checks they are unvalidated.
+
 ## Against human labels
 
 `pixi run -e ml fold-student-human --labels <folder>` compares the student
