@@ -53,7 +53,9 @@ class Element {
     this.parent = null;
   }
   load() {}
-  addEventListener() {}
+  addEventListener(type, callback) {
+    this.listeners ||= {}; this.listeners[type] = callback;
+  }
   getBoundingClientRect() { return {width: 600, height: 210}; }
   getContext() { return {scale() {}}; }
 }
@@ -143,6 +145,44 @@ const setTimeout = () => {};
   assert.equal(sidebar.children.length, 1);
   assert.equal(video.src, '/video/2');
   assert.match(panel.textContent, /completed/);
+  modelSelect.value = 'onnx';
+  completedRuns = null;
+  const requested = [];
+  global.fetch = async path => {
+    requested.push(path);
+    return {ok: true, json: async () => {
+      if (path === '/api/progress?model=onnx') return [completed];
+      if (path === '/api/runs?model=onnx')
+        return [{id: 2, events: [], dispense_ok: null}];
+      return {id: 2, timeline: [], events: []};
+    }};
+  };
+  await pollProgress(false);
+  await showRun(2, 12);
+  assert.equal(video.src, '/video/2?model=onnx');
+  assert.equal(document.querySelector('#original').href,
+    '/original-video/2?model=onnx');
+  assert.ok(requested.every(path => path.endsWith('?model=onnx')));
+  document.querySelector('#nthreads').value = '4';
+  document.querySelector('#runner-video').value = '2';
+  let launched = null;
+  global.fetch = async (path, options) => {
+    if (options?.method === 'POST') {
+      launched = JSON.parse(options.body);
+      assert.equal(options.headers['X-Maus-Runner'], '1');
+      return {ok: true, json: async () => ({running: true})};
+    }
+    return {ok: true, json: async () => {
+      if (path.startsWith('/api/runner'))
+        return {runs: [2], running: true, model: 'onnx', nthreads: 4};
+      if (path.startsWith('/api/progress')) return [completed];
+      if (path.startsWith('/api/runs')) return [{id: 2, events: []}];
+      return {id: 2, timeline: [], events: []};
+    }};
+  };
+  await document.querySelector('#start-runner').listeners.click();
+  assert.deepEqual(launched, {model: 'onnx', nthreads: 4, run_id: 2});
+  assert.equal(document.querySelector('#start-runner').disabled, true);
 })().catch(error => { console.error(error); process.exitCode = 1; });
 """
     path = tmp_path / "dashboard-ui.js"

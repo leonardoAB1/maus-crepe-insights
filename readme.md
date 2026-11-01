@@ -58,6 +58,69 @@ How results are scored:
 - **Bonus:** auto-labelling from run videos, a spread score that predicts a failed fold, detecting the
   crêpe while the plate rotates
 
+### How we tackled them
+
+The robot already judges every check and draws its analysis onto an overlay
+image. We use those verdicts and overlays as weak labels and reference
+measurements, and build independent vision next to them, so the two can be
+compared. The stages are on the
+[vision pipeline](documentation/vision/vision-pipeline.md) page.
+
+**1. Spread quality: measure the spread, then check it two ways.**
+
+- Read the robot's spread overlay back as numbers (`pixi run vision`):
+  diameter, centre offset, circularity, holes, bare plate inside the
+  outline, residue and browning, per run.
+- Segment the crêpe ourselves, live on every video frame: a classical mask
+  inside the detected plate, and the distilled crêpe student (ONNX, about
+  6 ms per frame, pixel IoU 0.966 against SAM 3). Against the team's human
+  masks the student scores a median IoU of 0.944, as close as two humans
+  are to each other (0.933). Both give area, diameter, holes and shape.
+- Watch the dough on video: a supervisor flags a spread whose plate
+  coverage collapses after pouring.
+- Frame models: the spread verdict head (balanced accuracy 0.70) and a
+  provisional "too small" failure-reason head.
+- **Missing:** no single fitted quality score yet, and a spread score does
+  not predict a later fold failure within a robot
+  ([fold risk](documentation/analysis/fold-risk.md)).
+
+**2. Position and orientation: one top-down view, then geometry.**
+
+- Map every robot's camera into one top-down view with a per-robot mean
+  correction ([robot correction](documentation/vision/robot-correction.md)).
+- Read the reference pose from the robot's overlays
+  (`pixi run overlay-pose`): crêpe centre and axis per check, and the
+  push-off angle, which matches the robot's logged rotation up to a
+  constant 15 degrees (90% of attempts within 0.4 degrees).
+- Measure our own pose from the live student mask in the top view
+  (`maus_export.crepe_pose`): centre, axis, fold line and a quarter's
+  corner on every frame. Against the robot's overlays the median centre
+  error is 0.023 plate radii (fold1) and the median axis error 1.1 degrees;
+  the fold line is found on every passed fold1 frame.
+- **Missing:** the reference is the robot's outline, not a human
+  measurement, and positions are in plate radii and image degrees, not
+  millimetres or robot coordinates.
+
+**3. Fold detection: three independent answers.**
+
+- `fold-class` head on the raw frame: empty, flat, half or quarter with a
+  probability, 109 of 110 holdout frames correct.
+- Crêpe student rule: crêpe area relative to the same run's flat crêpe,
+  99.5% agreement at 991 passed check moments.
+- Classical rule on the corrected mask (area shares, shape, a small
+  tie-break model), 88.5% on the same frames.
+- On video, each method votes the state for a second after every logged
+  check, so a failed fold shows up as a mismatch with the expected state.
+- Human check: the student's live state matches the team's human phase
+  labels on 98.3% of 178 frames (5 runs of one robot, a first check).
+- **Missing:** the triangle fold (no frame shows one), and most labels are
+  the robot's verdicts, so these scores are optimistic.
+
+**Real time.** The frame embedder runs in about 4 ms per frame on a desktop
+CPU and the student in about 6 ms. On a Raspberry Pi 3 the classical video
+analysis takes a median 413 ms per frame, so the Pi 5 target of about
+300 ms is not demonstrated yet ([Raspberry Pi](documentation/system/raspberry-pi.md)).
+
 Task by task, with what exists and what is missing:
 [challenge coverage](documentation/status.md#brief-coverage).
 
@@ -277,6 +340,26 @@ flowchart LR
     train --> onnx[ONNX model]
     onnx --> pi[Pi 5 runtime]
     table --> insight[Failure analysis]
+```
+<!-- /diagram -->
+
+**Our vision pipeline.** From check stills and run videos to fold states, check verdicts and failure insight.
+Each stage and its own page are in [documentation/vision/vision-pipeline.md](documentation/vision/vision-pipeline.md).
+
+<!-- diagram: vision-pipeline -->
+```mermaid
+flowchart LR
+    raw[Check stills] --> fix[Image correction]
+    vid[Run video] --> fix
+    ovl[Robot overlays] --> read[Overlay scores]
+    fix --> seg[Crepe segmentation]
+    seg --> state[Fold state]
+    raw --> heads[Frame models]
+    state --> time[Video timeline]
+    log[Robot logs] --> time
+    time --> page[Review pages]
+    read --> why[Failure insight]
+    heads --> why
 ```
 <!-- /diagram -->
 

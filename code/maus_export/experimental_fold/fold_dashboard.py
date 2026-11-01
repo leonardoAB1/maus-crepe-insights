@@ -9,22 +9,24 @@ import re
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from ..vision_pipeline import read_results
+from .fold_backend import analysis_root
 from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_playback import playback_video
 from .fold_progress import read_progress
 from .fold_stages import INITIAL_CLEANING_LABEL, initial_cleaning_end
+from .fold_web_runner import RunnerBusy, WebRunner
 
 CHUNK_SIZE = 64 * 1024
 MIN_GZIP_BYTES = 1024
 PAGE = Path(__file__).with_name("fold_dashboard.html")
 
 
-def run_details(data_dir: Path, run_id: int) -> dict:
+def run_details(data_dir: Path, run_id: int, model: str = "classical") -> dict:
     """Read one local timeline and robot check events for dashboard playback."""
-    root = data_dir / "fold_segmentation" / "live" / str(run_id)
+    root = analysis_root(data_dir, model) / str(run_id)
     with (root / "timeline.csv").open(newline="") as file:
         timeline = list(csv.DictReader(file))
     run = json.loads((data_dir / "raw" / "runs" / f"{run_id}.json").read_text())
@@ -62,7 +64,8 @@ def run_details(data_dir: Path, run_id: int) -> dict:
             event["observation_status"] = observation["status"]
             event["verdict"] = observation.get("verdict", "unknown")
             event["confidence"] = float(observation.get("confidence") or 0)
-    attach_models(events, root)
+    # check-still results do not depend on the segmentation model
+    attach_models(events, analysis_root(data_dir) / str(run_id))
     phases = [
         {"time": float(phase["elapsed_sec"]), "name": phase["phase"]}
         for phase in run["phases"]
@@ -91,6 +94,7 @@ def run_details(data_dir: Path, run_id: int) -> dict:
             dispense = value
     return {
         "id": run_id,
+        "model": model,
         "events": events,
         "phases": phases,
         "highlights": highlights,
@@ -108,22 +112,30 @@ def attach_models(events: list[dict], root: Path) -> None:
         event["model"] = results.get((event["name"], attempts[event["name"]]))
 
 
-def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
-    """Make a read-only HTTP handler limited to known private artifacts."""
+MAX_RUNNER_BODY = 4096
+
+
+def make_handler(
+    data_dir: Path, *, runner: WebRunner | None = None
+) -> type[BaseHTTPRequestHandler]:
+    """Serve known private artifacts and validated local analysis launches."""
     root = data_dir.resolve()
+    runner = runner if runner is not None else WebRunner(root)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:
             return
 
-        def _send(self, body: bytes, content_type: str) -> None:
+        def _send(
+            self, body: bytes, content_type: str, status: int = 200
+        ) -> None:
             compress = len(body) >= MIN_GZIP_BYTES and any(
                 item.strip().lower() == "gzip"
                 for item in self.headers.get("Accept-Encoding", "").split(",")
             )
             if compress:
                 body = gzip.compress(body, compresslevel=1)
-            self.send_response(200)
+            self.send_response(status)
             if compress:
                 self.send_header("Content-Encoding", "gzip")
             self.send_header("Vary", "Accept-Encoding")
@@ -134,18 +146,85 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(body)
 
+        def do_POST(self) -> None:
+            if self.path != "/api/runner":
+                self.send_error(404)
+                return
+            origin = self.headers.get("Origin")
+            if self.headers.get("X-Maus-Runner") != "1" or (
+                origin is not None
+                and (
+                    urlsplit(origin).netloc != self.headers.get("Host")
+                    or urlsplit(origin).scheme not in {"http", "https"}
+                )
+            ):
+                self.send_error(403)
+                return
+            if self.headers.get_content_type() != "application/json":
+                self.send_error(415)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if not 0 < length <= MAX_RUNNER_BODY:
+                    self.send_error(413)
+                    return
+                options = json.loads(self.rfile.read(length))
+                status = runner.start(options)
+            except RunnerBusy as error:
+                self._send(
+                    json.dumps({"error": str(error)}).encode(),
+                    "application/json",
+                    409,
+                )
+                return
+            except (ValueError, UnicodeError):
+                self._send(
+                    json.dumps(
+                        {
+                            "error": (
+                                "Invalid options, uncached video or "
+                                "unavailable model environment"
+                            )
+                        }
+                    ).encode(),
+                    "application/json",
+                    400,
+                )
+                return
+            except OSError:
+                self.send_error(500, "Could not start local analysis")
+                return
+            self._send(json.dumps(status).encode(), "application/json", 202)
+
         def do_GET(self) -> None:
-            path = urlsplit(self.path).path
+            request = urlsplit(self.path)
+            path = request.path
+            values = parse_qs(request.query, keep_blank_values=True).get(
+                "model", ["classical"]
+            )
+            try:
+                if len(values) != 1:
+                    raise ValueError("Ambiguous model")
+                model = values[0]
+                directory = analysis_root(root, model)
+            except ValueError:
+                self.send_error(400, "Unknown segmentation model")
+                return
             if path == "/":
                 self._send(PAGE.read_bytes(), "text/html; charset=utf-8")
                 return
+            if path == "/api/runner":
+                self._send(
+                    json.dumps(runner.snapshot()).encode(), "application/json"
+                )
+                return
             if path == "/api/progress":
                 self._send(
-                    json.dumps(read_progress(root)).encode(), "application/json"
+                    json.dumps(read_progress(root, model)).encode(),
+                    "application/json",
                 )
                 return
             if path == "/api/runs":
-                directory = root / "fold_segmentation" / "live"
                 runs = []
                 for item in sorted(directory.glob("*")):
                     if (
@@ -154,7 +233,7 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
                     ):
                         continue
                     try:
-                        info = run_details(root, int(item.name))
+                        info = run_details(root, int(item.name), model)
                         runs.append(
                             {
                                 "id": info["id"],
@@ -188,17 +267,17 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
             run_id = int(match.group(2))
             if match.group(1) == "api/run":
                 try:
-                    result = run_details(root, run_id)
+                    result = run_details(root, run_id, model)
                 except (OSError, ValueError, KeyError):
                     self.send_error(404)
                     return
                 self._send(json.dumps(result).encode(), "application/json")
                 return
-            directory = root / "fold_segmentation" / "live" / str(run_id)
+            run_directory = directory / str(run_id)
             video = (
-                playback_video(directory)
+                playback_video(run_directory)
                 if match.group(1) == "video"
-                else directory / "annotated.mp4"
+                else run_directory / "annotated.mp4"
             )
             if not video.is_file():
                 self.send_error(404)

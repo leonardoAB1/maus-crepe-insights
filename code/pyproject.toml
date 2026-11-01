@@ -84,6 +84,8 @@ embed = "maus-export embed"
 fold-student = "maus-export fold-student"
 fold-student-eval = "maus-export fold-student-eval"
 fold-student-human = "maus-export fold-student-human"
+fold-student-pose = "maus-export fold-student-pose"
+fold-all-live = "maus-export fold-all-live"
 fold-class = "maus-classify fold-class"
 vision-pipeline = "python models/vision-pipeline/build.py"
 fold-class-example = "maus-classify fold-class-example"
@@ -147,6 +149,7 @@ mask-assist = "python -m maus_export.mask_assist"
 docs = "maus-docs"
 docs-check = "maus-docs --check"
 test = "pytest"
+test-fast = "pytest -m 'not slow'"
 lint = "ruff check ."
 fmt = "ruff format ."
 fmt-check = "ruff format --check ."
@@ -160,3 +163,6 @@ select = ["E", "F", "W", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: tests that spawn the export CLI as a subprocess",
+]

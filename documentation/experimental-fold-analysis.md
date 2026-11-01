@@ -1,5 +1,73 @@
 # Experimental fold-state segmentation
 
+## Website analysis runner
+
+The **Video analysis runner** panel starts a background local runner without
+blocking playback or progress polling. Select a cached video, or **All
+pending cached videos**, choose the segmentation model, then press **Start
+analysis**. The **nthreads** selector allows **1** (default), **4** or **16**.
+These are concurrent video workers, not ONNX inference threads. A single
+selected video uses one worker regardless of the concurrency limit.
+
+Selecting a video explicitly rebuilds its derived analysis. All-pending
+mode skips completed outputs. Raw inputs are never changed and no videos
+are fetched. Progress and artifacts stay separate for Classical and ONNX.
+The subprocess uses the server's Python environment, so start the website
+in the `ml` environment to enable ONNX launches.
+
+Only one server-owned runner can be active at a time, including requests
+from different browser tabs. Do not start a second server or separate CLI
+runner against those output directories: that is outside this guard.
+Errors remain visible in per-video progress and the private
+`fold_segmentation/web-runner.log`. Server restart does not cancel a child
+runner; let it finish before launching another. Larger concurrency settings
+can exhaust memory, especially with one ONNX session per video.
+
+`POST /api/runner` accepts only bounded JSON with `model`, `nthreads` and an
+optional cached `run_id`. It requires a custom request header and rejects
+cross-origin browser requests. `GET /api/runner` reports cached inputs and
+runner status. There is no shell command input. This is a private local
+analysis control, not authentication: keep the default localhost binding
+or use a trusted private network. Never expose it publicly.
+
+## Website model switch
+
+Prepare both segmentation backends and open the review site:
+
+```bash
+cd code
+pixi run -e ml fold-watch 1234 --model=both --data-dir "$DATA"
+```
+
+The **Segmentation** selector switches between **Classical CV** and **ONNX
+student**. It switches the video, timeline and check estimates together,
+keeping the same run and playback position when both analyses exist. Missing
+analyses are explicitly unavailable; the website never silently substitutes
+another backend or runs expensive inference in an HTTP request.
+
+Classical remains the default and writes `fold_segmentation/live/<run>/`.
+ONNX writes `fold_segmentation/live-onnx/<run>/`; `--replace` affects only the
+requested backend, or both when `--model both` is selected. Use
+`fold-experimental-live 1234 --model onnx` to prepare just the ONNX result.
+ONNX inference requires the `ml` environment; classical review does not.
+
+The student sees the original raw BGR camera frame with its existing model
+preprocessing. Its low-resolution binary mask is resized to the raw frame,
+then the calibrated source size, using nearest-neighbour interpolation.
+The same camera homography used for the classical image maps that mask to
+the corrected view, again using nearest-neighbour interpolation. Unsupported
+pixels and pixels outside the detected plate are excluded. Geometry,
+causal mask smoothing and fold voting use those corrected coordinates.
+
+This toggle compares segmentation backends, not two different fold state
+machines. Both use the existing experimental geometry and fold rules; it
+does not inherit the separate `fold-student` command's plate-free state
+machine or its reported agreement. Plate detection is still required.
+Confidence remains vote support, not calibrated ONNX confidence. ONNX masks
+do not use the classical warmth or arm-occlusion gates; a tool hiding food
+can change the detected area and fold estimate. No accuracy gain is implied
+by changing the backend.
+
 ## Integration status
 
 This offline analysis lives in `maus_export.experimental_fold`. It does not

@@ -18,6 +18,8 @@ page per question.
 
 ## Vision and frames
 
+- [Vision pipeline](vision/vision-pipeline.md): the whole vision stack on one
+  page, from raw frames and videos to failure insight, with links per stage
 - [Frame-level check dataset](vision/frames.md): one row per camera check frame
   with weak labels and the fixed split
 - [Frame embeddings](vision/frame-embeddings.md): the cached embedder output the

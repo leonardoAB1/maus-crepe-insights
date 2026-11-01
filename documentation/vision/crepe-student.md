@@ -74,6 +74,65 @@ Whole videos (live): a run with a too small spread now goes empty, flat,
 half, quarter instead of staying empty; a run whose folds failed stays flat
 through the fold phase, which is what happened on the plate.
 
+## Position and angle
+
+`maus_export.crepe_pose` turns the student mask into the geometry the spatula
+needs. The mask is warped with the robot's image correction into the
+corrected top view (the view of the robot's own check overlays) and measured
+against the calibrated hotplate circle. Conventions follow
+`overlay_pose`: positions in plate (zone) radii from its centre, x right,
+y down; angles in image degrees, `atan2(dy, dx)`, so -90 points up.
+
+| Field | Meaning |
+|---|---|
+| `dx_rel`, `dy_rel` | centre of the crêpe |
+| `diameter_rel` | equivalent diameter in plate diameters |
+| `axis_deg` | principal axis, +-90 (meaningless for a round crêpe) |
+| `edge_deg`, `edge_mid_*`, `edge_len_rel` | the fold line: the longest straight hull edge |
+| `heading_deg` | from the fold line (a quarter: its corner) to the centre |
+| `corner_*`, `corner_deg` | where a quarter's two edges meet, and their angle |
+
+`fold-student` writes these columns into every live timeline row with a
+crêpe. `pixi run -e ml fold-student-pose` scores them at the check frames
+against the robot's own overlay measurement (`overlay-pose`, run it first):
+
+| Check | Frames | Centre error, median / p90 | Axis error, median / p90 |
+|---|---|---|---|
+| fold1 (half) | 131 | 0.023 / 0.034 plate radii | 1.1 / 2.6 deg |
+| fold2 (quarter) | 129 | 0.030 / 0.056 plate radii | 1.6 / 7.4 deg |
+| spread (flat) | 153 | 0.013 / 0.044 plate radii | no meaning (round) |
+
+The fold line is found on every passed fold1 frame. A quarter corner is
+found on 84 % of passed fold2 frames, median 82 deg (10th to 90th
+percentile 71 to 88). The corner search only runs when the state is
+quarter: a half disc's chord and arc can look like a corner.
+
+![Student pose in the top view](../../assets/crepe-pose-example.jpg)
+
+Limits: the reference is the robot's own outline, not a human measurement;
+positions are in plate radii, no millimetre scale is published; a crêpe
+hanging over the plate rim and the robot's mean image correction per robot
+both shift the centre a little.
+
+## One video with every model
+
+`pixi run -e ml fold-all-live --ids <run> [--plates <parquet>]` renders a
+run video at 10 frames per second with every vision model, laid out by the
+three challenge tasks: the raw frame with the student mask and the robot's
+logged check results, the top view with the pose drawn, and one panel per
+task (spread quality from the `check-verdict` spread head and the
+`failure-reason` too-small head; centre, axis and heading; student state,
+`fold-class` head with its probability, fold edge and corner angle and the
+fold1 or fold2 verdict head). A check head is only read on frames of the
+state its check expects and its last value is held. Output:
+`fold_segmentation/all/<run>/annotated.mp4` and `frames.csv`.
+
+`--plates` takes per-run plate ellipses in raw frame pixels (run_id, cx,
+cy, w, h, angle). With one, the top view is an affine map of that ellipse
+to a circle; without, the robot's mean image correction is used, which does
+not fit runs recorded before the camera setup of mid-October. The frame
+heads were trained on check stills, so between checks they are unvalidated.
+
 ## Against human labels
 
 `pixi run -e ml fold-student-human --labels <folder>` compares the student

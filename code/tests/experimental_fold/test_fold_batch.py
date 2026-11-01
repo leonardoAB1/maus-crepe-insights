@@ -41,7 +41,11 @@ def test_parallel_workers_continue_after_failure(tmp_path, monkeypatch):
 
     def analyse(root, run_id, **kwargs):
         assert root == tmp_path
-        assert kwargs == {"replace": True, "analysis_fps": 5}
+        assert kwargs == {
+            "replace": True,
+            "analysis_fps": 5,
+            "model": "classical",
+        }
         with lock:
             calls.append(run_id)
         barrier.wait()  # two simultaneous workers, twice
@@ -104,6 +108,8 @@ def test_cli_threads_and_failure_exit(tmp_path, monkeypatch, failed):
             "threads": 3,
             "analysis_fps": 5.0,
             "replace": True,
+            "model": "classical",
+            "run_ids": None,
         }
         return {
             "total": 1,
@@ -136,6 +142,28 @@ def test_cli_threads_and_failure_exit(tmp_path, monkeypatch, failed):
         assert error.value.code == 1
     else:
         main()
+
+
+def test_selected_onnx_video_does_not_reuse_classical_outputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for run_id in (1, 2):
+        cached_run(tmp_path, run_id)
+    output = tmp_path / "fold_segmentation/live/2"
+    output.mkdir(parents=True)
+    for name in OUTPUT_FILES:
+        (output / name).write_bytes(b"classical")
+    calls = []
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_batch.analyse_video",
+        lambda root, run_id, **kwargs: (
+            calls.append((run_id, kwargs["model"])) or {"frames": 1}
+        ),
+    )
+    result = run_batch(tmp_path, model="onnx", run_ids=[2])
+    assert result["completed"] == 1
+    assert calls == [(2, "onnx")]
+    assert (output / "timeline.csv").read_bytes() == b"classical"
 
 
 def test_missing_dataset_and_empty_dataset(tmp_path):

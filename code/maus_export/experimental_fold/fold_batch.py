@@ -6,6 +6,7 @@ import math
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
+from .fold_backend import analysis_root
 from .fold_video import DEFAULT_ANALYSIS_FPS, analyse_video
 
 OUTPUT_FILES = (
@@ -36,6 +37,8 @@ def run_batch(
     threads: int = 1,
     analysis_fps: float = DEFAULT_ANALYSIS_FPS,
     replace: bool = False,
+    model: str = "classical",
+    run_ids: list[int] | None = None,
 ) -> dict[str, int]:
     """Process every cached video, resuming by skipping complete artifacts.
 
@@ -50,11 +53,16 @@ def run_batch(
     data_dir = data_dir.resolve()
     if not (data_dir / "raw" / "runs").is_dir():
         raise ValueError("Data directory must contain raw/runs")
+    output_root = analysis_root(data_dir, model)
     runs = discover_runs(data_dir)
+    if run_ids is not None:
+        if not set(run_ids).issubset(runs):
+            raise ValueError("Requested video is not cached")
+        runs = sorted(set(run_ids))
     totals = {"total": len(runs), "completed": 0, "skipped": 0, "failed": 0}
     pending = []
     for run_id in runs:
-        output = data_dir / "fold_segmentation" / "live" / str(run_id)
+        output = output_root / str(run_id)
         if not replace and all(
             (output / name).is_file() for name in OUTPUT_FILES
         ):
@@ -79,6 +87,7 @@ def run_batch(
                     run_id,
                     replace=True,
                     analysis_fps=analysis_fps,
+                    model=model,
                 )
                 active[future] = run_id
 

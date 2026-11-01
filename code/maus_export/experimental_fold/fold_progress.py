@@ -8,14 +8,22 @@ import tempfile
 import time
 from pathlib import Path
 
+from .fold_backend import analysis_root
+
+
+def _progress_directory(data_dir: Path, model: str) -> Path:
+    root = analysis_root(data_dir, model)
+    name = "progress" if model == "classical" else "progress-onnx"
+    return root.parent / name
+
 
 class VideoProgress:
     """Report end-to-end throughput (including decoding and output writes)."""
 
-    def __init__(self, data_dir: Path, run_id: int) -> None:
-        self.path = (
-            data_dir / "fold_segmentation" / "progress" / f"{run_id}.json"
-        )
+    def __init__(
+        self, data_dir: Path, run_id: int, *, model: str = "classical"
+    ) -> None:
+        self.path = _progress_directory(data_dir, model) / f"{run_id}.json"
         self.started = time.perf_counter()
         self.last_write = float("-inf")
         self.value = {
@@ -57,10 +65,10 @@ class VideoProgress:
         self.last_write = now
 
 
-def read_progress(data_dir: Path) -> list[dict]:
+def read_progress(data_dir: Path, model: str = "classical") -> list[dict]:
     """Skip corrupt snapshots without breaking dashboard polling."""
     result = []
-    directory = data_dir / "fold_segmentation" / "progress"
+    directory = _progress_directory(data_dir, model)
     for path in sorted(directory.glob("*.json")):
         if not path.stem.isdecimal():
             continue

@@ -33,6 +33,13 @@ def test_progress_metrics_and_completion(tmp_path, monkeypatch):
     assert not list(progress.path.parent.glob(".progress-*"))
 
 
+def test_models_keep_progress_separate(tmp_path: Path) -> None:
+    VideoProgress(tmp_path, 1).update(force=True, state="completed")
+    VideoProgress(tmp_path, 1, model="onnx").update(force=True, state="running")
+    assert read_progress(tmp_path)[0]["state"] == "completed"
+    assert read_progress(tmp_path, "onnx")[0]["state"] == "running"
+
+
 def test_stale_and_corrupt_progress(tmp_path):
     progress = VideoProgress(tmp_path, 1)
     value = json.loads(progress.path.read_text())
