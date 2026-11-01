@@ -65,10 +65,12 @@ launch a separate runner for the same run ID concurrently.
 To watch processing live, leave `pixi run fold-dashboard --data-dir "$DATA"`
 running in one terminal and start `fold-batch`, `fold-live`, or `fold-live-eval`
 in another,
-using the same absolute data directory. The **Pipeline processing** panel polls
-once per second and shows each run's sampled frames completed, estimated total,
-video completion percentage, average frames/second, seconds/frame, elapsed time,
-and estimated remaining time. Speed is end-to-end wall-clock throughput of
+using the same absolute data directory. The sidebar shows a small loading circle
+on processing runs and a warning for failed or stale runs. Select any run,
+including one still processing, to see its progress bar directly below the
+video. Only that selected run's sampled frames completed, estimated total,
+completion percentage, average frames/second, seconds/frame, elapsed time, and
+estimated remaining time are shown. Status refreshes once per second. Speed is end-to-end wall-clock throughput of
 **analysed frames**, not source FPS or inference-only timing; final artifact
 creation is included. ETA is approximate and excludes finalization. Completed
 videos appear automatically in the run list.

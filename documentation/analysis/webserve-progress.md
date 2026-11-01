@@ -25,5 +25,18 @@
 - Offline tests cover numeric discovery, missing videos, two simultaneous
   workers, continuing after failure, skip/retry/replace, option validation and
   CLI argument forwarding / nonzero failure exit. No new dependencies.
-- No production batch was launched: full annotated exports can consume large
-  amounts of disk space; users choose the worker count when running locally.
+- No production batch was launched during implementation: full annotated
+  exports can consume large amounts of disk space. Subsequently, at the user's
+  request, the dashboard and batch were started with one worker.
+
+## Selected-run progress layout
+
+- Removed the all-jobs progress panel, which grew with hundreds of snapshots.
+  Processing runs now have sidebar spinners; failed/stale jobs have warnings.
+- Placed a single progress bar and speed/ETA details below the selected video.
+  In-progress runs are selectable before output exists and load their finished
+  video automatically. Other completions do not interrupt selected playback.
+- Made the sidebar independently scrollable and kept the main view top-aligned.
+- Offline Node DOM-stub test exercises 500 sidebar entries, a single detail bar,
+  preserved button identity, active-run selection, stale warnings and automatic
+  selected-video loading on completion. Syntax and HTTP route tests also pass.

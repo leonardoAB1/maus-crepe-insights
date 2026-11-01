@@ -8,8 +8,18 @@
 :root {color-scheme: dark; font-family: Inter, system-ui, sans-serif;
   background: #0a0f1d; color: #e8edf8}
 * {box-sizing: border-box} body {margin: 0} button {font: inherit}
-.layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh}
-aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828}
+.layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh;
+  align-items: start}
+aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto}
+.run-heading {display: flex; align-items: center; justify-content: space-between; gap: 8px}
+.spinner {width: 15px; height: 15px; border: 2px solid #344864;
+  border-top-color: #8cb9ff; border-radius: 50%; animation: spin .8s linear infinite;
+  flex-shrink: 0}
+@keyframes spin {to {transform: rotate(360deg)}}
+@media(prefers-reduced-motion: reduce) {.spinner {animation: none; border-style: dotted}}
+#progress {margin-top: 14px} #progress:empty {display: none}
+#progress progress {display: block; width: 100%; margin-top: 8px; accent-color: #8cb9ff}
 .brand {font-weight: 800; letter-spacing: -.04em; font-size: 24px}
 .eyebrow {color: #8294b1; font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .12em; margin: 30px 0 12px}
@@ -17,7 +27,7 @@ aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828}
   border: 1px solid #28374d; border-radius: 12px; color: #e9efff; background: #18243a;
   cursor: pointer} .run:hover, .run.active {border-color: #77a5ff; background: #213455}
 .sub {display: block; margin-top: 5px; font-size: 12px; color: #a2b2c9}
-main {padding: 34px clamp(20px,4vw,60px); max-width: 1600px; width: 100%; margin: auto}
+main {padding: 34px clamp(20px,4vw,60px); max-width: 1600px; width: 100%; margin: 0 auto}
 header {display: flex; align-items: end; justify-content: space-between; gap: 16px}
 h1 {font-size: clamp(26px,3vw,38px); margin: 5px 0; letter-spacing: -.04em}
 h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
@@ -36,12 +46,13 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 .notice {border: 1px solid #6b5634; color: #efcc83; padding: 12px;
   border-radius: 10px; font-size: 13px; margin-top: 20px}
 @media(max-width: 850px) {.layout {grid-template-columns: 1fr} aside {border-right: 0;
-  border-bottom: 1px solid #263247} .grid {grid-template-columns: 1fr} main {padding: 25px}}
+  border-bottom: 1px solid #263247; position: static; height: auto; max-height: 35vh} .grid {grid-template-columns: 1fr} main {padding: 25px}}
 </style>
 </head>
 <body>
 <div class="layout"><aside><div class="brand">◒ Fold insights</div>
-<div class="sub">Local video review</div><div class="eyebrow">Analysed runs</div>
+<div class="sub">Local video review</div><div class="eyebrow">Runs</div>
+<div id="connection" class="sub" role="status"></div>
 <div id="runs"><span class="muted">Loading videos...</span></div></aside>
 <main><header><div><div class="eyebrow" style="margin:0">Vision analysis</div>
 <h1 id="title">Run overview</h1><p>Review logged checks and visual estimates.</p></div>
@@ -49,12 +60,9 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 <div class="notice">Experimental estimates, not ground truth or robot control.
 Robot verdicts can be wrong. Checks are shown after the robot tries each action;
 exact fold movement times are not logged. Video may contain people.</div>
-<section class="card chart" aria-live="polite"><h2>Pipeline processing</h2>
-<p class="sub">End-to-end speed in analysed frames (not source video FPS). Includes decoding,
-overlays and output writes. Refreshes every second.</p>
-<div id="progress">Waiting for runner status…</div></section>
 <div class="grid"><div><section class="card"><h2>Playback</h2>
 <video id="video" controls preload="metadata"></video>
+<div id="progress" aria-live="polite"></div>
 <p class="sub">Overlay: <span style="color:#50d25f">green mask</span> ·
 <span style="color:#46c8eb">plate</span> ·
 <span style="color:#ffd21e">fold edges</span> ·
@@ -96,6 +104,10 @@ function legend() {
 const video = document.querySelector('#video');
 const canvas = document.querySelector('#chart');
 let selected = null;
+let selectedId = null;
+let cachedRuns = new Map();
+let progressJobs = new Map();
+const runButtons = new Map();
 function textNode(tag, text, cls) {
   const el = document.createElement(tag); el.textContent = text;
   if (cls) el.className = cls; return el;
@@ -178,9 +190,25 @@ canvas.addEventListener('click', event => {
 video.addEventListener('timeupdate', draw); video.addEventListener('loadedmetadata', draw);
 window.addEventListener('resize', draw);
 async function showRun(id) {
-  const response = await fetch('/api/run/' + id); if (!response.ok) return;
-  selected = await response.json(); document.querySelector('#title').textContent = 'Run ' + id;
-  video.src = '/video/' + id; const events = document.querySelector('#events');
+  selectedId = id;
+  selected = null;
+  document.querySelector('#title').textContent = 'Run ' + id;
+  video.removeAttribute('src'); video.load();
+  const events = document.querySelector('#events');
+  events.textContent = 'Video and checks will be available after processing completes.';
+  renderSidebar(); renderProgress(); draw();
+  if (!cachedRuns.has(id)) return;
+  try {
+    const response = await fetch('/api/run/' + id);
+    if (!response.ok) throw new Error('Run unavailable');
+    const detail = await response.json();
+    if (selectedId !== id) return;
+    selected = detail;
+  } catch (_) {
+    if (selectedId === id) events.textContent = 'Could not load this run. Select it to retry.';
+    return;
+  }
+  video.src = '/video/' + id;
   events.replaceChildren();
   for (const event of selected.events) {
     const button = textNode('button', event.name.replaceAll('_', ' '), 'event');
@@ -202,61 +230,109 @@ async function showRun(id) {
   legend();
   draw();
 }
-async function init() {
+function isProcessing(job) {
+  return job && ['starting', 'running', 'finalizing'].includes(job.state);
+}
+function renderSidebar() {
   const container = document.querySelector('#runs');
-  try {
-    const runs = await (await fetch('/api/runs')).json(); container.replaceChildren();
-    if (!runs.length) {container.textContent = 'No analysed videos yet.'; return;}
-    for (const run of runs) {
+  const ids = [...new Set([...cachedRuns.keys(), ...progressJobs.keys()])].sort((a, b) => a - b);
+  const visibleIds = new Set(ids);
+  for (const [id, button] of runButtons) {
+    if (!visibleIds.has(id)) {button.remove(); runButtons.delete(id);}
+  }
+  if (!ids.length) {container.textContent = 'No analysed videos or active runners yet.'; return;}
+  if (!runButtons.size) container.replaceChildren();
+  for (const id of ids) {
+    let button = runButtons.get(id);
+    if (!button) {
+      button = textNode('button', '', 'run'); button.dataset.id = id;
+      button.onclick = () => showRun(id);
+      runButtons.set(id, button);
+    }
+    button.classList.toggle('active', id === selectedId);
+    button.setAttribute('aria-pressed', String(id === selectedId));
+    const run = cachedRuns.get(id), job = progressJobs.get(id);
+    const heading = textNode('span', '', 'run-heading');
+    heading.append(textNode('span', 'Run ' + id));
+    if (isProcessing(job) && !job.stale) {
+      const spinner = textNode('span', '', 'spinner');
+      spinner.setAttribute('role', 'status');
+      spinner.setAttribute('aria-label', 'Processing');
+      heading.append(spinner);
+    } else if (job && (job.stale || job.state === 'failed')) {
+      const warning = textNode('span', '!', 'fail');
+      warning.title = job.stale ? 'No recent runner update' : 'Processing failed';
+      heading.append(warning);
+    }
+    button.replaceChildren(heading);
+    if (run) {
       const failures = run.events.filter(event => event.ok === false).length;
-      const button = textNode('button', 'Run ' + run.id, 'run'); button.dataset.id = run.id;
       button.append(textNode('span', failures ? failures + ' robot-reported failures' :
         'No reported failures', failures ? 'sub fail' : 'sub muted'));
       button.append(textNode('span', run.dispense_ok === true ? 'Dough: stable' :
         run.dispense_ok === false ? 'Dough: flagged' : 'Dough: not measured',
         run.dispense_ok === false ? 'sub fail' : 'sub muted'));
-      button.onclick = () => showRun(run.id); container.append(button);
     }
-    if (!selected) showRun(runs[0].id);
-    else document.querySelectorAll('.run').forEach(el =>
-      el.classList.toggle('active', el.dataset.id == selected.id));
-  } catch (_) {container.textContent = 'Could not load local videos.';}
+  }
+  // Keep existing buttons in place while polling to preserve scroll and focus.
+  ids.forEach((id, index) => {
+    const button = runButtons.get(id);
+    if (container.children[index] !== button)
+      container.insertBefore(button, container.children[index] || null);
+  });
+}
+function renderProgress() {
+  const container = document.querySelector('#progress');
+  container.replaceChildren();
+  const job = progressJobs.get(selectedId);
+  if (!job) return;
+  const seconds = value => value == null ? '—' : value.toFixed(2) + ' s';
+  container.append(textNode('strong', 'Processing: ' + job.state +
+    (job.stale ? ' · no recent update (runner may have stopped)' : ''),
+    job.state === 'failed' ? 'fail' : ''));
+  const bar = document.createElement('progress');
+  bar.max = 1; bar.value = job.fraction;
+  bar.setAttribute('aria-label', 'Run ' + job.id + ' processing completion');
+  container.append(bar);
+  container.append(textNode('div', (100 * job.fraction).toFixed(1) + '% · ' +
+    job.frames_done + ' / ' + (job.frames_total ?? '—') + ' frames (estimated total)' +
+    ' · ' + (job.fps == null ? '—' : job.fps.toFixed(2)) + ' frames/s' +
+    ' · ' + seconds(job.seconds_per_frame) + '/frame' +
+    ' · elapsed ' + seconds(job.elapsed_seconds) + ' · ETA ' + seconds(job.eta_seconds) +
+    (job.error ? ' · ' + job.error : ''), 'sub'));
+  container.append(textNode('span', 'End-to-end analysed-frame speed, not source video FPS.', 'sub'));
+}
+async function refreshRuns() {
+  const response = await fetch('/api/runs');
+  if (!response.ok) throw new Error('Runs unavailable');
+  cachedRuns = new Map((await response.json()).map(run => [run.id, run]));
 }
 let completedRuns = null;
 async function pollProgress() {
-  const container = document.querySelector('#progress');
+  const connection = document.querySelector('#connection');
   try {
     const response = await fetch('/api/progress');
     if (!response.ok) throw new Error('Progress unavailable');
     const jobs = await response.json();
-    container.replaceChildren();
-    if (!jobs.length) container.textContent = 'No runner status yet. Start fold-live in another terminal.';
-    const seconds = value => value == null ? '—' : value.toFixed(1) + ' s';
-    for (const job of jobs) {
-      const card = textNode('div', '', 'chart');
-      card.append(textNode('strong', 'Run ' + job.id + ' · ' + job.state +
-        (job.stale ? ' · no recent update (runner may have stopped)' : ''),
-        job.state === 'failed' ? 'fail' : ''));
-      const bar = document.createElement('progress');
-      bar.max = 1; bar.value = job.fraction; bar.style.width = '100%';
-      bar.setAttribute('aria-label', 'Run ' + job.id + ' processing completion');
-      card.append(bar);
-      card.append(textNode('div', (100 * job.fraction).toFixed(1) + '% · ' +
-        job.frames_done + ' / ' + (job.frames_total ?? '—') + ' frames (estimated total)' +
-        ' · ' + (job.fps == null ? '—' : job.fps.toFixed(2)) + ' frames/s' +
-        ' · ' + seconds(job.seconds_per_frame) + '/frame' +
-        ' · elapsed ' + seconds(job.elapsed_seconds) +
-        ' · ETA ' + seconds(job.eta_seconds) +
-        (job.error ? ' · ' + job.error : ''), 'sub'));
-      container.append(card);
-    }
+    const previous = progressJobs.get(selectedId);
+    progressJobs = new Map(jobs.map(job => [job.id, job]));
     const completed = jobs.filter(job => job.state === 'completed').map(job =>
       job.id + ':' + job.updated_at).join(',');
-    if (completedRuns !== null && completed !== completedRuns) await init();
+    if (completedRuns === null || completed !== completedRuns) await refreshRuns();
     completedRuns = completed;
-  } catch (_) {container.textContent = 'Progress connection lost; retrying…';}
+    connection.textContent = '';
+    renderSidebar(); renderProgress();
+    const current = progressJobs.get(selectedId);
+    if (selectedId === null) {
+      const active = jobs.find(job => isProcessing(job) && !job.stale);
+      const first = active ? active.id : cachedRuns.keys().next().value ?? jobs[0]?.id;
+      if (first != null) await showRun(first);
+    } else if (current?.state === 'completed' &&
+        (previous?.state !== 'completed' || previous.updated_at !== current.updated_at)) {
+      await showRun(selectedId);
+    }
+  } catch (_) {connection.textContent = 'Connection lost; retrying…';}
   finally {setTimeout(pollProgress, 1000);}
 }
-init();
 pollProgress();
 </script></body></html>
