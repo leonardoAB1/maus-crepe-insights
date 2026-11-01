@@ -104,6 +104,31 @@ const setTimeout = () => {};
   progressJobs.get(2).stale = true;
   renderSidebar();
   assert.equal(runButtons.get(2).children[0].children[1].textContent, '!');
+  // Failed jobs leave the regular list and explain the exception.
+  const job = progressJobs.get(2);
+  job.state = 'failed'; job.stale = false;
+  job.error = 'FileNotFoundError'; job.error_message = 'Video not found';
+  renderSidebar(); renderProgress();
+  const failedSection = document.querySelector('#failed-section');
+  const failedList = document.querySelector('#failed-runs');
+  assert.equal(sidebar.children.length, 499);
+  assert.equal(failedList.children.length, 1);
+  assert.equal(failedSection.hidden, false);
+  assert.equal(document.querySelector('#failed-summary').textContent,
+    'Failed runs (1)');
+  assert.match(failedList.textContent, /FileNotFoundError: Video not found/);
+  assert.match(panel.textContent, /FileNotFoundError: Video not found/);
+  failedSection.open = true;
+  renderSidebar();
+  assert.equal(failedSection.open, true); // polling preserves expansion
+  delete job.error_message;
+  renderSidebar();
+  assert.match(failedList.textContent, /no detailed message recorded/);
+  job.state = 'running';
+  renderSidebar();
+  assert.equal(failedSection.hidden, true);
+  assert.equal(failedList.children.length, 0);
+  assert.equal(sidebar.children.length, 500);
   // Completion refreshes the run list and loads the selected video's output.
   const completed = {...progressJobs.get(2), stale: false,
     state: 'completed', updated_at: 2};

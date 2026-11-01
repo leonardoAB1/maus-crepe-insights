@@ -44,6 +44,7 @@ def test_runner_publishes_failure(tmp_path: Path):
     value = read_progress(tmp_path)[0]
     assert value["state"] == "failed"
     assert value["error"] == "FileNotFoundError"
+    assert "No such file or directory" in value["error_message"]
 
 
 def test_runner_publishes_completion(tmp_path, monkeypatch):

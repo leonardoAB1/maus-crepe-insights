@@ -66,7 +66,11 @@ To watch processing live, leave `pixi run fold-dashboard --data-dir "$DATA"`
 running in one terminal and start `fold-batch`, `fold-live`, or `fold-live-eval`
 in another,
 using the same absolute data directory. The sidebar shows a small loading circle
-on processing runs and a warning for failed or stale runs. Select any run,
+on processing runs and a warning for stale runs. Processing failures move to a
+collapsed **Failed runs** section at the bottom, with an exception type and
+message. Older snapshots show the exception type and note when no detailed
+message was recorded; updated runners record both. Robot-reported failed checks
+do not move an otherwise successfully processed video into this section. Select any run,
 including one still processing, to see its progress bar directly below the
 video. Only that selected run's sampled frames completed, estimated total,
 completion percentage, average frames/second, seconds/frame, elapsed time, and

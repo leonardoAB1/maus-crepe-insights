@@ -57,7 +57,12 @@ def analyse_video(
             progress=progress,
         )
     except BaseException as error:
-        progress.update(force=True, state="failed", error=type(error).__name__)
+        progress.update(
+            force=True,
+            state="failed",
+            error=type(error).__name__,
+            error_message=str(error),
+        )
         raise
     progress.update(force=True, state="completed", fraction=1.0)
     return result

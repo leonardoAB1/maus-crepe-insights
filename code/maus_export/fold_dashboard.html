@@ -23,7 +23,11 @@ aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828;
 .brand {font-weight: 800; letter-spacing: -.04em; font-size: 24px}
 .eyebrow {color: #8294b1; font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .12em; margin: 30px 0 12px}
-#runs {display: grid; gap: 8px} .run {text-align: left; width: 100%; padding: 14px;
+#runs, #failed-runs {display: grid; gap: 8px}
+#failed-section {margin-top: 24px}
+#failed-section summary {cursor: pointer; color: #ff8b95; padding: 10px 0}
+.failure-reason {overflow-wrap: anywhere}
+ .run {text-align: left; width: 100%; padding: 14px;
   border: 1px solid #28374d; border-radius: 12px; color: #e9efff; background: #18243a;
   cursor: pointer} .run:hover, .run.active {border-color: #77a5ff; background: #213455}
 .sub {display: block; margin-top: 5px; font-size: 12px; color: #a2b2c9}
@@ -53,7 +57,9 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 <div class="layout"><aside><div class="brand">◒ Fold insights</div>
 <div class="sub">Local video review</div><div class="eyebrow">Runs</div>
 <div id="connection" class="sub" role="status"></div>
-<div id="runs"><span class="muted">Loading videos...</span></div></aside>
+<div id="runs"><span class="muted">Loading videos...</span></div>
+<details id="failed-section" hidden><summary id="failed-summary">Failed runs</summary>
+<div id="failed-runs"></div></details></aside>
 <main><header><div><div class="eyebrow" style="margin:0">Vision analysis</div>
 <h1 id="title">Run overview</h1><p>Review logged checks and visual estimates.</p></div>
 <span class="pill">Local data only</span></header>
@@ -233,15 +239,24 @@ async function showRun(id) {
 function isProcessing(job) {
   return job && ['starting', 'running', 'finalizing'].includes(job.state);
 }
+function failureReason(job) {
+  const type = job.error || 'Processing error';
+  return job.error_message ? type + ': ' + job.error_message :
+    type + ' (no detailed message recorded)';
+}
 function renderSidebar() {
   const container = document.querySelector('#runs');
+  const failedContainer = document.querySelector('#failed-runs');
   const ids = [...new Set([...cachedRuns.keys(), ...progressJobs.keys()])].sort((a, b) => a - b);
   const visibleIds = new Set(ids);
   for (const [id, button] of runButtons) {
     if (!visibleIds.has(id)) {button.remove(); runButtons.delete(id);}
   }
-  if (!ids.length) {container.textContent = 'No analysed videos or active runners yet.'; return;}
-  if (!runButtons.size) container.replaceChildren();
+  const failedIds = ids.filter(id => progressJobs.get(id)?.state === 'failed');
+  const regularIds = ids.filter(id => progressJobs.get(id)?.state !== 'failed');
+  document.querySelector('#failed-section').hidden = failedIds.length === 0;
+  document.querySelector('#failed-summary').textContent = 'Failed runs (' + failedIds.length + ')';
+  if (!container.children.length || !runButtons.size) container.replaceChildren();
   for (const id of ids) {
     let button = runButtons.get(id);
     if (!button) {
@@ -265,6 +280,9 @@ function renderSidebar() {
       heading.append(warning);
     }
     button.replaceChildren(heading);
+    if (job?.state === 'failed') {
+      button.append(textNode('span', failureReason(job), 'sub fail failure-reason'));
+    }
     if (run) {
       const failures = run.events.filter(event => event.ok === false).length;
       button.append(textNode('span', failures ? failures + ' robot-reported failures' :
@@ -275,11 +293,14 @@ function renderSidebar() {
     }
   }
   // Keep existing buttons in place while polling to preserve scroll and focus.
-  ids.forEach((id, index) => {
-    const button = runButtons.get(id);
-    if (container.children[index] !== button)
-      container.insertBefore(button, container.children[index] || null);
-  });
+  for (const [target, group] of [[container, regularIds], [failedContainer, failedIds]]) {
+    group.forEach((id, index) => {
+      const button = runButtons.get(id);
+      if (target.children[index] !== button)
+        target.insertBefore(button, target.children[index] || null);
+    });
+  }
+  if (!regularIds.length) container.textContent = 'No analysed videos or active runners yet.';
 }
 function renderProgress() {
   const container = document.querySelector('#progress');
@@ -299,7 +320,7 @@ function renderProgress() {
     ' · ' + (job.fps == null ? '—' : job.fps.toFixed(2)) + ' frames/s' +
     ' · ' + seconds(job.seconds_per_frame) + '/frame' +
     ' · elapsed ' + seconds(job.elapsed_seconds) + ' · ETA ' + seconds(job.eta_seconds) +
-    (job.error ? ' · ' + job.error : ''), 'sub'));
+    (job.state === 'failed' ? ' · ' + failureReason(job) : ''), 'sub'));
   container.append(textNode('span', 'End-to-end analysed-frame speed, not source video FPS.', 'sub'));
 }
 async function refreshRuns() {

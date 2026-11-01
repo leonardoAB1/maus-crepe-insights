@@ -40,3 +40,18 @@
 - Offline Node DOM-stub test exercises 500 sidebar entries, a single detail bar,
   preserved button identity, active-run selection, stale warnings and automatic
   selected-video loading on completion. Syntax and HTTP route tests also pass.
+
+## Collapsible processing failures
+
+- Moved processing failures into a native, initially collapsed `Failed runs`
+  section at the bottom of the sidebar, with a count and inline exception.
+  Expansion survives polling; retries move runs back to the normal list.
+- New runner failures record the exception message as well as its class.
+  Existing type-only snapshots explicitly say no detailed message was recorded.
+  Failure details use text nodes rather than HTML interpolation.
+- Extended the offline DOM test for failure grouping, messages, fallback for old
+  snapshots, preserved expansion and retries; runner tests assert captured
+  file-not-found messages. All 20 targeted tests passed.
+- The live dashboard serves updated HTML without restarting the active batch.
+  The already-running runner retains its old exception-type-only reporting
+  until restarted; new invocations record full messages.
