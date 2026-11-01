@@ -32,6 +32,34 @@ it.
   [private phase pilot](documentation/labeling/phase-labeling-pilot.md) and
   [material and hole masks](documentation/labeling/mask-labeling.md)
 - Fine-tuning against predictions: [project status](documentation/status.md)
+- How far each challenge task got:
+  [challenge coverage](documentation/status.md#brief-coverage)
+
+## The challenge: three tasks
+
+Maus's brief, "Recognize Crêpes": build a vision model that turns one camera frame of the hotplate into
+decisions for the spread, fold 1, fold 2 and push-off checks.
+
+| # | Task | Question | Output |
+|---|------|----------|--------|
+| 1 | **Spread quality** | Is the batter even and round? Find thin spots, holes and ragged edges | Crêpe mask, diameter, quality score |
+| 2 | **Position & orientation** | Where exactly is the crêpe on the rotating hotplate? | Centre (x, y) and angle, precise enough for the spatula |
+| 3 | **Fold detection** | Flat, folded in half, in quarters or into a triangle? | Fold class + confidence, edge angle to align with the plate |
+
+What makes it hard: steam, varying browning, shiny steel, a rotating plate, overlapping edges, changing
+room light, and it must run in real time.
+
+How results are scored:
+
+- **Level 1, works on Maus data:** model + notebook scored on frames from the API, compared with the
+  robot's own verdicts
+- **Level 2, works in real time:** under ~300 ms per frame on a Raspberry Pi 5 CPU, robust to steam and
+  light changes
+- **Bonus:** auto-labelling from run videos, a spread score that predicts a failed fold, detecting the
+  crêpe while the plate rotates
+
+Task by task, with what exists and what is missing:
+[challenge coverage](documentation/status.md#brief-coverage).
 
 ## Where the project stands
 
@@ -231,7 +259,7 @@ code/            Python tooling (maus_export) + models
   tests/
 documentation/   data description, MCAP format, diagrams
   diagrams/      Mermaid sources shared by the docs and this readme
-assets/          slides, videos, images for the pitch
+assets/          example images used in the readme and the pitch
 data/            local exports (gitignored, never committed)
 ```
 
