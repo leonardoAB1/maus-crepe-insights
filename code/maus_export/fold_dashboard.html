@@ -49,6 +49,10 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 <div class="notice">Experimental estimates, not ground truth or robot control.
 Robot verdicts can be wrong. Checks are shown after the robot tries each action;
 exact fold movement times are not logged. Video may contain people.</div>
+<section class="card chart" aria-live="polite"><h2>Pipeline processing</h2>
+<p class="sub">End-to-end speed in analysed frames (not source video FPS). Includes decoding,
+overlays and output writes. Refreshes every second.</p>
+<div id="progress">Waiting for runner status…</div></section>
 <div class="grid"><div><section class="card"><h2>Playback</h2>
 <video id="video" controls preload="metadata"></video>
 <p class="sub">Overlay: <span style="color:#50d25f">green mask</span> ·
@@ -213,8 +217,46 @@ async function init() {
         run.dispense_ok === false ? 'sub fail' : 'sub muted'));
       button.onclick = () => showRun(run.id); container.append(button);
     }
-    showRun(runs[0].id);
+    if (!selected) showRun(runs[0].id);
+    else document.querySelectorAll('.run').forEach(el =>
+      el.classList.toggle('active', el.dataset.id == selected.id));
   } catch (_) {container.textContent = 'Could not load local videos.';}
 }
+let completedRuns = null;
+async function pollProgress() {
+  const container = document.querySelector('#progress');
+  try {
+    const response = await fetch('/api/progress');
+    if (!response.ok) throw new Error('Progress unavailable');
+    const jobs = await response.json();
+    container.replaceChildren();
+    if (!jobs.length) container.textContent = 'No runner status yet. Start fold-live in another terminal.';
+    const seconds = value => value == null ? '—' : value.toFixed(1) + ' s';
+    for (const job of jobs) {
+      const card = textNode('div', '', 'chart');
+      card.append(textNode('strong', 'Run ' + job.id + ' · ' + job.state +
+        (job.stale ? ' · no recent update (runner may have stopped)' : ''),
+        job.state === 'failed' ? 'fail' : ''));
+      const bar = document.createElement('progress');
+      bar.max = 1; bar.value = job.fraction; bar.style.width = '100%';
+      bar.setAttribute('aria-label', 'Run ' + job.id + ' processing completion');
+      card.append(bar);
+      card.append(textNode('div', (100 * job.fraction).toFixed(1) + '% · ' +
+        job.frames_done + ' / ' + (job.frames_total ?? '—') + ' frames (estimated total)' +
+        ' · ' + (job.fps == null ? '—' : job.fps.toFixed(2)) + ' frames/s' +
+        ' · ' + seconds(job.seconds_per_frame) + '/frame' +
+        ' · elapsed ' + seconds(job.elapsed_seconds) +
+        ' · ETA ' + seconds(job.eta_seconds) +
+        (job.error ? ' · ' + job.error : ''), 'sub'));
+      container.append(card);
+    }
+    const completed = jobs.filter(job => job.state === 'completed').map(job =>
+      job.id + ':' + job.updated_at).join(',');
+    if (completedRuns !== null && completed !== completedRuns) await init();
+    completedRuns = completed;
+  } catch (_) {container.textContent = 'Progress connection lost; retrying…';}
+  finally {setTimeout(pollProgress, 1000);}
+}
 init();
+pollProgress();
 </script></body></html>

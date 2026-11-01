@@ -70,6 +70,14 @@ def test_analyse_video_writes_timeline_without_seeking(
     writer.release()
     result = analyse_video(tmp_path, 1, analysis_fps=10)
     assert result["frames"] == 20
+    progress = json.loads(
+        (tmp_path / "fold_segmentation" / "progress" / "1.json").read_text()
+    )
+    assert progress["state"] == "completed"
+    assert progress["frames_done"] == progress["frames_total"] == 20
+    assert progress["fraction"] == 1.0
+    assert progress["fps"] > 0
+    assert progress["seconds_per_frame"] > 0
     out = tmp_path / "fold_segmentation" / "live" / "1"
     assert (out / "annotated.mp4").is_file()
     assert (out / "timeline.png").is_file()

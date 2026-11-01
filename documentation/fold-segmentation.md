@@ -33,6 +33,25 @@ The example run ID must be replaced by a locally cached run with a video. The
 live evaluation processes 20 whole videos, so it can take a long time and use
 substantial disk space. Open the local URL printed by the dashboard and select
 an analysed run. Both the graph and check list seek the embedded video.
+
+To watch processing live, leave `pixi run fold-dashboard --data-dir "$DATA"`
+running in one terminal and start `fold-live` (or `fold-live-eval`) in another,
+using the same absolute data directory. The **Pipeline processing** panel polls
+once per second and shows each run's sampled frames completed, estimated total,
+video completion percentage, average frames/second, seconds/frame, elapsed time,
+and estimated remaining time. Speed is end-to-end wall-clock throughput of
+**analysed frames**, not source FPS or inference-only timing; final artifact
+creation is included. ETA is approximate and excludes finalization. Completed
+videos appear automatically in the run list.
+
+Snapshots are atomically published at most twice per second under
+`data/fold_segmentation/progress/<run-id>.json`, separate from the staged output.
+They survive runner exit and include starting/running/finalizing/completed/failed
+states; a retry replaces the previous status. An update older than 30 seconds
+while active is marked as potentially stopped (for example after a forced kill).
+Do not run two workers for the same run ID simultaneously. `/api/progress` is a
+read-only JSON endpoint; the dashboard does not launch jobs or alter robot data.
+
 Each run in the side list also shows its dough-dispensing verdict
 (`Dough: stable`, `Dough: flagged`, or `Dough: not measured` for runs
 without a fresh `summary.json`).
