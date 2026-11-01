@@ -505,3 +505,58 @@ def pose_example(data_dir: Path, out: Path) -> Path:
         "green mask, cyan circle = plate zone, white dot = centre, yellow = "
         "fold edge, magenta arrow = heading, magenta dot = quarter corner",
     )
+
+
+ELLIPSE_TOP_RADIUS = 300
+ELLIPSE_TOP_SIZE = 700
+
+
+def ellipse_matrix(
+    ellipse: tuple[tuple[float, float], tuple[float, float], float],
+    frame_size: tuple[int, int],
+    mask_size: tuple[int, int],
+) -> np.ndarray:
+    """2x3 affine map from a mask to a top view where a plate ellipse,
+    given in frame pixels, becomes a centred circle.
+
+    An affine approximation of the perspective: it keeps area ratios on
+    the plate and image directions, and needs no robot calibration.
+    """
+    (cx, cy), (w, h), angle = ellipse
+    sx = frame_size[0] / mask_size[0]
+    sy = frame_size[1] / mask_size[1]
+    a = np.radians(angle)
+    rot = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+    scale = np.diag([2 * ELLIPSE_TOP_RADIUS / w, 2 * ELLIPSE_TOP_RADIUS / h])
+    linear = rot @ scale @ rot.T @ np.diag([sx, sy])
+    centre = ELLIPSE_TOP_SIZE / 2
+    shift = np.array([centre, centre]) - rot @ scale @ rot.T @ np.array(
+        [cx, cy]
+    )
+    return np.hstack([linear, shift[:, None]])
+
+
+def ellipse_zone() -> Zone:
+    centre = ELLIPSE_TOP_SIZE / 2
+    return Zone(centre, centre, float(ELLIPSE_TOP_RADIUS))
+
+
+def ellipse_top_view(image: np.ndarray, matrix: np.ndarray) -> np.ndarray:
+    """Warp a mask (bool) or a frame into the plate-ellipse top view."""
+    size = (ELLIPSE_TOP_SIZE, ELLIPSE_TOP_SIZE)
+    if image.dtype == bool:
+        warped = cv2.warpAffine(
+            image.astype(np.uint8), matrix, size, flags=cv2.INTER_NEAREST
+        )
+        return warped > 0
+    return cv2.warpAffine(image, matrix, size)
+
+
+def load_plate_ellipses(path: Path) -> dict[int, tuple]:
+    """Per-run plate ellipses in raw frame pixels: a table with run_id,
+    cx, cy, w, h, angle (for example SAM 3 plates)."""
+    table = pd.read_parquet(path)
+    return {
+        int(r.run_id): ((r.cx, r.cy), (r.w, r.h), r.angle)
+        for r in table.itertuples()
+    }
