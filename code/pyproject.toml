@@ -98,7 +98,7 @@ OPENBLAS_NUM_THREADS = "1"
 MKL_NUM_THREADS = "1"
 
 [tool.pixi.feature.pi.tasks]
-detect = "python -m maus_export.fold_runtime"
+detect = "python -m maus_export.fold_pi"
 
 [tool.pixi.environments]
 default = { features = ["dev"], solve-group = "default", platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"] }
