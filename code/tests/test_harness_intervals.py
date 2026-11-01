@@ -20,9 +20,11 @@ from maus_classify.harness import (  # noqa: E402
     HarnessError,
     ci95,
     cross_val_proba,
+    generalization,
     holdout_intervals,
     holdout_null,
     leave_one_robot_out,
+    majority_baseline,
     per_robot_metrics,
     permutation_test,
     run_bootstrap,
@@ -172,6 +174,63 @@ def test_per_robot_and_leave_one_robot_out():
         assert scores["roc_auc_fail"] > 0.8
         assert scores["n_fail"] == int(((robots == r) & (y == "fail")).sum())
         assert "recall_fail" in scores["intervals"]["metrics"]
+
+
+def _scores(balanced_accuracy: float, supports: list[int]) -> dict:
+    """A metrics() dict with the given per-class support."""
+    return {
+        "balanced_accuracy": balanced_accuracy,
+        "per_class": {f"c{i}": {"support": s} for i, s in enumerate(supports)},
+    }
+
+
+def test_majority_baseline_is_one_per_class():
+    assert majority_baseline(2) == 0.5
+    assert majority_baseline(4) == 0.25
+    assert majority_baseline(0) == 1.0
+
+
+def test_four_class_model_is_judged_against_one_quarter():
+    """Four classes: 0.30 beats the 0.25 bar, so the old 0.50 bar was too
+    high and turned a generalizing model into a failing one."""
+    gen = generalization(
+        {"pixi": _scores(0.30, [5, 5, 5, 5])},
+        {"quin": _scores(0.30, [4, 4, 4, 4])},
+    )
+    assert gen["generalizes"] is True
+    assert gen["not_above_majority"] == []
+    assert gen["majority_baseline"]["pixi (holdout)"] == 0.25
+    assert "1 per class" in gen["rule"]
+
+
+def test_binary_model_keeps_the_half_bar():
+    gen = generalization(
+        {"pixi": _scores(0.50, [5, 5])},
+        {"quin": _scores(0.60, [4, 4])},
+    )
+    assert gen["generalizes"] is False
+    assert gen["not_above_majority"] == ["pixi (holdout)"]
+
+
+def test_figure_baseline_follows_the_card_classes():
+    from maus_classify.robot_figures import card_baseline
+
+    card = {
+        "metrics": {
+            "test": {
+                "per_class": {
+                    "a": {"support": 3},
+                    "b": {"support": 2},
+                    "c": {"support": 1},
+                    "d": {"support": 1},
+                }
+            }
+        }
+    }
+    assert card_baseline(card) == 0.25
+    card["metrics"]["test"]["per_class"]["d"] = {"support": 0}
+    assert card_baseline(card) == pytest.approx(1 / 3)
+    assert card_baseline({}) == 0.5
 
 
 def test_leave_one_robot_out_skips_one_class_train():
