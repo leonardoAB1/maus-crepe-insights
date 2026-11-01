@@ -129,9 +129,8 @@ remove only its incomplete generated evaluation files before rerunning it.
    column for comparison.
 9. Whole-video analysis sequentially grabs frames at 10 Hz by default (a 200
    ms/frame budget, `--fps` for other rates) and rectifies to 900 by 900
-   pixels. The live adapter requires warm Lab colour support (b >= 136,
-   a <= 145 on OpenCV's byte scale) for at least 35% of a component, rejecting
-   neutral reflections and metal. Bright narrow components connected to the
+   pixels. The live adapter uses pixel-level diffuse foreground evidence
+   rather than accepting entire bright components (see below). Bright narrow components connected to the
    image border and extending into the inner plate cause an occlusion
    abstention, not an empty prediction. This is conservative classical
    filtering, not general robot-arm recognition. Empty-reference learning
@@ -190,6 +189,58 @@ remove only its incomplete generated evaluation files before rerunning it.
 Rank AUC uses passed checks as positive, average ranks for ties and the stated
 metric direction; a value below 0.5 indicates the opposite direction. No
 threshold is chosen using the AUC.
+
+## Pixel-level reflection rejection
+
+The live pipeline no longer retains an entire bright connected component
+merely because some of its pixels resemble food. `fold_diffuse.py` evaluates
+warm diffuse evidence per pixel inside the plate: Lab L > 100, b >= 134 and
+a <= 145 on OpenCV's byte scale. Saturated near-neutral pixels (L >= 245,
+b < 140) are removed even when attached to dough.
+
+With an empty reference, a pixel also needs either lightness at least 22
+above the exposure-matched highlight envelope, or a yellow-channel increase
+over the median empty reference greater than 10 with L > 125. This second
+path can recover warm food covering a formerly bright neutral reflection.
+Static warm rims are not changed food. Exposure correction requires jointly
+dark pixels; missing support causes abstention instead of inventing a shift.
+
+A 3-pixel opening and 7-pixel closing stabilize texture; saturated neutral
+pixels are excluded again after closing. Components smaller than 3% of the
+plate or 5% of the largest remaining component are removed. The existing
+causal mask average and occlusion handling operate on this new mask.
+
+This change applies to live video inference. The offline check-frame
+`fold-segment` procedure remains a historical baseline and must not be used
+to claim accuracy for the new foreground policy. White or blue-lit dough can
+still be rejected, and a moving warm object can still resemble food. Dark
+brown food may fragment. Camera white balance, novel glints, shadows and
+highlight-envelope contamination remain limitations. No held-out accuracy
+or Raspberry Pi timing improvement is assumed from these synthetic tests.
+
+On 2026-11-01, two private videos produced 2,161 processed frames: 1,904
+measured, 171 occluded and 86 temporal warm-up frames. Median desktop
+processing times were 44.9 and 42.7 ms/frame. Initial empty-plate coverage
+was already zero in the earlier comparison output and remained zero.
+Cooking coverage changed under pixel pruning, but without annotated masks
+that is not evidence of improved accuracy. Synthetic regression tests verify
+connected neutral glare rejection and recovery of warm food over known glare.
+
+## Initial cleaning/preparation highlight
+
+If a video starts with an `init`, `prepare`, `check_serving_plate` prefix,
+show a cyan **initial cleaning/prep (inferred)** interval from video start
+until the first production phase, commonly `oil` or `spread_batter*`.
+This appears in the event graph, clickable event list, video overlay and
+private timeline plot. The API preserves the original logged phases and
+provides a separate `highlights` list with `inferred_preparation` provenance.
+No cleaning action is fabricated or counted as a passed visual check.
+Videos beginning in cooking, folding or explicit cleaning get no inferred
+preparation interval. No interval is invented without a known end time.
+
+The timeline adds `initial_cleaning_prep`; summary fields include
+`initial_cleaning_prep_end` and `foreground_method`. These are display and
+provenance fields, never visual classifier inputs.
 
 ## Temporal masks and toppings markers
 
