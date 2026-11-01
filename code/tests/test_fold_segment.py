@@ -1,5 +1,6 @@
 """Synthetic dataset-to-mask and feature integration tests."""
 
+import shutil
 from pathlib import Path
 
 import cv2
@@ -44,5 +45,24 @@ def test_segment_dataset_and_no_self_flat_reference(
     assert features.loc["flat", "reference_id"] == "empty"
     assert pd.isna(features.loc["flat", "flat_reference_id"])
     assert features.loc["empty", "predicted_state"] == "empty"
+    changed = tmp_path / "changed"
+    other = changed / "fold_segmentation"
+    shutil.copytree(root / "frames", other / "frames")
+    labels = pd.DataFrame(rows)
+    labels["expected_state"] = "quarter"
+    labels["check_ok"] = False
+    labels.to_parquet(other / "frames.parquet", index=False)
+    segment_dataset(changed)
+    changed_features = pd.read_parquet(other / "features.parquet").set_index(
+        "frame_id"
+    )
+    columns = [
+        "predicted_state",
+        "plate_area",
+        "area",
+        "reference_id",
+        "flat_reference_id",
+    ]
+    pd.testing.assert_frame_equal(features[columns], changed_features[columns])
     with pytest.raises(FileExistsError):
         segment_dataset(tmp_path)

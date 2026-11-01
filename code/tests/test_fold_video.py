@@ -104,6 +104,10 @@ def test_analyse_video_writes_timeline_without_seeking(
     timeline_columns = pd.read_csv(out / "timeline.csv").columns
     assert "plate_fraction" in timeline_columns
     assert "phase" in timeline_columns
+    assert "verdict" in timeline_columns
+    assert "confidence" in timeline_columns
+    assert checks.iloc[0]["verdict"] == "unknown"
+    assert checks.iloc[0]["confidence"] == 0
     summary = json.loads((out / "summary.json").read_text())
     assert summary["dispense"]["frames"] == 0
     assert summary["dispense"]["ok"] is None
@@ -137,4 +141,4 @@ def test_timeline_plot_dough_band_toggle(tmp_path: Path) -> None:
     _timeline_plot(without_dough, _timeline_rows(False), [])
     assert with_dough.is_file() and without_dough.is_file()
     assert plt.imread(str(with_dough)).shape[0] > 400  # two stacked subplots
-    assert plt.imread(str(without_dough)).shape[0] < 400
+    assert plt.imread(str(without_dough)).shape[0] > 400

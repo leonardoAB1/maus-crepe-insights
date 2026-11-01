@@ -15,22 +15,23 @@ import cv2
 import numpy as np
 
 from .fold_classifier import refine_fold_state
+from .fold_config import DEFAULT_ANALYSIS_FPS
 from .fold_dataset import (
     CALIBRATION_PATH,
     MAX_DURATION_DIFFERENCE,
     run_duration,
 )
 from .fold_dispense import summarise_dispense
+from .fold_foreground import ForegroundOccluded, LiveForeground
 from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_geometry import measure_geometry, prepare_geometry
-from .fold_mask import CrepeSegmenter
 from .fold_overlay import annotate_frame
 from .fold_plate import detect_plate
 from .fold_rectify import rectify_video_frame
+from .fold_reference import VisualFlatReference
 from .fold_state import STATE_ORDER, classify_state
 from .fold_sync import CheckWindowEvaluator
 
-DEFAULT_ANALYSIS_FPS = 10.0
 FRAME_BUDGET_MS = 200.0
 MILLISECONDS_PER_SECOND = 1000
 
@@ -44,8 +45,8 @@ def analyse_video(
 ) -> dict[str, float | int]:
     """Analyze one cached video sequentially and write private review outputs.
 
-    The first detected empty image serves as reference. Plate geometry and
-    flat area are learned online, without consulting future check frames.
+    Empty references are learned before dispensing, never from predicted
+    states. Plate geometry and flat area use only already observed frames.
     """
     if run_id < 0:
         raise ValueError("Run id must be nonnegative")
@@ -86,11 +87,14 @@ def analyse_video(
             for event in check_starts(run["logs"])
         ]
         evaluator = CheckWindowEvaluator(events)
-        reference = None
+        dispense_start = min(
+            (t for t, name in phases if name.startswith("spread_batter")),
+            default=0.0,
+        )
         plate = None
         segmenter = None
         geometry_context = None
-        flat_area: float | None = None
+        flat_reference = VisualFlatReference()
         times: list[float] = []
         render_times: list[float] = []
         processing_times: list[float] = []
@@ -122,28 +126,31 @@ def analyse_video(
                     if plate is not None:
                         try:
                             if segmenter is None:
-                                segmenter = CrepeSegmenter(
+                                segmenter = LiveForeground(
                                     image.shape[:2], plate
                                 )
                                 geometry_context = prepare_geometry(
                                     image.shape[:2], plate
                                 )
-                            mask = segmenter.segment(image)
+                            mask = segmenter.segment(
+                                image,
+                                learn_empty=index / fps < dispense_start,
+                            )
                             geometry = measure_geometry(
                                 mask, plate, context=geometry_context
                             )
                             prediction = refine_fold_state(
                                 classify_state(
                                     geometry.area,
-                                    segmenter.plate_area,
+                                    segmenter.segmenter.plate_area,
                                     len(geometry.edges),
-                                    flat_area,
+                                    flat_reference.area,
                                     geometry.rect_aspect,
                                 ),
                                 {
                                     "relative": (
-                                        geometry.area / flat_area
-                                        if flat_area
+                                        geometry.area / flat_reference.area
+                                        if flat_reference.area
                                         else None
                                     ),
                                     "plate_fraction": geometry.plate_fraction,
@@ -158,29 +165,28 @@ def analyse_video(
                                     "edge_count": len(geometry.edges),
                                 },
                             )
-                            if reference is None and prediction == "empty":
-                                reference = image.copy()
-                                segmenter = CrepeSegmenter(
-                                    image.shape[:2], plate, reference
-                                )
                             status = "ok"
+                        except ForegroundOccluded:
+                            mask = None
+                            geometry = None
+                            prediction = None
+                            status = "occluded"
                         except (ValueError, cv2.error):
                             mask = None
                             geometry = None
+                            prediction = None
                             status = "segmentation_failed"
                     completed = evaluator.update(
                         index / fps,
                         prediction,
                         geometry.area if geometry is not None else None,
-                        flat_reference_available=flat_area is not None,
+                        flat_reference_available=flat_reference.area
+                        is not None,
                     )
-                    for check in completed:
-                        if (
-                            check.event.name == "spread"
-                            and check.observation == "flat"
-                            and check.flat_areas
-                        ):
-                            flat_area = float(np.median(check.flat_areas))
+                    flat_reference.observe(
+                        prediction,
+                        geometry.area if geometry is not None else None,
+                    )
                     latest = completed[-1] if completed else None
                     elapsed = (
                         time.perf_counter() - started
@@ -229,6 +235,8 @@ def analyse_video(
                             if latest
                             else "",
                             "check_status": latest.status if latest else "",
+                            "verdict": latest.verdict if latest else "unknown",
+                            "confidence": latest.confidence if latest else 0.0,
                             "status": status,
                             "inference_ms": elapsed,
                             "render_ms": render_times[-1],
@@ -287,6 +295,9 @@ def analyse_video(
                     "observation": check.observation or "",
                     "status": check.status,
                     "valid_frames": len(check.votes),
+                    "samples": check.samples,
+                    "verdict": check.verdict,
+                    "confidence": check.confidence,
                 }
                 for check in evaluator.checks
             ]
@@ -300,6 +311,9 @@ def analyse_video(
                 "observation",
                 "status",
                 "valid_frames",
+                "samples",
+                "verdict",
+                "confidence",
             ]
             with (stage / "observations.csv").open("w", newline="") as file:
                 out = csv.DictWriter(file, fieldnames=columns)
@@ -411,10 +425,13 @@ def _timeline_plot(
     import matplotlib.pyplot as plt
 
     dough = [
-        (float(row["video_t"]), float(row["plate_fraction"]))
+        (
+            float(row["video_t"]),
+            float(row["plate_fraction"])
+            if row["plate_fraction"] != ""
+            else float("nan"),
+        )
         for row in rows
-        if row["phase"].startswith("spread_batter")
-        and row["plate_fraction"] != ""
     ]
     figure, axis = plt.subplots(
         2 if dough else 1,
@@ -431,7 +448,20 @@ def _timeline_plot(
         [row["video_t"] for row in observations],
         [STATE_ORDER.index(row["state"]) for row in observations],
         label="Visual estimate at check",
+        c=[
+            "green" if row.get("verdict") == "success" else "red"
+            for row in observations
+        ],
     )
+    for row in observations:
+        axis.annotate(
+            f"{row.get('verdict', 'unknown')} "
+            f"{float(row.get('confidence', 0)):.0%}",
+            (row["video_t"], STATE_ORDER.index(row["state"])),
+            xytext=(4, 8),
+            textcoords="offset points",
+            fontsize=7,
+        )
     for timestamp, event in events:
         axis.axvline(
             timestamp,
@@ -475,7 +505,7 @@ def _timeline_plot(
         dough_axis.plot(times, values, color="#e8a35d", linewidth=1)
         dough_axis.axhline(0.4, color="grey", linestyle="--", linewidth=0.8)
         dough_axis.set_ylim(0, 1)
-        dough_axis.set_ylabel("Dough coverage")
+        dough_axis.set_ylabel("Plate coverage")
     axis.set_xlabel("Video time (s); lines = logged check starts")
     figure.tight_layout()
     figure.savefig(path)

@@ -45,6 +45,12 @@ def test_arm_entering_plate_is_unknown_not_food(color: tuple) -> None:
         detector().segment(frame)
 
 
+def test_broad_bright_background_is_not_an_arm() -> None:
+    frame = np.full((200, 200, 3), 220, np.uint8)
+    cv2.circle(frame, (100, 100), 75, (25, 25, 25), -1)
+    assert not detector().segment(frame).any()
+
+
 def test_no_reference_learning_after_dispensing_or_from_dough() -> None:
     foreground = detector()
     for _ in range(5):

@@ -11,6 +11,7 @@ from .fold_state import FoldState
 CHECK_WINDOW_SECONDS = 1.0
 MIN_OBSERVATION_FRAMES = 3
 TIME_EPSILON = 1e-9
+MIN_VALID_FRACTION = 0.60
 
 
 @dataclass
@@ -23,6 +24,9 @@ class CheckObservation:
     observed_at: float | None = None
     observation: FoldState | None = None
     status: str = "pending"
+    samples: int = 0
+    confidence: float = 0.0
+    verdict: str = "unknown"
     votes: list[FoldState] = field(default_factory=list)
     flat_areas: list[float] = field(default_factory=list)
 
@@ -55,6 +59,7 @@ class CheckWindowEvaluator:
                 or timestamp + TIME_EPSILON < check.start
             ):
                 continue
+            check.samples += 1
             if prediction is not None:
                 check.votes.append(prediction)
                 if prediction == "flat" and area is not None and area > 0:
@@ -63,7 +68,10 @@ class CheckWindowEvaluator:
                 continue
             check.observed_at = timestamp
             counts = Counter(check.votes)
-            if len(check.votes) < MIN_OBSERVATION_FRAMES:
+            if (
+                len(check.votes) < MIN_OBSERVATION_FRAMES
+                or len(check.votes) / check.samples < MIN_VALID_FRACTION
+            ):
                 check.status = "insufficient_frames"
             elif (
                 check.event.name in {"fold1", "fold2"}
@@ -77,6 +85,10 @@ class CheckWindowEvaluator:
                 else:
                     check.observation = winner
                     check.status = "observed"
+                    check.confidence = count / check.samples
+                    check.verdict = (
+                        "success" if winner == check.event.state else "failure"
+                    )
             completed.append(check)
         return completed
 

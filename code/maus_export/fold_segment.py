@@ -18,8 +18,6 @@ from .fold_mask import EmptyReference, segment_crepe, select_reference
 from .fold_plate import detect_plate, ellipse_mask, median_plate
 from .fold_state import classify_state
 
-PLATE_REFERENCE_STATES = {"empty", "half", "quarter"}
-
 
 def _read_frame(root: Path, relative: str) -> np.ndarray:
     path = (root / relative).resolve()
@@ -40,22 +38,10 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
         raise FileExistsError("Segmentation output exists; move it aside first")
     records = frames.to_dict("records")
     by_id = {row["frame_id"]: row for row in records}
-    references = [
-        EmptyReference(
-            row["frame_id"],
-            int(row["run_id"]),
-            row["robot"],
-            int(row["source_width"]),
-            bool(row["check_ok"]) if pd.notna(row["check_ok"]) else False,
-        )
-        for row in records
-        if row["expected_state"] == "empty"
-    ]
+    references: list[EmptyReference] = []
     plates: dict[int, list] = {}
     counts: Counter[str] = Counter()
     for row in records:
-        if row["expected_state"] not in PLATE_REFERENCE_STATES:
-            continue
         try:
             plate = detect_plate(_read_frame(root, row["path"]))
             if plate is not None:
@@ -63,6 +49,24 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
         except (ValueError, cv2.error):
             counts["plate_detection_error"] += 1
     run_plates = {run: median_plate(values) for run, values in plates.items()}
+    for row in records:
+        plate = run_plates.get(int(row["run_id"]))
+        if plate is None:
+            continue
+        try:
+            image = _read_frame(root, row["path"])
+            if not segment_crepe(image, plate).any():
+                references.append(
+                    EmptyReference(
+                        row["frame_id"],
+                        int(row["run_id"]),
+                        row["robot"],
+                        int(row["source_width"]),
+                        True,
+                    )
+                )
+        except (ValueError, cv2.error):
+            continue
     rows: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix=".masks-", dir=root) as temp:
         stage = Path(temp)
@@ -139,7 +143,13 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
         for row in rows:
             if (
                 row["status"] == "ok"
-                and row["expected_state"] == "flat"
+                and classify_state(
+                    row["area"],
+                    row["plate_area"],
+                    row["edge_count"],
+                    rect_aspect=row["rect_aspect"],
+                )
+                == "flat"
                 and row["area"] > 0
             ):
                 flat_refs.setdefault(int(row["run_id"]), []).append(row)
@@ -157,15 +167,7 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
                 # crepe estimate; a check frame may be occluded or
                 # captured while the crepe is still spreading.
                 choices.sort(key=lambda ref: ref["frame_id"])
-                best = max(
-                    choices,
-                    key=lambda ref: (
-                        ref["area"],
-                        bool(
-                            pd.notna(ref["check_ok"]) and bool(ref["check_ok"])
-                        ),
-                    ),
-                )
+                best = max(choices, key=lambda ref: ref["area"])
             row["flat_reference_id"] = best["frame_id"] if best else None
             flat_area = best["area"] if best else None
             rule_state = classify_state(

@@ -16,6 +16,7 @@ MIN_LIGHTNESS = 90
 MIN_SEED_FRACTION = 0.35
 BOUNDARY_MARGIN = 0.08
 MIN_EXTERNAL_PIXELS = 30
+MAX_ARM_WIDTH_FRACTION = 0.50
 REFERENCE_FRAMES = 5
 MIN_REFERENCE_FRAMES = 3
 MAX_EMPTY_FRACTION = 0.01
@@ -63,7 +64,11 @@ class LiveForeground:
                 or x + width == frame.shape[1]
                 or y + height == frame.shape[0]
             )
-            if not touches_image:
+            narrow = min(width, height) < (
+                min(self.plate.width, self.plate.height)
+                * MAX_ARM_WIDTH_FRACTION
+            )
+            if not touches_image or not narrow:
                 continue
             pixels = labels == label
             if np.count_nonzero(
