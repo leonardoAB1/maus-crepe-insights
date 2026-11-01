@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import math
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
@@ -113,3 +114,35 @@ def run_batch(
                     )
                 submit_next()
     return totals
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Run cached detection without importing export or auth dependencies."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-dir", required=True, type=Path)
+    parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--fps", type=float, default=DEFAULT_ANALYSIS_FPS)
+    parser.add_argument("--replace", action="store_true")
+    parser.add_argument(
+        "--model", choices=("classical", "onnx"), default="classical"
+    )
+    parser.add_argument("--ids", nargs="+", type=int)
+    args = parser.parse_args(argv)
+    try:
+        result = run_batch(
+            args.data_dir,
+            threads=args.threads,
+            analysis_fps=args.fps,
+            replace=args.replace,
+            model=args.model,
+            run_ids=args.ids,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    print(result, flush=True)
+    if result["failed"]:
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

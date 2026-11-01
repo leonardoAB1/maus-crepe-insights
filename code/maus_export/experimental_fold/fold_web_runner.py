@@ -79,8 +79,7 @@ class WebRunner:
             command = [
                 sys.executable,
                 "-m",
-                "maus_export.cli",
-                "fold-batch",
+                "maus_export.experimental_fold.fold_batch",
                 "--data-dir",
                 str(self.data_dir),
                 "--threads",
