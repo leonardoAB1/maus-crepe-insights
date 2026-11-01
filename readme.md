@@ -94,6 +94,8 @@ flowchart TD
         labels --> masks[Reviewed masks]
         masks --> rectified[Rectified frames]
         raw --> foldseg[Fold segmentation]
+        raw --> viewer[Run viewer]
+        masks --> viewer
     end
 
     foldseg -. cross-check .-> foldstate
@@ -104,11 +106,15 @@ flowchart TD
         reason --> predict
         predict --> compare[Deviation scoring]
         rectified --> compare
+        foldseg --> compare
         compare --> weights[Weighted dataset]
         weights --> finetune[Fine-tuned model]
+        predict --> overlay[Overlay renderer]
+        masks --> overlay
         predict --> pi[Pi runtime]
         finetune --> pi
-        pi --> live[Live frame]
+        overlay --> live[Live frame]
+        pi --> live
     end
 
     classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
@@ -117,7 +123,7 @@ flowchart TD
 
     class api,raw,mcap,table,vision,frames,split,embed,pilot done
     class verdict,foldstate,reason,risk,labels,masks,rectified partial
-    class foldseg,compare,weights partial
+    class foldseg,overlay,viewer,compare,weights partial
     class predict,finetune,pi,live todo
 ```
 <!-- /diagram -->
@@ -127,10 +133,17 @@ not built. The data path, the frame table, the per-robot split and the
 frame embedder are green. The four frame models are amber: they run and
 ship as ONNX, but the check verdicts do not yet generalize across robots,
 fold state and failure reasons rest on labels derived from the robot's own
-checks, and fold risk shows no signal. The classical fold segmentation is
-an independent cross-check for fold state. A live frame still needs a
-prediction runtime on the Pi (in review), a reviewed mask export and a
-material-mask model. The gaps and the numbers behind each colour are in
+checks, and fold risk shows no signal. The overlay renderer, the run
+viewer and the fold segmentation are amber for the same reason, working
+code without an end-to-end proof: the overlay draws the layers onto a
+video and only the records sidecar feeds it, the viewer plays a run and
+answers with the pixel-mask suggestion only, and the fold segmentation is
+merged and evaluated on the same export it was tuned on. It also serves
+as an independent cross-check for fold state. A live frame still needs a
+prediction runtime on the Pi (in review), a reviewed mask export, which
+is blocked on the frames whose hole brush overlaps the material brush,
+and a material-mask model. The gaps and the numbers behind each colour
+are in
 [documentation/status.md](documentation/status.md).
 
 ## How it works

@@ -27,6 +27,8 @@ flowchart TD
         labels --> masks[Reviewed masks]
         masks --> rectified[Rectified frames]
         raw --> foldseg[Fold segmentation]
+        raw --> viewer[Run viewer]
+        masks --> viewer
     end
 
     foldseg -. cross-check .-> foldstate
@@ -37,11 +39,15 @@ flowchart TD
         reason --> predict
         predict --> compare[Deviation scoring]
         rectified --> compare
+        foldseg --> compare
         compare --> weights[Weighted dataset]
         weights --> finetune[Fine-tuned model]
+        predict --> overlay[Overlay renderer]
+        masks --> overlay
         predict --> pi[Pi runtime]
         finetune --> pi
-        pi --> live[Live frame]
+        overlay --> live[Live frame]
+        pi --> live
     end
 
     classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
@@ -50,5 +56,5 @@ flowchart TD
 
     class api,raw,mcap,table,vision,frames,split,embed,pilot done
     class verdict,foldstate,reason,risk,labels,masks,rectified partial
-    class foldseg,compare,weights partial
+    class foldseg,overlay,viewer,compare,weights partial
     class predict,finetune,pi,live todo
