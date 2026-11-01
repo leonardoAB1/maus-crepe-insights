@@ -52,6 +52,8 @@ page per question.
 
 - [Run-start dataset](training/training-dataset.md): candidates for predicting a
   run before it starts
+- [Classifier robustness](training/robustness.md): fold and verdict heads
+  under light, steam and rotation, plus the fold label leakage check
 - [Training data audit](training/training-audit.md): coverage of the training and
   vision data, aggregate only
 - [Vision-target dataset](training/vision-targets.md): the vision measurements

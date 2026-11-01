@@ -87,6 +87,9 @@ fold-student-human = "maus-export fold-student-human"
 fold-class = "maus-classify fold-class"
 fold-class-example = "maus-classify fold-class-example"
 model-examples = "maus-classify model-examples"
+robustness = "maus-classify robustness"
+robustness-example = "maus-classify robustness-example"
+fold-crosscheck = "maus-classify fold-crosscheck"
 notebook = "jupyter lab notebooks"
 
 [tool.pixi.environments]

@@ -1,4 +1,4 @@
-"""maus-classify: frames | coverage | fold-class"""
+"""maus-classify: frames | coverage | fold-class | robustness"""
 
 from __future__ import annotations
 
@@ -40,7 +40,50 @@ def main() -> None:
         "model-examples",
         help="check-verdict and frame-embedder images -> assets/ (ml env)",
     )
+    sub.add_parser(
+        "robustness",
+        help="heads under light, steam and rotation -> data/robustness (ml)",
+    )
+    sub.add_parser(
+        "robustness-example", help="robustness failure image -> assets/ (ml)"
+    )
+    sub.add_parser(
+        "fold-crosscheck",
+        help="fold-class head vs fold segmentation -> data/robustness (ml)",
+    )
     args = p.parse_args()
+
+    if args.cmd == "robustness":
+        from .robustness import build_robustness
+
+        report = build_robustness(args.data_dir, REPO_ROOT / "code" / "models")
+        for name, entry in report["perturbations"].items():
+            fold, verdict = entry["fold"]["all"], entry["verdict"]["all"]
+            print(
+                f"{name:16s} fold bacc {fold['balanced_accuracy']:.3f} "
+                f"flip {fold['flip_rate']:.3f} | verdict bacc "
+                f"{verdict['balanced_accuracy']:.3f} "
+                f"flip {verdict['flip_rate']:.3f}"
+            )
+
+    if args.cmd == "robustness-example":
+        from .robustness import EXAMPLE_ASSET, example_figure
+
+        path = example_figure(args.data_dir, REPO_ROOT / EXAMPLE_ASSET)
+        print(f"example figure -> {path}")
+
+    if args.cmd == "fold-crosscheck":
+        from .fold_crosscheck import build_crosscheck
+
+        report = build_crosscheck(
+            args.data_dir, REPO_ROOT / "code" / "models" / "fold-class"
+        )
+        valid = report["their_validity_on_our_frames"]["agreement"]
+        held = report["agreement"]["holdout"]["passed"]["agreement"]
+        print(
+            f"segmentation vs passed checks {valid:.3f}, "
+            f"head vs segmentation (holdout) {held:.3f}"
+        )
 
     if args.cmd == "coverage":
         from .coverage import CoverageError, main_data_dir, report
