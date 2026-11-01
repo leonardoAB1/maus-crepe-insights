@@ -241,13 +241,23 @@ def analyze_video(
     output_dir: Path,
     student: CrepeStudent,
     run_id: int | None = None,
+    robot: str | None = None,
 ) -> list[dict[str, Any]]:
     """Live-style student inference over a whole video.
 
     Writes ``annotated.mp4``, ``timeline.csv``, ``timeline.png`` and
-    ``summary.json`` like ``fold_live.analyze_video``.
+    ``summary.json`` like ``fold_live.analyze_video``. Every frame with a
+    crêpe also gets its pose in the robot's top view (``crepe_pose``).
     """
+    from .crepe_pose import (
+        POSE_FIELDS,
+        load_calibration,
+        pose_from_mask,
+        pose_row,
+    )
     from .fold_live import _write_timeline, _write_timeline_plot
+
+    calibration = load_calibration()
 
     output_dir.mkdir(parents=True, exist_ok=True)
     capture = cv2.VideoCapture(str(video))
@@ -272,6 +282,13 @@ def analyze_video(
             mask = student.mask(frame)
             area = area_share(mask)
             raw, state = machine.update(area)
+            pose = (
+                pose_from_mask(
+                    mask, robot, calibration, quarter=state == QUARTER_STATE
+                )
+                if state != EMPTY_STATE
+                else None
+            )
             timings.append((time.perf_counter() - start) * MS_PER_S)
             seconds = index / fps
             annotated = overlay(frame, mask, f"{seconds:7.1f}s  {state}")
@@ -291,6 +308,8 @@ def analyze_video(
                     "state": state,
                     "area_share": area,
                     "flat_area_share": machine.flat_area,
+                    **dict.fromkeys(POSE_FIELDS),
+                    **pose_row(pose),
                 }
             )
         if not rows:
@@ -323,8 +342,16 @@ def run_live(
         if run_ids is not None and run_id not in run_ids:
             continue
         video = video_path(data_dir, run_id)
-        if video is not None:
-            analyze_video(video, output_root / str(run_id), student, run_id)
+        if video is None:
+            continue
+        run = json.loads(run_path.read_text(encoding="utf-8"))
+        analyze_video(
+            video,
+            output_root / str(run_id),
+            student,
+            run_id,
+            run.get("machineName"),
+        )
 
 
 def read_frame(video: Path, index: int) -> np.ndarray:
