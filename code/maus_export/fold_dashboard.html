@@ -182,6 +182,9 @@ async function init() {
       const button = textNode('button', 'Run ' + run.id, 'run'); button.dataset.id = run.id;
       button.append(textNode('span', failures ? failures + ' robot-reported failures' :
         'No reported failures', failures ? 'sub fail' : 'sub muted'));
+      button.append(textNode('span', run.dispense_ok === true ? 'Dough: stable' :
+        run.dispense_ok === false ? 'Dough: flagged' : 'Dough: not measured',
+        run.dispense_ok === false ? 'sub fail' : 'sub muted'));
       button.onclick = () => showRun(run.id); container.append(button);
     }
     showRun(runs[0].id);

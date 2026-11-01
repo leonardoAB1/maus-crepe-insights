@@ -23,6 +23,7 @@
     settled final) and flags runs whose final coverage is below 40% of the
     plate or collapses below 70% of the measured peak.
   - [x] Per-run `summary.json` and the sampled live report carry the verdict.
+  - [x] The dashboard run list shows each run's dough verdict.
 
 - [x] Highlight all logged cooking phases, not just the fold.
   - [x] The API exposes every timed phase (dough, cooking, folding,

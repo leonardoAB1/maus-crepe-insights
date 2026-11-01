@@ -33,6 +33,9 @@ The example run ID must be replaced by a locally cached run with a video. The
 live evaluation processes 20 whole videos, so it can take a long time and use
 substantial disk space. Open the local URL printed by the dashboard and select
 an analysed run. Both the graph and check list seek the embedded video.
+Each run in the side list also shows its dough-dispensing verdict
+(`Dough: stable`, `Dough: flagged`, or `Dough: not measured` for runs
+without a fresh `summary.json`).
 The chart's top strip shows the logged cooking phases — dough
 (`spread_batter`), cooking (`cook`), folding (`fold_carefully`), cleaning
 (`wipe_spatula`) and handover (`plate_handover`) — so a check dot can be

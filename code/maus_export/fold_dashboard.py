@@ -56,10 +56,17 @@ def run_details(data_dir: Path, run_id: int) -> dict:
         for phase in run["phases"]
         if phase.get("phase") and phase.get("elapsed_sec") is not None
     ]
+    dispense = None
+    summary_path = root / "summary.json"
+    if summary_path.is_file():
+        value = json.loads(summary_path.read_text()).get("dispense")
+        if isinstance(value, dict):
+            dispense = value
     return {
         "id": run_id,
         "events": events,
         "phases": phases,
+        "dispense": dispense,
         "timeline": timeline,
     }
 
@@ -98,7 +105,13 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
                     try:
                         info = run_details(root, int(item.name))
                         runs.append(
-                            {"id": info["id"], "events": info["events"]}
+                            {
+                                "id": info["id"],
+                                "events": info["events"],
+                                "dispense_ok": (info["dispense"] or {}).get(
+                                    "ok"
+                                ),
+                            }
                         )
                     except (OSError, ValueError, KeyError):
                         continue

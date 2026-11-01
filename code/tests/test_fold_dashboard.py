@@ -22,6 +22,20 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
     (live / "observations.csv").write_text(
         "check,start,observation,observed_at,status\nfold1,1.6,flat,2.6,observed\n"
     )
+    (live / "summary.json").write_text(
+        json.dumps(
+            {
+                "frames": 10,
+                "dispense": {
+                    "frames": 20,
+                    "first_fraction": 0.1,
+                    "peak_fraction": 0.7,
+                    "final_fraction": 0.68,
+                    "ok": True,
+                },
+            }
+        )
+    )
     (runs / "1.json").write_text(
         json.dumps(
             {
@@ -61,7 +75,9 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
     base = f"http://127.0.0.1:{server.server_port}"
     try:
         with urlopen(base + "/api/runs") as response:
-            assert json.load(response)[0]["id"] == 1
+            first_run = json.load(response)[0]
+            assert first_run["id"] == 1
+            assert first_run["dispense_ok"] is True
         with urlopen(base + "/api/run/1") as response:
             detail = json.load(response)
             assert detail["timeline"][0]["state"] == ""
@@ -75,6 +91,8 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
                 "oil",
             ]
             assert [phase["time"] for phase in detail["phases"]] == [0, 5, 9]
+            assert detail["dispense"]["final_fraction"] == 0.68
+            assert detail["dispense"]["ok"] is True
         request = Request(base + "/video/1", headers={"Range": "bytes=2-4"})
         with urlopen(request) as response:
             assert response.status == 206
