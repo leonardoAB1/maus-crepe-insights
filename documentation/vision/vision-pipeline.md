@@ -39,7 +39,7 @@ flowchart LR
 | task | approach | stages |
 |---|---|---|
 | 1. Spread quality | overlay scores, our own crêpe mask, dough check | 3, 4, 6, 7 |
-| 2. Position and orientation | top-down view, overlay pose, mask geometry | 2, 3, 4 |
+| 2. Position and orientation | top-down view, overlay pose, live mask pose | 2, 3, 4, 6 |
 | 3. Fold detection | fold-class head, student rule, classical rule | 5, 6, 7 |
 
 The per-task approach, results and gaps are in the
@@ -98,19 +98,36 @@ Two ways to find the crêpe in a frame:
   find the plate ellipse, threshold inside it, compare with an empty-plate
   reference, reject glare and specular highlights, and abstain when a narrow
   bright object (arm, spatula) reaches into the plate. On video, causal
-  majority masks over recent frames smooth single-frame noise. See
+  majority masks over recent frames smooth single-frame noise, and every
+  sampled video frame gets a live mask. See
   [fold segmentation](../fold-segmentation.md) and
   [experimental fold analysis](../experimental-fold-analysis.md).
 - **Crêpe student** (`code/models/crepe-student`): a small ONNX segmenter
   distilled from SAM 3 masks, on the raw frame. It runs in about 6 ms on
   four CPU threads and overlaps SAM 3 with a pixel IoU of 0.966 on held-out
-  runs. See [crêpe student](crepe-student.md).
+  runs. Against the team's human Label Studio masks it scores a median IoU
+  of 0.944 on 62 frames, as close as two humans (0.933), with no false
+  crêpe on 51 empty plates. See [crêpe student](crepe-student.md).
 
 The video analysis can use either one (`--model classical`, `onnx` or
 `both`); the student's mask is then mapped into the corrected view with the
-same camera correction. Human masks from the
+same camera correction. Human masks and phase labels from the
 [labeling](../labeling/mask-labeling.md) work are the reference for the
-student (`pixi run -e ml fold-student-human`).
+student (`pixi run -e ml fold-student-human`): its live state matches the
+human phase on 98.3% of 178 frames. That snapshot covers 5 runs of one
+robot, mostly student training runs, so it is a first check, not a test set.
+
+### Position and angle from the live mask
+
+`maus_export.crepe_pose` warps the student mask into the corrected top view
+and measures, per frame, the crêpe centre, diameter, principal axis, the
+fold line (longest straight hull edge) and a quarter's corner. Against the
+robot's own overlay pose (`pixi run -e ml fold-student-pose`, after
+`pixi run overlay-pose`) the median centre error is 0.023 plate radii on
+fold1 and 0.030 on fold2, and the median axis error 1.1 and 1.6 degrees.
+The fold line is found on every passed fold1 frame and a quarter corner on
+84% of passed fold2 frames. See
+[crêpe student](crepe-student.md#position-and-angle).
 
 ## 5. Fold state
 
@@ -149,7 +166,8 @@ Each run gets `annotated.mp4`, `timeline.csv`, `timeline.png` and
 `fold_segmentation/live-onnx/<run id>/` (student masks).
 `pixi run -e ml fold-student` is a separate live state machine built on the
 student rule, with the same outputs under
-`fold_segmentation/student/live/`.
+`fold_segmentation/student/live/`. Its timeline also carries the live
+position, axis and fold line of the crêpe on every frame with a crêpe.
 
 ## 7. Frame models
 
@@ -194,7 +212,15 @@ pages:
   [Raspberry Pi](../system/raspberry-pi.md)): the annotated video beside
   the phase chart, the check list with visual verdicts and the dough
   verdict per run. Its **Segmentation** selector switches between the
-  classical and the ONNX student analysis of the same run.
+  classical and the ONNX student analysis of the same run. Its **Video
+  analysis runner** panel starts analysis of cached videos in the
+  background, for one run or all pending ones
+  ([website runner](../experimental-fold-analysis.md#website-analysis-runner)).
+- **Independent review site** (`pixi run export fold-webserve`, with
+  `fold-webserve-live` and `fold-webserve-batch`): a second fold pipeline
+  that draws the live crêpe mask and outline over the video, with per-run
+  progress, speed and failures
+  ([webserve progress](../analysis/webserve-progress.md)).
 - **Run viewer** (`maus-export view`): one video with the pipeline layers
   for the frame under the playhead, where new producers plug in
   ([run viewer](review-app.md)).
@@ -205,7 +231,8 @@ pages:
 
 - **Most labels are the robot's own verdicts.** A model that agrees with
   the robot has learned the robot, not the truth. Where the two disagree,
-  either one can be wrong.
+  either one can be wrong. Human labels exist for the crêpe student's masks
+  and states, but so far only for 5 runs of one robot.
 - **Tuned and scored on the same export.** The classical thresholds and the
   student rule were read off the frames they are scored on.
 - **Image correction is an average per robot**, not calibration. Camera

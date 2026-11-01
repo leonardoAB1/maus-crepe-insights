@@ -77,8 +77,11 @@ incomplete, the row says so, and the section after it names what is missing.
   drawn on it and the record fields in the side panel, and it names the
   producers it does not have. No model answers yet. See
   [run viewer](vision/review-app.md).
-- **No model has been trained on human labels.** Every model metric above comes
-  from labels derived from robot check verdicts, not from the labeling work.
+- **No model has been trained on human labels.** The crêpe student is scored
+  against the team's human masks and phase labels (median IoU 0.944 on 62
+  frames, live state 98.3% of 178 frames), but only on 5 runs of one robot.
+  Every other model metric comes from labels derived from robot check
+  verdicts.
 - **A fresh clone produces no artifacts.** Fetching runs needs dashboard access,
   and every frame, mask, label and table stays out of Git by design.
 
@@ -92,7 +95,7 @@ task was approached is in the
 | Task | Asked output | In this repository | Verdict |
 | --- | --- | --- | --- |
 | 1, spread quality | crepe mask, diameter, quality score | overlay scores over 138 runs (`pixi run vision`: diameter, centre offset, circularity, holes, uncovered fraction); crepe masks from the classical pipeline and the crepe student (pixel IoU 0.966 against SAM 3); a dough-dispensing check on video; spread verdict head (balanced accuracy 0.70) and a provisional `too_small` reason head. No single fitted quality score | partial |
-| 2, position and orientation | centre (x, y) and angle, precise enough for the spatula | reference pose per check from the robot overlays (`pixi run overlay-pose`), with the push_off angle matching the logged rotation up to a constant 15 degrees; centre, plate offset and long-axis angle measured from our own mask in a per-robot corrected view. No learned pose model, and angles are in image coordinates | partial |
+| 2, position and orientation | centre (x, y) and angle, precise enough for the spatula | reference pose per check from the robot overlays (`pixi run overlay-pose`), with the push_off angle matching the logged rotation up to a constant 15 degrees; live centre, axis, fold line and quarter corner from the student mask (`maus_export.crepe_pose`), median centre error 0.023 to 0.030 plate radii and axis error 1.1 to 1.6 degrees against the overlays. The reference is the robot's outline, and units are plate radii and image degrees | partial |
 | 3, fold detection | flat, half, quarter or triangle, with confidence and edge angle | three independent methods: `code/models/fold-class` (109 of 110 holdout frames), the crepe student rule (99.5 percent of 991 passed check moments) and the classical rule (88.5 percent). All scored on robot-derived labels. The triangle fold has no frames | partial, triangle missing |
 | Level 1, works on Maus data | model scored against the robot verdicts | the check-verdict heads, with agreement metrics on holdouts of 31 to 61 frames | partial |
 | Level 2, real time on a Pi 5 | under about 300 ms per frame | the Pi runtime is on `main` (`pixi run -e pi detect`). Classical video analysis takes a median 413 ms per frame on a Raspberry Pi 3; the embedder runs in 4 ms and the student in about 6 ms on a desktop CPU. No Pi 5 measurement | not demonstrated |

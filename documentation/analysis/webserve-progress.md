@@ -30,7 +30,7 @@ After integrating, local `pixi run test` passed (1207 passed, 229 skipped) and
 
 ## Parallel batch runner follow-up
 
-- Added `pixi run fold-webserve-batch --threads N` (renamed from `fold-batch`
+- Added `pixi run export fold-webserve-batch --threads N` (renamed from `fold-batch`
   on integration) to discover every cached run/video
   pair, skip completed artifacts, retry partial outputs and optionally replace
   all results. Submission is bounded to the requested number of workers.
