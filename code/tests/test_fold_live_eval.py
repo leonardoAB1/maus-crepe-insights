@@ -81,9 +81,24 @@ def test_live_scoring_uses_check_synchronized_observations(
                 )
             ]
         ).to_csv(live / "observations.csv", index=False)
+        (live / "summary.json").write_text(
+            json.dumps(
+                {
+                    "frames": 10,
+                    "dispense": {
+                        "frames": 20,
+                        "first_fraction": 0.1,
+                        "peak_fraction": 0.7,
+                        "final_fraction": 0.68 if run_id == 1 else 0.3,
+                        "ok": run_id == 1,
+                    },
+                }
+            )
+        )
     monkeypatch.setattr("maus_export.fold_live_eval.SAMPLE_PER_GROUP", 1)
     result = evaluate_live(tmp_path)
     assert result == {"runs": 2, "checks": 8, "available": 8}
     table = pd.read_parquet(root / "live_checks.parquet")
     assert set(table.predicted_state) == {"half"}
-    assert (root / "live_report.md").is_file()
+    report = (root / "live_report.md").read_text()
+    assert "Dispensing: 1/2 sampled runs" in report

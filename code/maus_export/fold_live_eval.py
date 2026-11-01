@@ -79,11 +79,17 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
     ]
     rows = []
     run_medians: list[float] = []
+    dispenses: list[dict[str, object]] = []
     for group, item in selected:
         run_id = item["id"]
         live = root / "live" / str(run_id)
         if not (live / "observations.csv").is_file():
             analyse_video(data_dir, run_id, replace=live.exists())
+        summary_path = live / "summary.json"
+        if summary_path.is_file():
+            dispense = json.loads(summary_path.read_text()).get("dispense")
+            if isinstance(dispense, dict):
+                dispenses.append(dispense)
         timeline = pd.read_csv(live / "timeline.csv")
         if (
             "inference_ms" in timeline
@@ -131,6 +137,22 @@ def evaluate_live(data_dir: Path) -> dict[str, int]:
         lines.append(
             f"- Median of per-run median inference times: "
             f"{pd.Series(run_medians).median():.1f} ms/frame."
+        )
+    dispensed = [
+        item
+        for item in dispenses
+        if item.get("final_fraction") is not None and item.get("ok") is not None
+    ]
+    if dispensed:
+        finals = [
+            float(item["final_fraction"])  # type: ignore[arg-type]
+            for item in dispensed
+        ]
+        passed = sum(bool(item["ok"]) for item in dispensed)
+        lines.append(
+            f"- Dispensing: {passed}/{len(dispensed)} sampled runs end with "
+            f"stable dough coverage of at least 40% of the plate "
+            f"(median final {pd.Series(finals).median():.0%})."
         )
     lines.extend(
         [

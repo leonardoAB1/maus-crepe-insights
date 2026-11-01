@@ -19,6 +19,7 @@ from .fold_dataset import (
     MAX_DURATION_DIFFERENCE,
     run_duration,
 )
+from .fold_dispense import summarise_dispense
 from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_geometry import measure_geometry, prepare_geometry
 from .fold_mask import CrepeSegmenter
@@ -71,6 +72,14 @@ def analyse_video(
         if abs(count / fps - run_duration(run)) > MAX_DURATION_DIFFERENCE:
             raise ValueError("Video and run duration differ")
         origin = phase_clock_origin(run["phases"])
+        phases = sorted(
+            (
+                (float(phase["elapsed_sec"]), phase.get("phase", ""))
+                for phase in run["phases"]
+                if phase.get("elapsed_sec") is not None
+            ),
+            key=lambda item: item[0],
+        )
         events = [
             (video_time(event, origin), event)
             for event in check_starts(run["logs"])
@@ -190,6 +199,7 @@ def analyse_video(
                     rows.append(
                         {
                             "video_t": index / fps,
+                            "phase": _phase_at(index / fps, phases),
                             "prediction": prediction or "",
                             "state": latest.observation
                             if latest and latest.observation
@@ -285,6 +295,14 @@ def analyse_video(
                     if phase.get("elapsed_sec") is not None
                 ],
             )
+            dispense = summarise_dispense(
+
+                    (row["video_t"], row["plate_fraction"])
+                    for row in rows
+                    if row["phase"] == "spread_batter"
+                    and row["plate_fraction"] != ""
+
+            )
             (stage / "summary.json").write_text(
                 json.dumps(
                     {
@@ -298,6 +316,13 @@ def analyse_video(
                             t > FRAME_BUDGET_MS for t in processing_times
                         ),
                         "analysis_fps": analysis_fps,
+                        "dispense": {
+                            "frames": dispense.frames,
+                            "first_fraction": dispense.first_fraction,
+                            "peak_fraction": dispense.peak_fraction,
+                            "final_fraction": dispense.final_fraction,
+                            "ok": dispense.ok,
+                        },
                     }
                 )
             )
@@ -324,6 +349,17 @@ def analyse_video(
         }
     finally:
         capture.release()
+
+
+def _phase_at(time: float, phases: list[tuple[float, str]]) -> str:
+    """Return the phase active at a video time; empty before the first."""
+    current = ""
+    for start, name in phases:
+        if start <= time:
+            current = name
+        else:
+            break
+    return current
 
 
 PHASE_COLORS = {

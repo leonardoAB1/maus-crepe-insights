@@ -93,5 +93,10 @@ def test_analyse_video_writes_timeline_without_seeking(
     assert replacement["frames"] == 20
     assert "median_render_ms" in replacement
     assert (out / "annotated.mp4").is_file()
-    assert "plate_fraction" in pd.read_csv(out / "timeline.csv").columns
+    timeline_columns = pd.read_csv(out / "timeline.csv").columns
+    assert "plate_fraction" in timeline_columns
+    assert "phase" in timeline_columns
+    summary = json.loads((out / "summary.json").read_text())
+    assert summary["dispense"]["frames"] == 0
+    assert summary["dispense"]["ok"] is None
     assert not (out / "old-marker").exists()
