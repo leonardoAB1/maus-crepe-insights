@@ -83,6 +83,13 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
     thread.start()
     base = f"http://127.0.0.1:{server.server_port}"
     try:
+        with urlopen(base + "/api/progress") as response:
+            assert json.load(response) == []
+        from maus_export.experimental_fold.fold_progress import VideoProgress
+
+        VideoProgress(tmp_path, 1)
+        with urlopen(base + "/api/progress") as response:
+            assert json.load(response)[0]["state"] == "starting"
         with urlopen(base + "/api/runs") as response:
             first_run = json.load(response)[0]
             assert first_run["id"] == 1

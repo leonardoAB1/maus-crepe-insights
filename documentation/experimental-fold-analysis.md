@@ -76,6 +76,55 @@ fresh private data directory before rebuilding. Frame extraction and mask
 creation stage their output until complete. If an evaluation is interrupted,
 remove only its incomplete generated evaluation files before rerunning it.
 
+## Parallel batch processing and live progress
+
+From `code/`, process every cached run/video pair with configurable concurrency:
+
+```bash
+pixi run fold-batch --threads 4 --data-dir /absolute/path/to/data
+# Optional: reprocess completed runs at a different sampling rate.
+pixi run fold-batch --threads 1 --fps 5 --replace --data-dir /absolute/path/to/data
+```
+
+Discovery includes numeric `raw/runs/<id>.json` files with a matching
+`raw/media/<id>/video.mp4`. No download or sampled-evaluation restriction applies.
+`--threads` defaults to 1 and controls concurrent videos, not frames within a
+video. Each worker has its own decoder/encoder and frame buffers, so increase
+concurrency cautiously. Timeline plotting is serialized for Matplotlib safety.
+
+Runs with all five artifacts (summary, timeline CSV, observations CSV, annotated
+video and timeline PNG) are skipped by default. Partial outputs are retried;
+`--replace` recomputes completed outputs. Existing output is replaced only after
+successful processing. Individual failures do not stop the batch; final totals
+report completed/skipped/failed runs, and any failure gives exit code 1. Run only
+one batch per data directory and avoid other workers processing the same run ID.
+
+Keep `pixi run fold-experimental-dashboard --data-dir /absolute/path/to/data`
+running in another terminal. The sidebar shows a loading circle on active runs.
+Select a run, even before its output exists, to see its progress bar below the
+video: sampled frame counts, completion percentage, frames/s, seconds/frame,
+elapsed time and approximate ETA. Speed is end-to-end analysed-frame throughput,
+not source FPS or inference-only timing. Final artifact writing is included in
+elapsed time but not predicted by the ETA. Finished videos load automatically
+without interrupting playback of other selected runs.
+
+Processing failures move into the initially collapsed **Failed runs** section
+at the bottom, with exception type and message. Older snapshots lacking a
+message explicitly say so. Robot-reported failed checks do not count as runner
+failures. Failed runs remain selectable; retried runs return to the normal list.
+
+The read-only `/api/progress` endpoint polls atomic snapshots in private
+`data/fold_segmentation/progress/<id>.json`. Writes are throttled to twice per
+second, and the UI polls once per second. Snapshots survive exit and retries
+replace them. Active updates older than 30 seconds are flagged as potentially
+stopped; forced termination cannot write a terminal status.
+
+Implementation validation: offline tests exercise bounded concurrent workers,
+resume/retry/replace, failure isolation, clock-based throughput and ETA, HTTP
+polling, and a 500-run sidebar with selection, failure grouping and completion
+loading. The progress changes were ported onto the `experimental_fold` layout
+without replacing the main fold pipeline or its viewer.
+
 ## Method
 
 1. Resize frames to the source dimensions in `robot-image-calibration.json`

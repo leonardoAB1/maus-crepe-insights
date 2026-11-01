@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 
 from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_playback import playback_video
+from .fold_progress import read_progress
 from .fold_stages import INITIAL_CLEANING_LABEL, initial_cleaning_end
 
 CHUNK_SIZE = 64 * 1024
@@ -126,6 +127,11 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
             path = urlsplit(self.path).path
             if path == "/":
                 self._send(PAGE.read_bytes(), "text/html; charset=utf-8")
+                return
+            if path == "/api/progress":
+                self._send(
+                    json.dumps(read_progress(root)).encode(), "application/json"
+                )
                 return
             if path == "/api/runs":
                 directory = root / "fold_segmentation" / "live"

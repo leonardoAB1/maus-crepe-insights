@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
+from threading import Lock
 
 import cv2
 import numpy as np
@@ -27,6 +28,7 @@ from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_geometry import measure_geometry, prepare_geometry
 from .fold_overlay import annotate_frame
 from .fold_plate import detect_plate
+from .fold_progress import VideoProgress
 from .fold_rectify import rectify_video_frame
 from .fold_reference import VisualFlatReference
 from .fold_stages import INITIAL_CLEANING_LABEL, initial_cleaning_end
@@ -36,6 +38,8 @@ from .fold_temporal import MaskWarming, TemporalMask
 
 FRAME_BUDGET_MS = 200.0
 MILLISECONDS_PER_SECOND = 1000
+# Matplotlib's pyplot state is shared across worker threads.
+_PLOT_LOCK = Lock()
 
 
 def analyse_video(
@@ -44,6 +48,36 @@ def analyse_video(
     *,
     replace: bool = False,
     analysis_fps: float = DEFAULT_ANALYSIS_FPS,
+) -> dict[str, float | int]:
+    """Run the pipeline and publish progress for the local dashboard."""
+    progress = VideoProgress(data_dir, run_id)
+    try:
+        result = _analyse_video(
+            data_dir,
+            run_id,
+            replace=replace,
+            analysis_fps=analysis_fps,
+            progress=progress,
+        )
+    except BaseException as error:
+        progress.update(
+            force=True,
+            state="failed",
+            error=type(error).__name__,
+            error_message=str(error),
+        )
+        raise
+    progress.update(force=True, state="completed", fraction=1.0)
+    return result
+
+
+def _analyse_video(
+    data_dir: Path,
+    run_id: int,
+    *,
+    replace: bool = False,
+    analysis_fps: float = DEFAULT_ANALYSIS_FPS,
+    progress: VideoProgress,
 ) -> dict[str, float | int]:
     """Analyze one cached video sequentially and write private review outputs.
 
@@ -75,6 +109,12 @@ def analyse_video(
             raise ValueError("Video cannot be sampled at the requested rate")
         if abs(count / fps - run_duration(run)) > MAX_DURATION_DIFFERENCE:
             raise ValueError("Video and run duration differ")
+        progress.update(
+            force=True,
+            state="running",
+            frames_total=math.ceil(count * analysis_fps / fps),
+            analysis_fps=analysis_fps,
+        )
         origin = phase_clock_origin(run["phases"])
         phases = sorted(
             (
@@ -293,11 +333,16 @@ def analyse_video(
                     )
                     index += 1
                     sample += 1
+                    progress.update(
+                        frames_done=sample,
+                        fraction=min(index / count, 1.0) if count else 0.0,
+                    )
             finally:
                 if writer is not None:
                     writer.release()
             if not rows:
                 raise ValueError("No video frames analyzed")
+            progress.update(force=True, state="finalizing")
             if segmenter is not None:
                 segmenter.save_reference(stage / "reference")
             with (stage / "timeline.csv").open("w", newline="") as file:
@@ -348,16 +393,17 @@ def analyse_video(
                 out = csv.DictWriter(file, fieldnames=columns)
                 out.writeheader()
                 out.writerows(observation_rows)
-            _timeline_plot(
-                stage / "timeline.png",
-                rows,
-                events,
-                [
-                    (float(phase["elapsed_sec"]), phase.get("phase", ""))
-                    for phase in run["phases"]
-                    if phase.get("elapsed_sec") is not None
-                ],
-            )
+            with _PLOT_LOCK:
+                _timeline_plot(
+                    stage / "timeline.png",
+                    rows,
+                    events,
+                    [
+                        (float(phase["elapsed_sec"]), phase.get("phase", ""))
+                        for phase in run["phases"]
+                        if phase.get("elapsed_sec") is not None
+                    ],
+                )
             dispense = summarise_dispense(
                 (row["video_t"], row["plate_fraction"])
                 for row in rows
