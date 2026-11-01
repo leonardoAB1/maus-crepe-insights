@@ -17,6 +17,13 @@
 - [x] Validate with offline tests and the cached private export.
 - [x] Run lint, test and docs-check, then update the PR.
 
+- [x] Highlight all logged cooking phases, not just the fold.
+  - [x] The API exposes every timed phase (dough, cooking, folding,
+    cleaning, handover, discard, ...) instead of only `fold_carefully`.
+  - [x] The dashboard chart draws a labelled phase strip with a legend so a
+    check dot reads against the phase the robot was in.
+  - [x] The per-run `timeline.png` marks the same phase bands.
+
 - [x] Re-fit the state-rule thresholds for rectified top-down frames.
   - [x] Flat threshold 0.49 (median full crepe covers ~0.7 of the plate);
     the old 0.24 oblique threshold mislabeled 201 of 240 half frames.

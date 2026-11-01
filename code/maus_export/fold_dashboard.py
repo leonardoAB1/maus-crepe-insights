@@ -52,10 +52,9 @@ def run_details(data_dir: Path, run_id: int) -> dict:
             )
             event["observation_status"] = observation["status"]
     phases = [
-        {"time": float(phase["elapsed_sec"]), "name": "fold_carefully"}
+        {"time": float(phase["elapsed_sec"]), "name": phase["phase"]}
         for phase in run["phases"]
-        if phase.get("phase") == "fold_carefully"
-        and phase.get("elapsed_sec") is not None
+        if phase.get("phase") and phase.get("elapsed_sec") is not None
     ]
     return {
         "id": run_id,

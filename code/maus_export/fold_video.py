@@ -275,7 +275,16 @@ def analyse_video(
                 out = csv.DictWriter(file, fieldnames=columns)
                 out.writeheader()
                 out.writerows(observation_rows)
-            _timeline_plot(stage / "timeline.png", rows, events)
+            _timeline_plot(
+                stage / "timeline.png",
+                rows,
+                events,
+                [
+                    (float(phase["elapsed_sec"]), phase.get("phase", ""))
+                    for phase in run["phases"]
+                    if phase.get("elapsed_sec") is not None
+                ],
+            )
             (stage / "summary.json").write_text(
                 json.dumps(
                     {
@@ -317,13 +326,28 @@ def analyse_video(
         capture.release()
 
 
-def _timeline_plot(path: Path, rows: list[dict], events: list[tuple]) -> None:
+PHASE_COLORS = {
+    "spread_batter": "#e8a35d",
+    "cook": "#f2cf5b",
+    "fold_carefully": "#9d8cff",
+    "wipe_spatula": "#59c1e0",
+    "plate_handover": "#61d8a2",
+    "discard_crepe": "#8295ac",
+}
+
+
+def _timeline_plot(
+    path: Path,
+    rows: list[dict],
+    events: list[tuple],
+    phases: list[tuple[float, str]] | None = None,
+) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    figure, axis = plt.subplots(figsize=(12, 3))
+    figure, axis = plt.subplots(figsize=(12, 3.4))
     observations = [row for row in rows if row["state"] in STATE_ORDER]
     axis.scatter(
         [row["video_t"] for row in observations],
@@ -340,6 +364,31 @@ def _timeline_plot(path: Path, rows: list[dict], events: list[tuple]) -> None:
             else "grey",
             alpha=0.5,
         )
+    if phases:
+        ordered = sorted(phases)
+        for index, (start, name) in enumerate(ordered):
+            end = (
+                ordered[index + 1][0]
+                if index + 1 < len(ordered)
+                else max((row["video_t"] for row in rows), default=start)
+            )
+            axis.fill_between(
+                [start, end],
+                len(STATE_ORDER) - 0.35,
+                len(STATE_ORDER) + 0.35,
+                color=PHASE_COLORS.get(name, "#243349"),
+                alpha=0.85,
+            )
+            if name in PHASE_COLORS and end - start > 12:
+                axis.text(
+                    (start + end) / 2,
+                    len(STATE_ORDER) + 0.35,
+                    name,
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                )
+        axis.set_ylim(-0.6, len(STATE_ORDER) + 1.0)
     axis.set_yticks(range(len(STATE_ORDER)), STATE_ORDER)
     axis.set_xlabel("Video time (s); lines = logged check starts")
     figure.tight_layout()

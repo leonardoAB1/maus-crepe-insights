@@ -30,7 +30,17 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
                         "timestamp": "2026-01-01T10:00:00",
                         "elapsed_sec": 0,
                         "phase": "fold_carefully",
-                    }
+                    },
+                    {
+                        "timestamp": "2026-01-01T10:00:05",
+                        "elapsed_sec": 5,
+                        "phase": "cook",
+                    },
+                    {
+                        "timestamp": "2026-01-01T10:00:09",
+                        "elapsed_sec": 9,
+                        "phase": "oil",
+                    },
                 ],
                 "logs": [
                     {
@@ -59,7 +69,12 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
             assert detail["events"][0]["ok"] is True
             assert detail["events"][0]["observation"] == "flat"
             assert detail["events"][0]["observed_at"] == 2.6
-            assert detail["phases"][0]["name"] == "fold_carefully"
+            assert [phase["name"] for phase in detail["phases"]] == [
+                "fold_carefully",
+                "cook",
+                "oil",
+            ]
+            assert [phase["time"] for phase in detail["phases"]] == [0, 5, 9]
         request = Request(base + "/video/1", headers={"Range": "bytes=2-4"})
         with urlopen(request) as response:
             assert response.status == 206

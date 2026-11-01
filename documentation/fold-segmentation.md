@@ -33,6 +33,11 @@ The example run ID must be replaced by a locally cached run with a video. The
 live evaluation processes 20 whole videos, so it can take a long time and use
 substantial disk space. Open the local URL printed by the dashboard and select
 an analysed run. Both the graph and check list seek the embedded video.
+The chart's top strip shows the logged cooking phases — dough
+(`spread_batter`), cooking (`cook`), folding (`fold_carefully`), cleaning
+(`wipe_spatula`) and handover (`plate_handover`) — so a check dot can be
+read against the phase the robot was in. The per-run `timeline.png` plot
+marks the same phase bands.
 
 All outputs are under `$DATA/fold_segmentation/`. To avoid accidental loss,
 commands refuse to overwrite their outputs. Move old generated files or use a
