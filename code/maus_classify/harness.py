@@ -48,7 +48,9 @@ CI_LEVEL = 0.95
 SEED = 0
 N_FOLDS = 5
 MIN_CLASSES = 2
-# Balanced accuracy of always predicting the majority class
+# Balanced accuracy of always predicting the majority class, for the two
+# class case. A problem with more classes has a lower bar, which
+# majority_baseline() derives from the classes a view actually holds.
 MAJORITY_BA = 0.5
 # Label shuffles for the null distribution of the holdout score
 N_PERM = 1000
@@ -558,16 +560,28 @@ def holdout_note(train_robots: list[str], test_robots: list[str]) -> str:
     return text
 
 
+def majority_baseline(n_classes: int) -> float:
+    """Balanced accuracy of always predicting the majority class.
+
+    Recalling the majority class perfectly and every other class not at
+    all averages to 1 per class, so a problem with more classes has a
+    lower bar: 0.50 for two classes, 0.25 for four.
+    """
+    return 1.0 / max(n_classes, 1)
+
+
 def generalization(
     per_robot: dict[str, Any], loro: dict[str, Any]
 ) -> dict[str, Any]:
     """Whether the model may claim to generalize across robots.
 
-    It may only if every robot beats the majority baseline, both in its
-    own holdout and when held out entirely. Scores on a robot whose rows
-    hold one class only, and skipped robots, are listed as not evaluated.
+    It may only if every robot beats the majority baseline of the classes
+    that robot's view holds, both in its own holdout and when held out
+    entirely. Scores on a robot whose rows hold one class only, and
+    skipped robots, are listed as not evaluated.
     """
     below, evaluated, missing = [], [], []
+    bars: dict[str, float] = {}
     views = (("holdout", per_robot), ("leave_one_robot_out", loro))
     for view, scores in views:
         for robot, m in scores.items():
@@ -575,18 +589,22 @@ def generalization(
                 missing.append(f"{robot} ({view})")
                 continue
             evaluated.append(f"{robot} ({view})")
+            bar = majority_baseline(_n_classes(m))
+            bars[f"{robot} ({view})"] = bar
             # equal to majority is no better than guessing per robot, which
             # is what a model that only recognizes the robot scores
-            if m["balanced_accuracy"] <= MAJORITY_BA:
+            if m["balanced_accuracy"] <= bar:
                 below.append(f"{robot} ({view})")
     ok = bool(evaluated) and not below
     return {
         "generalizes": ok,
         "rule": "every robot beats the majority baseline (balanced "
-        f"accuracy {MAJORITY_BA}) in its holdout and leave-one-robot-out",
+        "accuracy of the majority rule, 1 per class present in that view) "
+        "in its holdout and leave-one-robot-out",
         "not_above_majority": below,
         "evaluated": evaluated,
         "not_evaluated": missing,
+        "majority_baseline": bars,
     }
 
 

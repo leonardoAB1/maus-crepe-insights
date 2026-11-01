@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from .harness import MAJORITY_BA  # noqa: E402
+from .harness import MAJORITY_BA, majority_baseline  # noqa: E402
 from .split import TEST  # noqa: E402
 
 SURFACE = "#fcfcfb"
@@ -37,6 +37,15 @@ def _score(m: dict[str, Any] | None) -> float | None:
     if sum(1 for c in m["per_class"].values() if c["support"] > 0) < 2:
         return None
     return m["balanced_accuracy"]
+
+
+def card_baseline(card: dict[str, Any]) -> float:
+    """Majority baseline for the classes a card's holdout holds."""
+    per_class = card.get("metrics", {}).get("test", {}).get("per_class", {})
+    present = [c for c in per_class.values() if c.get("support", 0) > 0]
+    if not present:
+        return MAJORITY_BA
+    return majority_baseline(len(present))
 
 
 def per_robot_figure(cards: dict[str, dict[str, Any]]) -> plt.Figure:
@@ -75,7 +84,7 @@ def per_robot_figure(cards: dict[str, dict[str, Any]]) -> plt.Figure:
                     zorder=4,
                     bbox={"facecolor": SURFACE, "edgecolor": "none", "pad": 1},
                 )
-        ax.axhline(MAJORITY_BA, color=INK_2, lw=1, ls="--", zorder=3)
+        ax.axhline(card_baseline(card), color=INK_2, lw=1, ls="--", zorder=3)
         ax.set_xticks(range(len(robots)))
         ax.set_xticklabels(
             [r.removeprefix(ROBOT_PREFIX) for r in robots], color=INK_2
