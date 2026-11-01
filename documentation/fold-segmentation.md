@@ -27,7 +27,16 @@ pixi run fold-live 1234 --data-dir "$DATA"   # default 10 fps (200 ms/frame)
 pixi run fold-live 1234 --fps 5 --data-dir "$DATA"
 pixi run fold-live-eval --data-dir "$DATA"
 pixi run fold-dashboard --data-dir "$DATA"
+
+# One offline command: analyze cached videos, then open local review.
+pixi run fold-watch 1234 --data-dir "$DATA"
+pixi run fold-watch 1234 1235 --data-dir "$DATA" --replace --no-browser
 ```
+
+`fold-watch` uses port 8766 by default (`--port` changes it), reuses
+completed outputs unless `--replace` is supplied, and never downloads data
+or authenticates. Ctrl-C stops review. Rebuild old outputs explicitly to
+obtain the new foreground policy, verdicts and confidence fields.
 
 The example run ID must be replaced by a locally cached run with a video. The
 live evaluation processes 20 whole videos, so it can take a long time and use
@@ -39,11 +48,12 @@ without a fresh `summary.json`).
 The chart's top strip shows the logged cooking phases — dough
 (`spread_batter`), cooking (`cook`), folding (`fold_carefully`), cleaning
 (`wipe_spatula`) and handover (`plate_handover`) — so a check dot can be
-read against the phase the robot was in. The chart's bottom band traces dough
-plate coverage during the `spread_batter*` phases against the dashed 40%
-supervisor target, so a dispensing collapse is visible at a glance. The
-per-run `timeline.png` plot marks the same phase bands and adds a matching
-dough-coverage subplot with the 40% target line.
+read against the phase the robot was in. The chart's bottom band traces plate coverage throughout the video, with
+missing or occluded measurements shown as gaps rather than zero. The dashed
+40% line is a dispensing target only, not a fold threshold. The private
+`timeline.png` uses the same full-duration coverage and check verdict labels.
+The check list and graph show success/failure/unknown and vote confidence;
+the run overview separates visual failures from robot-reported failures.
 
 All outputs are under `$DATA/fold_segmentation/`. To avoid accidental loss,
 commands refuse to overwrite their outputs. Move old generated files or use a
@@ -69,12 +79,13 @@ remove only its incomplete generated evaluation files before rerunning it.
 3. Detect a Hough circle on the median-blurred grey image. Within a circle
    grown by 5%, fit a convex-hull ellipse to dark pixels after morphological
    opening. Reject implausible fits and fall back to the circle; shrink its
-   axes to 94%. Use median ellipses from empty, half and quarter frames within
-   each run. Missing plates are reported, not silently counted as correct.
+   axes to 94%. Use median ellipses from all detectable frames within each run,
+   without selecting them by logged check state. Missing plates are reported, not silently counted as correct.
 4. Inside the plate use grey > max(Otsu, 90), 7-pixel elliptical opening and
    closing, and connected components. Compare Lab lightness with another empty
-   frame from the run, preferring a passed check, or a compatible robot and
-   frame width within three run IDs. Match exposure using the median lightness
+   frame identified as empty by the initial visual mask, from the run or
+   a compatible robot and frame width within three run IDs. Robot verdicts
+   and expected states never select reference images. Match exposure using the median lightness
    difference in pixels below 80 in both images. Keep components with at least
    50% of pixels changed by more than 25. Without a reference, remove low-L,
    low-b glare. Remove components under 5% of the largest and masks under 3%
@@ -95,7 +106,7 @@ remove only its incomplete generated evaluation files before rerunning it.
    minimum-rectangle aspect is at least 1.4: a quarter fold folded into a
    narrow wedge can match a half fold area without being elongated.
    Anything smaller is quarter. The flat reference is the largest filled
-   area among the run's other flat frames, so an occluded check frame cannot
+   area among the run's other visually flat frames, so an occluded check frame cannot
    shrink it. A flat frame cannot use itself as its own reference. Straight
    edges do not change the decision: on rectified frames flat crepes often
    expose an edge and half folds often expose none. These thresholds
@@ -118,12 +129,26 @@ remove only its incomplete generated evaluation files before rerunning it.
    column for comparison.
 9. Whole-video analysis sequentially grabs frames at 10 Hz by default (a 200
    ms/frame budget, `--fps` for other rates) and rectifies to 900 by 900
-   pixels. It learns the plate, first empty reference and flat area from
-   frames already observed. Classification is still a per-frame estimate, but
-   no state is reported before a logged check starts. Each check collects the
-   per-frame predictions until one second after its logged start; a strict
-   majority is the unverified visual estimate for that check. Ties, fewer than
-   three predictions, or fold checks with no flat reference yet are unknown.
+   pixels. The live adapter requires warm Lab colour support (b >= 136,
+   a <= 145 on OpenCV's byte scale) for at least 35% of a component, rejecting
+   neutral reflections and metal. Bright narrow components connected to the
+   image border and extending into the inner plate cause an occlusion
+   abstention, not an empty prediction. This is conservative classical
+   filtering, not general robot-arm recognition. Empty-reference learning
+   uses at least three low-warmth frames before the dispensing stage, never
+   predicted state labels. The flat-area reference is the median of up to
+   nine recent visually flat frames, requiring three samples. It is updated
+   after inference for subsequent frames and never consults log check names,
+   expected states or robot verdicts. Log phases supply stage timing only.
+   Each check collects visual predictions until one second after its logged
+   start. A strict majority is the unverified estimate for comparison with
+   the expected check state. Ties, fewer than three valid predictions, less
+   than 60% valid samples or folds without a visual flat reference are unknown.
+   The independent comparison verdict is success when visual and expected
+   states agree, failure when they differ, and unknown on abstention.
+   Confidence is winning votes divided by all samples, including invalid
+   frames. It is vote support, not a calibrated correctness probability.
+   Predictions and geometry do not consume these comparison verdicts.
    This is delayed, experimental video inference, not a control system.
    Each timeline row also carries the active logged phase, and the dough
    dispensing samples (every ``spread_batter*`` phase variant, e.g.
@@ -166,7 +191,11 @@ Rank AUC uses passed checks as positive, average ranks for ties and the stated
 metric direction; a value below 0.5 indicates the opposite direction. No
 threshold is chosen using the AUC.
 
-## Local metrics snapshot
+## Historical metrics snapshot (before cleanup)
+
+These results describe the original reference selection, which consulted
+log labels offline. They are not validation of the independent cleanup
+pipeline. Rebuild and re-evaluate before comparing aggregate agreement.
 
 On 2026-11-01, using the cached export and the method above:
 
@@ -208,7 +237,26 @@ On 2026-11-01, using the cached export and the method above:
   flagged run is a genuine fault, logged ``not_succeeded``, whose dough never
   left a small blob and then disappeared.
 
+## Cleanup validation (2026-11-01)
+
+Synthetic tests alter check names, expected states and robot verdicts while
+holding images fixed. Live predictions and offline masks, geometry and
+references remain unchanged. Logs only supply timing/stages and independent
+comparison labels. Visual comparison verdicts never feed back into inference.
+
+A private 554-frame smoke test produced 492 usable measurements and 62
+occlusion abstentions, with median processing time 41.3 ms/frame on the
+local desktop. This is not a held-out quality metric or Raspberry Pi timing.
+The original generated artifacts were preserved in a separate data directory.
+
 ## Limits
+
+The live warmth gate can miss pale or heavily browned dough. A coloured tool
+can still resemble food, and an arm merged into a broad foreground component
+may evade the narrow-object test. The adapter must be validated on held-out
+videos and replaced if these assumptions do not hold. Never treat unknown
+measurements as an empty plate or a successful check.
+
 
 Browned crepes can break into patches. A spatula or arm can look like a crepe
 in individual frames. Angles are in the corrected image, not calibrated robot
