@@ -74,6 +74,38 @@ Whole videos (live): a run with a too small spread now goes empty, flat,
 half, quarter instead of staying empty; a run whose folds failed stays flat
 through the fold phase, which is what happened on the plate.
 
+## Against human labels
+
+`pixi run -e ml fold-student-human --labels <folder>` compares the student
+with the reviewed Label Studio exports of the labeling project (phase labels
+and material/hole brush masks, one frame every 5 s). The labels are private;
+point `--labels` at a local folder with `set-*/phase-v1.json` and
+`set-*/masks-v1.json`. Frames are decoded from the run videos by
+`decoded_frame_index`; the brush RLE decoder gives the same masks as
+`label_studio_sdk` on all 121 regions of the current export.
+
+Snapshot 2026-11-01: 5 consecutive runs of one robot, 4 of them student
+training runs (other moments of the same crêpes), so read the numbers as
+a first check, not a test set.
+
+| Metric | Frames | Result |
+|---|---|---|
+| mask IoU, student vs human (valid masks) | 62 | median 0.944, mean 0.859 |
+| mask IoU, human vs human (same frame, both sets) | 10 | median 0.933 |
+| false crêpe on empty plates | 51 | none |
+| human hole pixels the student calls crêpe | 29 | median 99.6 % |
+| live state vs human phase | 178 | 98.3 % |
+| single-frame state vs human phase | 178 | 99.4 % |
+
+On normal frames the student is as close to a human as two humans are to
+each other. The mean IoU is lower because of the frames it was never
+trained on: small fresh batter at the start of spreading (13 of 30
+"spreading" frames read as empty) and a crêpe being pushed off. Live errors
+sit at transitions: a fresh half fold still read as flat for a moment, a
+quarter already read as empty while it leaves the plate. All hole labels
+are in masks that still need review (the hole brush overlaps the material
+brush), and the student counts holes as crêpe.
+
 ## Limits
 
 - Trained only on check-moment frames: small fresh batter at the start of

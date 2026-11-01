@@ -74,5 +74,6 @@ class OnnxForeground:
                     "input_space": "raw",
                     "empty_reference": False,
                 }
-            )
+            ),
+            newline="\n",
         )

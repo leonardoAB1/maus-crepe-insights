@@ -91,6 +91,10 @@ def main() -> None:
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
+    sub.add_parser(
+        "overlay-pose",
+        help="crepe position and angle per check attempt from the overlays",
+    )
     dashboard = sub.add_parser(
         "fold-experimental-dashboard", help="serve experimental video review"
     )
@@ -201,6 +205,16 @@ def main() -> None:
         "fold-student-eval", help="crepe student state at the check frames"
     )
     data_dir_arg(fse)
+    fsh = sub.add_parser(
+        "fold-student-human", help="crepe student against human labels"
+    )
+    data_dir_arg(fsh)
+    fsh.add_argument(
+        "--labels",
+        type=Path,
+        required=True,
+        help="private folder with set-*/phase-v1.json and masks-v1.json",
+    )
     ls = sub.add_parser(
         "label-states", help="print the unified crepe-state vocabulary"
     )
@@ -388,6 +402,10 @@ def main() -> None:
         from .vision_metrics import build_vision_table
 
         build_vision_table(data_dir)
+    if args.cmd == "overlay-pose":
+        from .overlay_pose import build_pose_table
+
+        build_pose_table(data_dir)
     if args.cmd == "analyze":
         from .analysis import N_BOOT, run_analysis
 
@@ -452,6 +470,10 @@ def main() -> None:
         from .crepe_student import evaluate_check_frames
 
         print(evaluate_check_frames(data_dir).to_string(index=False))
+    if args.cmd == "fold-student-human":
+        from .human_eval import evaluate
+
+        print(evaluate(data_dir, args.labels).to_string(index=False))
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,

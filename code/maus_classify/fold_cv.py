@@ -13,6 +13,10 @@ they exclude the variance of refitting in CV and are too narrow; pooled
 out-of-fold AUC on small null data is also biased below zero. Whether the
 model beats robot-only is therefore judged by `permutation_test`: labels are
 shuffled within robot and the whole CV is rerun.
+
+The generic parts (interval, run bootstrap, leave one robot out, label
+permutation) come from `maus_classify.harness`; this module keeps only the
+fold-risk CV with its robot term and robot-only baseline.
 """
 
 from __future__ import annotations
@@ -28,6 +32,10 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from .harness import leave_one_robot_out as harness_loro
+from .harness import permutation_test as harness_permutation_test
+from .harness import run_bootstrap
+
 ROBOT = "robot"
 N_SPLITS = 5
 N_REPEATS = 20
@@ -37,8 +45,8 @@ PERM_REPEATS = 5
 ALPHA = 0.05
 C = 1.0
 MAX_ITER = 1000
-CI = (0.025, 0.975)
 MIN_CLASS = 2  # fewer events than this in a robot: no CV for it
+FAIL, PASS = "fail", "pass"
 
 
 def _model():
@@ -106,14 +114,6 @@ def _brier_skill(y: np.ndarray, p: np.ndarray, base: np.ndarray) -> float:
     return 1 - float(np.mean((p - y) ** 2)) / b0 if b0 > 0 else math.nan
 
 
-def _ci(vals: list[float]) -> list[float]:
-    v = np.asarray(vals, float)
-    v = v[np.isfinite(v)]
-    if not len(v):
-        return [math.nan, math.nan]
-    return [float(np.quantile(v, CI[0])), float(np.quantile(v, CI[1]))]
-
-
 def delta_report(
     y: np.ndarray,
     p_model: np.ndarray,
@@ -127,40 +127,32 @@ def delta_report(
     intervals from a bootstrap of runs within each robot."""
     y, robot = np.asarray(y, float), np.asarray(robot)
 
-    def stats(idx: np.ndarray) -> tuple[float, float, float]:
-        auc = within_auc(y[idx], p_model[idx], robot[idx])
+    def stats(idx: np.ndarray) -> dict[str, float]:
         pooled = (
             roc_auc_score(y[idx], p_model[idx])
             - roc_auc_score(y[idx], p_base[idx])
             if 0 < y[idx].sum() < len(idx)
             else math.nan
         )
-        return (
-            auc - 0.5,
-            pooled,
-            _brier_skill(y[idx], p_model[idx], p_base[idx]),
-        )
+        within = within_auc(y[idx], p_model[idx], robot[idx])
+        return {
+            "delta_auc_within_robot": within - 0.5,
+            "delta_auc_pooled": pooled,
+            "brier_skill": _brier_skill(y[idx], p_model[idx], p_base[idx]),
+        }
 
-    point = stats(np.arange(len(y)))
-    rng = np.random.default_rng(seed)
-    groups = [np.flatnonzero(robot == r) for r in np.unique(robot)]
-    draws = []
-    for _ in range(n_boot):
-        idx = np.concatenate([rng.choice(g, len(g)) for g in groups])
-        draws.append(stats(idx))
-    draws_arr = np.array(draws)
-    names = ("delta_auc_within_robot", "delta_auc_pooled", "brier_skill")
+    # one row per run, so each row is its own run group
+    boot = run_bootstrap(
+        stats, np.arange(len(y)), strata=robot, n_boot=n_boot, seed=seed
+    )
     out: dict[str, Any] = {
         "n_runs": len(y),
         "n_events": int(y.sum()),
         "note": "resample_ci95 resamples fixed out-of-fold predictions; it "
         "excludes CV refit variance. Use permutation_test for inference.",
     }
-    for i, name in enumerate(names):
-        out[name] = {
-            "value": float(point[i]),
-            "resample_ci95": _ci(list(draws_arr[:, i])),
-        }
+    for name, entry in boot.items():
+        out[name] = {"value": entry["value"], "resample_ci95": entry["ci95"]}
     return out
 
 
@@ -172,27 +164,16 @@ def auc_report(
     y = np.asarray(y, float)
     base = np.full(len(y), y.mean())
 
-    def stats(idx):
+    def stats(idx: np.ndarray) -> dict[str, float]:
         if not 0 < y[idx].sum() < len(idx):
-            return math.nan, math.nan
-        return roc_auc_score(y[idx], p[idx]), _brier_skill(
-            y[idx], p[idx], base[idx]
-        )
+            return {"auc": math.nan, "brier_skill_vs_mean": math.nan}
+        return {
+            "auc": roc_auc_score(y[idx], p[idx]),
+            "brier_skill_vs_mean": _brier_skill(y[idx], p[idx], base[idx]),
+        }
 
-    point = stats(np.arange(len(y)))
-    rng = np.random.default_rng(seed)
-    draws = np.array(
-        [stats(rng.integers(0, len(y), len(y))) for _ in range(n_boot)]
-    )
-    return {
-        "n_runs": len(y),
-        "n_events": int(y.sum()),
-        "auc": {"value": float(point[0]), "ci95": _ci(list(draws[:, 0]))},
-        "brier_skill_vs_mean": {
-            "value": float(point[1]),
-            "ci95": _ci(list(draws[:, 1])),
-        },
-    }
+    boot = run_bootstrap(stats, np.arange(len(y)), n_boot=n_boot, seed=seed)
+    return {"n_runs": len(y), "n_events": int(y.sum()), **boot}
 
 
 def within_robot_cv(
@@ -225,20 +206,40 @@ def leave_one_robot_out(
     *,
     n_boot: int = N_BOOT,
 ) -> dict[str, Any]:
-    """Train on the other robots (features only), score the held-out one."""
+    """Train on the other robots (features only, the held-out robot is
+    unseen), score the held-out one with AUC and Brier skill against its
+    own mean, through `harness.leave_one_robot_out`. A robot with one class
+    keeps its counts and gets no score."""
     rows = table[table[target].notna() & table[ROBOT].isin(robots)]
+    y = np.where(rows[target].to_numpy(float) == 1, FAIL, PASS)
+
+    def score(
+        y_true: np.ndarray, proba: np.ndarray, classes: list[str]
+    ) -> dict[str, Any]:
+        hit = (y_true == FAIL).astype(float)
+        return auc_report(hit, proba[:, classes.index(FAIL)], n_boot=n_boot)
+
+    raw = harness_loro(
+        _model(),
+        rows[features].to_numpy(float),
+        y,
+        rows[ROBOT].astype(str).to_numpy(),
+        positive=FAIL,
+        score=score,
+        min_runs=1,
+        n_boot=n_boot,
+    )
     out = {}
     for r in robots:
-        train, test = rows[rows[ROBOT] != r], rows[rows[ROBOT] == r]
-        y = test[target].to_numpy(float)
-        if not (0 < y.sum() < len(y)) or train[target].nunique() < 2:
-            out[r] = {"n_runs": len(y), "n_events": int(y.sum()), "auc": None}
+        test = (rows[ROBOT] == r).to_numpy()
+        n, events = int(test.sum()), int((y[test] == FAIL).sum())
+        m = raw.get(r, {})
+        if "auc" not in m or not 0 < events < n:
+            out[r] = {"n_runs": n, "n_events": events, "auc": None}
             continue
-        m = _model().fit(
-            train[features].to_numpy(float), train[target].to_numpy(float)
-        )
-        p = m.predict_proba(test[features].to_numpy(float))[:, 1]
-        out[r] = auc_report(y, p, n_boot=n_boot)
+        if min(events, n - events) < MIN_CLASS:
+            m["note"] = "under two runs in one class: AUC is not meaningful"
+        out[r] = m
     return out
 
 
@@ -277,31 +278,29 @@ def permutation_test(
     (`n_repeats`), so the CV bias cancels."""
     rows = table[table[ROBOT].isin(robots) & table[target].notna()].copy()
     robot = rows[ROBOT].astype(str).to_numpy()
+    calls = iter(range(n_perm + 1))
 
-    def delta(col: str, rep_seed: int) -> float:
+    def delta(labels: np.ndarray) -> float:
+        # the observed labels use `seed`, each shuffle its own CV seed
+        rows["_y"] = labels
         pm, _ = oof_predictions(
-            rows, col, features, n_repeats=n_repeats, seed=rep_seed
+            rows, "_y", features, n_repeats=n_repeats, seed=seed + next(calls)
         )
-        return within_auc(rows[col].to_numpy(float), pm, robot) - 0.5
+        return within_auc(labels, pm, robot) - 0.5
 
-    observed = delta(target, seed)
-    rng = np.random.default_rng(seed)
-    null = np.empty(n_perm)
-    for i in range(n_perm):
-        rows["_perm"] = rows.groupby(ROBOT)[target].transform(
-            lambda s: rng.permutation(s.to_numpy())
-        )
-        null[i] = delta("_perm", seed + 1 + i)
-    p = (1 + int(np.sum(null >= observed))) / (1 + n_perm)
+    res = harness_permutation_test(
+        delta,
+        rows[target].to_numpy(float),
+        strata=robot,
+        n_perm=n_perm,
+        seed=seed,
+    )
     return {
-        "observed_delta_auc": float(observed),
-        "n_perm": n_perm,
+        "observed_delta_auc": res["value"],
+        "n_perm": res["n_perm"],
         "cv_repeats": n_repeats,
-        "null_mean": float(null.mean()),
-        "null_q05_q95": [
-            float(np.quantile(null, 0.05)),
-            float(np.quantile(null, 0.95)),
-        ],
-        "p_one_sided": float(p),
-        "beats_null": bool(p < ALPHA),
+        "null_mean": res["null_mean"],
+        "null_q05_q95": res["null_q05_q95"],
+        "p_one_sided": res["p_value"],
+        "beats_null": bool(res["p_value"] < ALPHA),
     }

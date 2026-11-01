@@ -57,6 +57,8 @@ N_PERM = 1000
 # A model is deployable when its score beats the shuffled-label null at
 # this level
 ALPHA = 0.05
+# Null spread reported next to the p-value (one-sided 90% band)
+NULL_QUANTILES = (0.05, 0.95)
 
 
 class HarnessError(ValueError):
@@ -283,6 +285,11 @@ def permutation_test(
         "n_perm": n_perm,
         "null_mean": float(finite.mean()) if len(finite) else math.nan,
         "null_ci95": ci95(finite),
+        "null_q05_q95": (
+            [float(q) for q in np.quantile(finite, NULL_QUANTILES)]
+            if len(finite)
+            else [math.nan, math.nan]
+        ),
         "p_value": float((1 + (finite >= value).sum()) / (1 + len(finite))),
         "shuffled": "labels within robot" if strata is not None else "labels",
     }

@@ -359,6 +359,8 @@ def test_holdout_null_separates_signal_from_noise():
     )
     assert real["p_value"] < 0.05
     assert real["value"] > real["null_ci95"][1]
+    lo, hi = real["null_q05_q95"]
+    assert real["null_ci95"][0] <= lo <= hi <= real["null_ci95"][1]
 
     noise = np.random.default_rng(9).normal(size=X.shape)
     fake = holdout_null(

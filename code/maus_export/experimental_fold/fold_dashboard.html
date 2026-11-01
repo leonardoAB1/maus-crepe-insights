@@ -60,6 +60,9 @@ Robot verdicts can be wrong. Checks are shown after the robot tries each action;
 exact fold movement times are not logged. Video may contain people.</div>
 <div class="grid"><div><section class="card"><h2>Playback</h2>
 <video id="video" controls preload="metadata"></video>
+<p class="sub">Low-bandwidth playback when available.
+<a id="original" href="#" download>Download original analysis video</a>
+(full quality, larger file).</p>
 <p class="sub">Overlay: <span style="color:#50d25f">green mask</span> ·
 <span style="color:#46c8eb">plate</span> ·
 <span style="color:#ffd21e">fold edges</span> ·
@@ -223,7 +226,9 @@ async function showRun(id, time = 0) {
   video.onloadedmetadata = () => {
     video.currentTime = Math.min(time, video.duration || 0); draw();
   };
-  video.src = '/video/' + id + query; const events = document.querySelector('#events');
+  video.src = '/video/' + id + query;
+  document.querySelector('#original').href = '/original-video/' + id + query;
+  const events = document.querySelector('#events');
   events.replaceChildren();
   for (const highlight of selected.highlights || []) {
     const marker = textNode('button', highlight.name, 'event');

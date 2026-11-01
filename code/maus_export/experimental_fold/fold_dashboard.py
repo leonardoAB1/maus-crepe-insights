@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import json
 import re
 import webbrowser
@@ -12,9 +13,11 @@ from urllib.parse import parse_qs, urlsplit
 
 from .fold_backend import analysis_root
 from .fold_frames import check_starts, phase_clock_origin, video_time
+from .fold_playback import playback_video
 from .fold_stages import INITIAL_CLEANING_LABEL, initial_cleaning_end
 
-CHUNK_SIZE = 1024 * 1024
+CHUNK_SIZE = 64 * 1024
+MIN_GZIP_BYTES = 1024
 PAGE = Path(__file__).with_name("fold_dashboard.html")
 
 
@@ -104,7 +107,16 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
             return
 
         def _send(self, body: bytes, content_type: str) -> None:
+            compress = len(body) >= MIN_GZIP_BYTES and any(
+                item.strip().lower() == "gzip"
+                for item in self.headers.get("Accept-Encoding", "").split(",")
+            )
+            if compress:
+                body = gzip.compress(body, compresslevel=1)
             self.send_response(200)
+            if compress:
+                self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
@@ -160,7 +172,7 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
                         continue
                 self._send(json.dumps(runs).encode(), "application/json")
                 return
-            match = re.fullmatch(r"/(api/run|video)/(\d+)", path)
+            match = re.fullmatch(r"/(api/run|video|original-video)/(\d+)", path)
             if not match:
                 self.send_error(404)
                 return
@@ -173,7 +185,12 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send(json.dumps(result).encode(), "application/json")
                 return
-            video = directory / str(run_id) / "annotated.mp4"
+            run_directory = directory / str(run_id)
+            video = (
+                playback_video(run_directory)
+                if match.group(1) == "video"
+                else run_directory / "annotated.mp4"
+            )
             if not video.is_file():
                 self.send_error(404)
                 return
@@ -181,12 +198,19 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
             start, end = 0, size - 1
             header = self.headers.get("Range")
             if header:
-                match_range = re.fullmatch(r"bytes=(\d+)-(\d*)", header)
-                if not match_range:
+                match_range = re.fullmatch(r"bytes=(\d*)-(\d*)", header)
+                if not match_range or not any(match_range.groups()):
                     self.send_error(416)
                     return
-                start = int(match_range.group(1))
-                end = min(int(match_range.group(2) or end), end)
+                first, last = match_range.groups()
+                if first:
+                    start = int(first)
+                    end = min(int(last) if last else end, end)
+                elif int(last) > 0:
+                    start = max(0, size - int(last))
+                else:
+                    self.send_error(416)
+                    return
                 if start > end:
                     self.send_error(416)
                     return
@@ -212,11 +236,17 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
 
 
 def serve_dashboard(
-    data_dir: Path, port: int = 8765, *, open_browser: bool = False
+    data_dir: Path,
+    port: int = 8765,
+    *,
+    open_browser: bool = False,
+    host: str = "127.0.0.1",
 ) -> None:
-    """Serve private data only on localhost until interrupted."""
-    server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(data_dir))
-    url = f"http://127.0.0.1:{server.server_port}/"
+    """Serve private data, defaulting to localhost unless explicitly changed."""
+    server = ThreadingHTTPServer((host, port), make_handler(data_dir))
+    if host not in {"127.0.0.1", "localhost"}:
+        print("WARNING: unauthenticated private run data exposed to network")
+    url = f"http://{host}:{server.server_port}/"
     print(f"Private dashboard: {url}", flush=True)
     try:
         if open_browser:

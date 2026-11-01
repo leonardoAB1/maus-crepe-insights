@@ -1,5 +1,6 @@
 """Local dashboard routes and video range requests."""
 
+import gzip
 import json
 import re
 import shutil
@@ -17,6 +18,7 @@ from maus_export.experimental_fold.fold_dashboard import (
     make_handler,
     run_details,
 )
+from maus_export.experimental_fold.fold_playback import source_signature
 
 
 def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
@@ -123,6 +125,13 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
         with pytest.raises(HTTPError) as error:
             urlopen(base + "/api/run/2?model=onnx")
         assert error.value.code == 404
+        compressed = Request(base + "/", headers={"Accept-Encoding": "gzip"})
+        with urlopen(compressed) as response:
+            assert response.headers["Content-Encoding"] == "gzip"
+            assert b"Fold insights" in gzip.decompress(response.read())
+        disabled = Request(base + "/", headers={"Accept-Encoding": "gzip;q=0"})
+        with urlopen(disabled) as response:
+            assert response.headers.get("Content-Encoding") is None
         request = Request(base + "/video/1", headers={"Range": "bytes=2-4"})
         with urlopen(request) as response:
             assert response.status == 206
@@ -130,6 +139,37 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
         with pytest.raises(HTTPError) as error:
             urlopen(base + "/video/../raw/runs/1.json")
         assert error.value.code == 404
+        (live / "playback.mp4").write_bytes(b"abcdefghij")
+        (live / "playback.json").write_text(
+            json.dumps(
+                {
+                    "source": source_signature(live / "annotated.mp4"),
+                }
+            )
+        )
+        suffix = Request(base + "/video/1", headers={"Range": "bytes=-3"})
+        with urlopen(suffix) as response:
+            assert response.status == 206
+            assert response.read() == b"hij"
+        with urlopen(base + "/original-video/1") as response:
+            assert response.read() == b"0123456789"
+        (onnx / "playback.mp4").write_bytes(b"ABCDEFGHIJ")
+        (onnx / "playback.json").write_text(
+            json.dumps({"source": source_signature(onnx / "annotated.mp4")}),
+            newline="\n",
+        )
+        suffix = Request(
+            base + "/video/1?model=onnx", headers={"Range": "bytes=-3"}
+        )
+        with urlopen(suffix) as response:
+            assert response.status == 206
+            assert response.read() == b"HIJ"
+        with urlopen(base + "/original-video/1?model=onnx") as response:
+            assert response.read() == b"abcdefghij"
+        invalid = Request(base + "/video/1", headers={"Range": "bytes=-0"})
+        with pytest.raises(HTTPError) as error:
+            urlopen(invalid)
+        assert error.value.code == 416
     finally:
         server.shutdown()
         server.server_close()
