@@ -13,6 +13,8 @@ import pytest
 
 from maus_export.training_dataset import build_training_dataset
 
+CLI_TIMEOUT_SECONDS = 30
+
 TARGETS = [
     "vision.spread.area_rel",
     "vision.spread.diameter_rel",
@@ -65,6 +67,7 @@ def cli(path: Path) -> subprocess.CompletedProcess[str]:
         text=True,
         capture_output=True,
         check=False,
+        timeout=CLI_TIMEOUT_SECONDS,
     )
 
 
@@ -751,6 +754,9 @@ def test_every_metric_rejects_negative_and_infinite_values(
         _validate_vision(pa.table({"id": [1], name: [value]}))
 
 
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="/dev/full is a Linux device"
+)
 def test_full_stdout_does_not_turn_success_into_failure(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     pq.write_table(pa.table({"id": [1]}), tmp_path / "vision.parquet")
@@ -769,6 +775,7 @@ def test_full_stdout_does_not_turn_success_into_failure(tmp_path: Path) -> None:
             stdout=full,
             stderr=subprocess.PIPE,
             check=False,
+            timeout=CLI_TIMEOUT_SECONDS,
         )
     assert result.returncode == 0, result.stderr
     assert len(pq.read_table(output)) == 2

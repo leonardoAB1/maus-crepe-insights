@@ -317,8 +317,14 @@ def build_vision_targets(data_dir: Path) -> None:
         role: hashlib.sha256(value).hexdigest()
         for role, value in contents.items()
     }
-    start = pq.read_table(pa.BufferReader(contents["run_start"]))
-    vision = pq.read_table(pa.BufferReader(contents["vision"]))
+    # These snapshots are single files. Avoid Arrow dataset background pools,
+    # whose native shutdown can hang short-lived macOS CLI processes.
+    start = pq.ParquetFile(pa.BufferReader(contents["run_start"])).read(
+        use_threads=False
+    )
+    vision = pq.ParquetFile(pa.BufferReader(contents["vision"])).read(
+        use_threads=False
+    )
     features = _validate_start(start)
     start_ids = _ids(start)
     raw_hashes = _raw_snapshot(data_dir, start)

@@ -36,6 +36,9 @@ but are not returned.
   `hotplate_controller`, `inventory_node`), with Python logging levels 10–50.
 - **Video:** `videoUrl` (mp4) for every run.
 
+For video-derived fold-state analysis, see the experimental
+[experimental fold analysis](../experimental-fold-analysis.md).
+
 ## Quirks to know
 - **Time zones:** `tsStart`/`tsEnd` are UTC, while log/phase/check timestamps are naive robot-local time
   (Europe/Zurich, so +1 h in winter and +2 h in summer). The exporter measures the offset per run.
