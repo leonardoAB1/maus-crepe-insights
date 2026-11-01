@@ -16,6 +16,7 @@ from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_playback import playback_video
 from .fold_progress import read_progress
 from .fold_stages import INITIAL_CLEANING_LABEL, initial_cleaning_end
+from .fold_web_runner import RunnerBusy, WebRunner
 
 CHUNK_SIZE = 64 * 1024
 MIN_GZIP_BYTES = 1024
@@ -99,22 +100,30 @@ def run_details(data_dir: Path, run_id: int, model: str = "classical") -> dict:
     }
 
 
-def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
-    """Make a read-only HTTP handler limited to known private artifacts."""
+MAX_RUNNER_BODY = 4096
+
+
+def make_handler(
+    data_dir: Path, *, runner: WebRunner | None = None
+) -> type[BaseHTTPRequestHandler]:
+    """Serve known private artifacts and validated local analysis launches."""
     root = data_dir.resolve()
+    runner = runner if runner is not None else WebRunner(root)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:
             return
 
-        def _send(self, body: bytes, content_type: str) -> None:
+        def _send(
+            self, body: bytes, content_type: str, status: int = 200
+        ) -> None:
             compress = len(body) >= MIN_GZIP_BYTES and any(
                 item.strip().lower() == "gzip"
                 for item in self.headers.get("Accept-Encoding", "").split(",")
             )
             if compress:
                 body = gzip.compress(body, compresslevel=1)
-            self.send_response(200)
+            self.send_response(status)
             if compress:
                 self.send_header("Content-Encoding", "gzip")
             self.send_header("Vary", "Accept-Encoding")
@@ -124,6 +133,56 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
             self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(body)
+
+        def do_POST(self) -> None:
+            if self.path != "/api/runner":
+                self.send_error(404)
+                return
+            origin = self.headers.get("Origin")
+            if self.headers.get("X-Maus-Runner") != "1" or (
+                origin is not None
+                and (
+                    urlsplit(origin).netloc != self.headers.get("Host")
+                    or urlsplit(origin).scheme not in {"http", "https"}
+                )
+            ):
+                self.send_error(403)
+                return
+            if self.headers.get_content_type() != "application/json":
+                self.send_error(415)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if not 0 < length <= MAX_RUNNER_BODY:
+                    self.send_error(413)
+                    return
+                options = json.loads(self.rfile.read(length))
+                status = runner.start(options)
+            except RunnerBusy as error:
+                self._send(
+                    json.dumps({"error": str(error)}).encode(),
+                    "application/json",
+                    409,
+                )
+                return
+            except (ValueError, UnicodeError):
+                self._send(
+                    json.dumps(
+                        {
+                            "error": (
+                                "Invalid options, uncached video or "
+                                "unavailable model environment"
+                            )
+                        }
+                    ).encode(),
+                    "application/json",
+                    400,
+                )
+                return
+            except OSError:
+                self.send_error(500, "Could not start local analysis")
+                return
+            self._send(json.dumps(status).encode(), "application/json", 202)
 
         def do_GET(self) -> None:
             request = urlsplit(self.path)
@@ -141,6 +200,11 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
                 return
             if path == "/":
                 self._send(PAGE.read_bytes(), "text/html; charset=utf-8")
+                return
+            if path == "/api/runner":
+                self._send(
+                    json.dumps(runner.snapshot()).encode(), "application/json"
+                )
                 return
             if path == "/api/progress":
                 self._send(
