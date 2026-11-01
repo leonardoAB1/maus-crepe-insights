@@ -71,6 +71,7 @@ def cli(path: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+@pytest.mark.slow
 def test_cli_left_joins_vision_targets_with_fixed_roles(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     source = pa.table(
@@ -110,6 +111,7 @@ def test_cli_left_joins_vision_targets_with_fixed_roles(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("ids", [[1, 1], [1, None], [0], [-5], [999999]])
+@pytest.mark.slow
 def test_invalid_vision_ids_preserve_previous_output_privately(
     tmp_path: Path, ids: list[int | None]
 ) -> None:
@@ -145,6 +147,7 @@ def test_invalid_vision_ids_preserve_previous_output_privately(
         "missing_manifest",
     ],
 )
+@pytest.mark.slow
 def test_invalid_run_start_schema_or_manifest_is_rejected(
     tmp_path: Path, mutation: str
 ) -> None:
@@ -216,6 +219,7 @@ def test_invalid_run_start_schema_or_manifest_is_rejected(
         ),
     ],
 )
+@pytest.mark.slow
 def test_invalid_vision_schema_and_values_preserve_output(
     tmp_path: Path, vision: pa.Table
 ) -> None:
@@ -232,6 +236,7 @@ def test_invalid_vision_schema_and_values_preserve_output(
 
 
 @pytest.mark.parametrize("empty", [True, False])
+@pytest.mark.slow
 def test_nan_and_empty_vision_produce_nulls(
     tmp_path: Path, empty: bool
 ) -> None:
@@ -248,6 +253,7 @@ def test_nan_and_empty_vision_produce_nulls(
     assert table.column("vision.spread.area_rel").to_pylist() == [None, None]
 
 
+@pytest.mark.slow
 def test_manifest_records_source_hashes_and_caveats(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     pq.write_table(pa.table({"id": [1]}), tmp_path / "vision.parquet")
@@ -298,6 +304,7 @@ def test_interrupted_or_racing_write_preserves_previous_artifact(
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+@pytest.mark.slow
 def test_start_nonfinite_sensors_are_not_passed_through(
     tmp_path: Path, value: float
 ) -> None:
@@ -329,6 +336,7 @@ def test_start_nonfinite_sensors_are_not_passed_through(
     "encoded",
     ['{"secret":1}', "[1]", "null", "NaN", "1e999", "not-json", '"secret" '],
 )
+@pytest.mark.slow
 def test_corrupt_recipe_encodings_cannot_smuggle_nested_outcomes(
     tmp_path: Path, encoded: str
 ) -> None:
@@ -349,6 +357,7 @@ def test_corrupt_recipe_encodings_cannot_smuggle_nested_outcomes(
     assert output.read_bytes() == b"stale"
 
 
+@pytest.mark.slow
 def test_vision_accepts_positive_int32_ids(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     pq.write_table(
@@ -413,6 +422,7 @@ def test_upstream_source_mapping_drift_is_rejected(
         ("terminal_status", "forged"),
     ],
 )
+@pytest.mark.slow
 def test_forged_start_values_are_rejected_privately(
     tmp_path: Path, column: str, value: object
 ) -> None:
@@ -438,6 +448,7 @@ def test_forged_start_values_are_rejected_privately(
     assert output.read_bytes() == b"previous"
 
 
+@pytest.mark.slow
 def test_forged_timestamp_is_rejected(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     path = tmp_path / "training" / "run_start.parquet"
@@ -458,6 +469,7 @@ def test_forged_timestamp_is_rejected(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("mutation", ["missing", "duplicate", "malformed"])
+@pytest.mark.slow
 def test_missing_or_invalid_raw_is_rejected_privately(
     tmp_path: Path, mutation: str
 ) -> None:
@@ -483,6 +495,7 @@ def test_missing_or_invalid_raw_is_rejected_privately(
 @pytest.mark.parametrize(
     "mutation", ["missing", "additional", "replaced", "duplicate"]
 )
+@pytest.mark.slow
 def test_raw_id_set_mismatch_fails_without_replacing_valid_output(
     tmp_path: Path, mutation: str
 ) -> None:
@@ -564,6 +577,7 @@ def test_raw_snapshot_race_preserves_output(
         ("vision.spread.uncovered_frac", 1.01),
     ],
 )
+@pytest.mark.slow
 def test_invalid_vision_domains_preserve_output(
     tmp_path: Path, name: str, value: float
 ) -> None:
@@ -592,6 +606,7 @@ def test_invalid_vision_domains_preserve_output(
         (25.0, 44.0),
     ],
 )
+@pytest.mark.slow
 def test_impossible_lightness_std_preserves_output(
     tmp_path: Path, stage: str, mean: float | None, std: float
 ) -> None:
@@ -616,6 +631,7 @@ def test_impossible_lightness_std_preserves_output(
 
 
 @pytest.mark.parametrize("stage", ["spread", "fold1", "fold2"])
+@pytest.mark.slow
 def test_lightness_boundaries_tolerance_and_missingness(
     tmp_path: Path, stage: str
 ) -> None:
@@ -666,6 +682,7 @@ def test_lightness_boundaries_tolerance_and_missingness(
 
 @pytest.mark.parametrize("stage", ["spread", "fold1", "fold2"])
 @pytest.mark.parametrize("missing", ["mean_column", "std_column", "nan"])
+@pytest.mark.slow
 def test_lightness_missing_components_stay_independently_unknown(
     tmp_path: Path, stage: str, missing: str
 ) -> None:
@@ -700,6 +717,7 @@ def test_lightness_missing_components_stay_independently_unknown(
 
 
 @pytest.mark.parametrize("stage", ["spread", "fold1", "fold2"])
+@pytest.mark.slow
 def test_lightness_variance_exceeding_tolerance_is_rejected(
     tmp_path: Path, stage: str
 ) -> None:
@@ -717,6 +735,7 @@ def test_lightness_variance_exceeding_tolerance_is_rejected(
     assert cli(tmp_path).returncode != 0
 
 
+@pytest.mark.slow
 def test_vision_domain_boundaries_and_unbounded_ratios(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     pq.write_table(
@@ -757,6 +776,7 @@ def test_every_metric_rejects_negative_and_infinite_values(
 @pytest.mark.skipif(
     sys.platform != "linux", reason="/dev/full is a Linux device"
 )
+@pytest.mark.slow
 def test_full_stdout_does_not_turn_success_into_failure(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     pq.write_table(pa.table({"id": [1]}), tmp_path / "vision.parquet")
@@ -805,6 +825,7 @@ def test_no_cleanup_after_successful_replacement(
     )
 
 
+@pytest.mark.slow
 def test_success_is_silent(tmp_path: Path) -> None:
     make_run_start(tmp_path)
     pq.write_table(pa.table({"id": [1]}), tmp_path / "vision.parquet")
@@ -814,6 +835,7 @@ def test_success_is_silent(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("scored", [False, True])
+@pytest.mark.slow
 def test_manifest_coverage_counts_non_null_target_rows(
     tmp_path: Path, scored: bool
 ) -> None:
@@ -833,6 +855,7 @@ def test_manifest_coverage_counts_non_null_target_rows(
 
 
 @pytest.mark.parametrize("version", [True, 1.0])
+@pytest.mark.slow
 def test_manifest_version_requires_integer_type(
     tmp_path: Path, version: bool | float
 ) -> None:
