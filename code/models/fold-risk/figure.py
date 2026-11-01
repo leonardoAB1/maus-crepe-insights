@@ -82,6 +82,15 @@ def pick(test: pd.DataFrame) -> list[tuple[pd.Series, str]]:
             row = rows.iloc[0]
             used.add(row.name)
             tiles.append((row, note))
+    # every holdout robot gets a tile: its median-risk run if none is shown
+    shown = {str(row[ROBOT]) for row, _ in tiles}
+    for robot in sorted(test[ROBOT].astype(str).unique()):
+        rest = test[(test[ROBOT].astype(str) == robot) & ~test.index.isin(used)]
+        if robot in shown or rest.empty:
+            continue
+        row = rest.sort_values("p_fail", kind="stable").iloc[len(rest) // 2]
+        used.add(row.name)
+        tiles.append((row, f"typical {robot} run (median risk)"))
     return tiles
 
 
@@ -114,8 +123,8 @@ def example_figure(data_dir: Path, model_dir: Path, out: Path) -> Path:
         out,
         title="fold-risk: will a fold fail, judged at the spread check",
         subtitle=(
-            f"Research only. Holdout: {len(test)} runs on one robot "
-            f"({robots}), {n_fail} with a fold failure.\n"
+            f"Research only. Holdout: {len(test)} runs from {robots}, "
+            f"{n_fail} with a fold failure.\n"
             "Robot fold outcome vs model answer (confidence). "
             "Green = agree, red = disagree. Last spread frame."
         ),
