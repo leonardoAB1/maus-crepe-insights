@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
+from threading import Lock
 
 import cv2
 import numpy as np
@@ -34,6 +35,8 @@ from .fold_sync import CheckWindowEvaluator
 DEFAULT_ANALYSIS_FPS = 10.0
 FRAME_BUDGET_MS = 200.0
 MILLISECONDS_PER_SECOND = 1000
+# Matplotlib's pyplot state is shared across worker threads.
+_PLOT_LOCK = Lock()
 
 
 def analyse_video(
@@ -342,16 +345,17 @@ def _analyse_video(
                 out = csv.DictWriter(file, fieldnames=columns)
                 out.writeheader()
                 out.writerows(observation_rows)
-            _timeline_plot(
-                stage / "timeline.png",
-                rows,
-                events,
-                [
-                    (float(phase["elapsed_sec"]), phase.get("phase", ""))
-                    for phase in run["phases"]
-                    if phase.get("elapsed_sec") is not None
-                ],
-            )
+            with _PLOT_LOCK:
+                _timeline_plot(
+                    stage / "timeline.png",
+                    rows,
+                    events,
+                    [
+                        (float(phase["elapsed_sec"]), phase.get("phase", ""))
+                        for phase in run["phases"]
+                        if phase.get("elapsed_sec") is not None
+                    ],
+                )
             dispense = summarise_dispense(
                 (row["video_t"], row["plate_fraction"])
                 for row in rows

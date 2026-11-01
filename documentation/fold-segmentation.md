@@ -26,6 +26,7 @@ pixi run fold-review --data-dir "$DATA"
 pixi run fold-live 1234 --data-dir "$DATA"   # default 10 fps (200 ms/frame)
 pixi run fold-live 1234 --fps 5 --data-dir "$DATA"
 pixi run fold-live-eval --data-dir "$DATA"
+pixi run fold-batch --threads 4 --data-dir "$DATA"
 pixi run fold-dashboard --data-dir "$DATA"
 ```
 
@@ -34,8 +35,36 @@ live evaluation processes 20 whole videos, so it can take a long time and use
 substantial disk space. Open the local URL printed by the dashboard and select
 an analysed run. Both the graph and check list seek the embedded video.
 
+### Process all cached videos
+
+```bash
+# From code/: process all cached run/video pairs, up to 4 at a time.
+pixi run fold-batch --threads 4 --data-dir /absolute/path/to/data
+# Recompute even completed outputs, optionally at a different sampling rate.
+pixi run fold-batch --threads 4 --fps 5 --replace --data-dir /absolute/path/to/data
+```
+
+`fold-batch` discovers every numeric `raw/runs/<id>.json` with a matching
+`raw/media/<id>/video.mp4`. It does not download data or use the sampled
+evaluation subset. `--threads` defaults to 1 and controls concurrent videos,
+not a video's internal frame processing. Videos remain sequential internally.
+Increase threads cautiously: each active video needs its own decoder, frame
+buffers and encoder, and native libraries can use additional threads.
+
+By default, runs with all five output artifacts (summary, timeline CSV, check
+observations, annotated video and timeline PNG) are skipped. Partial outputs are
+retried; `--replace` reprocesses everything. New artifacts replace existing
+outputs only after successful processing. A bad run does not stop the batch;
+console output reports each result and ends with total/completed/skipped/failed
+counts. Any failed run gives exit code 1. Re-running resumes skipped/completed
+work without recomputing it. Run only one batch per data directory, and do not
+launch a separate runner for the same run ID concurrently.
+
+### Live progress
+
 To watch processing live, leave `pixi run fold-dashboard --data-dir "$DATA"`
-running in one terminal and start `fold-live` (or `fold-live-eval`) in another,
+running in one terminal and start `fold-batch`, `fold-live`, or `fold-live-eval`
+in another,
 using the same absolute data directory. The **Pipeline processing** panel polls
 once per second and shows each run's sampled frames completed, estimated total,
 video completion percentage, average frames/second, seconds/frame, elapsed time,
