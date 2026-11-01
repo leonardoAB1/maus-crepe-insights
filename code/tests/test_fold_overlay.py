@@ -34,6 +34,14 @@ def test_mask_and_geometry_are_drawn_without_changing_input() -> None:
     assert not np.array_equal(output[375, 350], original[375, 350])
 
 
+def test_plate_estimate_is_not_drawn() -> None:
+    image = np.full((600, 600, 3), 50, np.uint8)
+    plate = PlateEllipse(300, 300, 550, 550, 0)
+    with_plate = annotate_frame(image, plate, None, None, None, "ok")
+    without_plate = annotate_frame(image, None, None, None, None, "ok")
+    assert np.array_equal(with_plate, without_plate)
+
+
 def test_failed_detection_does_not_draw_stale_mask() -> None:
     image = np.full((300, 600, 3), 50, np.uint8)
     output = annotate_frame(

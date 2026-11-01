@@ -11,7 +11,6 @@ from .fold_geometry import CrepeGeometry
 from .fold_plate import PlateEllipse
 
 MASK_COLOR = (80, 210, 95)
-PLATE_COLOR = (235, 200, 70)
 EDGE_COLOR = (30, 210, 255)
 CENTRE_COLOR = (255, 255, 255)
 CORNER_COLOR = (240, 90, 240)
@@ -47,8 +46,10 @@ def annotate_frame(
 ) -> np.ndarray:
     """Draw the current mask and measurements without modifying the input.
 
-    On failed inference, pass no mask or geometry so stale detections are not
-    shown. All positions and dimensions are in corrected-image pixels.
+    The plate is used for analysis but is not drawn: its estimated boundary
+    does not reliably match the video. On failed inference, pass no mask or
+    geometry so stale detections are not shown. All positions and dimensions
+    are in corrected-image pixels.
     """
     output = frame.copy()
     if mask is not None:
@@ -63,14 +64,6 @@ def annotate_frame(
             mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
         cv2.drawContours(output, contours, -1, MASK_COLOR, LINE_WIDTH)
-    if plate is not None:
-        cv2.ellipse(
-            output,
-            ((plate.x, plate.y), (plate.width, plate.height), plate.angle),
-            PLATE_COLOR,
-            LINE_WIDTH,
-            cv2.LINE_AA,
-        )
     if geometry is not None:
         for edge in geometry.edges:
             cv2.line(
