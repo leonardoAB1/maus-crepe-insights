@@ -1,0 +1,264 @@
+{
+  "name": "crepe-pose",
+  "status": "experiment, not used by any pipeline, the robot or the team's results",
+  "description": "Crepe mask and position from one rectified frame. Challenge task 2. A local experiment, not a shipped model.",
+  "estimator": "small U-Net with a direction head, in PyTorch",
+  "inputs": {
+    "x": {
+      "dtype": "float32",
+      "shape": [
+        1,
+        3,
+        160,
+        160
+      ],
+      "meaning": "rectified frame, BGR, scaled 0 to 1"
+    }
+  },
+  "outputs": {
+    "mask": {
+      "shape": [
+        1,
+        1,
+        160,
+        160
+      ],
+      "meaning": "crepe probability per pixel. Threshold 0.5, then keep the largest region with holes filled. The centre is the mask centroid."
+    },
+    "direction": {
+      "shape": [
+        1,
+        2
+      ],
+      "meaning": "unproven fold direction. Do not use."
+    }
+  },
+  "size": {
+    "parameters": 619267,
+    "bytes": 2482526,
+    "sha256": "64e80b3b00d500e1a77100346ce98b952d9627a426cd8a0e016f4ec2375a3878"
+  },
+  "onnx": {
+    "opset": 17,
+    "nodes": 47,
+    "parity_max_abs_diff": 2.59e-06
+  },
+  "latency": {
+    "host": {
+      "machine": "arm64",
+      "system": "macOS-27.0.1-arm64-arm-64bit",
+      "note": "Apple M4 Pro laptop, not the robot"
+    },
+    "batch": 1,
+    "runs": 50,
+    "threads_1": {
+      "prepare_median_ms": 0.4,
+      "model_median_ms": 6.7,
+      "total_median_ms": 7.3,
+      "total_p95_ms": 7.5
+    },
+    "threads_4": {
+      "prepare_median_ms": 0.4,
+      "model_median_ms": 3.7,
+      "total_median_ms": 4.3,
+      "total_p95_ms": 5.0
+    },
+    "pi5_estimate_ms": [
+      29,
+      58
+    ],
+    "pi5_estimate_method": "single-thread total x 4 to x 8. The repo's rough x 4 is for an x86 laptop core and an M4 core is likely faster, so the top end is a judgement. Not measured on a Raspberry Pi 5.",
+    "target_ms": 300.0
+  },
+  "data": {
+    "chain": [
+      "6,000 synthetic images: real plates, 75% real cut-outs",
+      "fine-tuned on robot overlay outlines, training split",
+      "fine-tuned on reviewed hand masks, all five labelled runs"
+    ],
+    "robot_outlines": {
+      "frames": 461,
+      "runs": 110,
+      "robots": [
+        "maus-otto",
+        "maus-pixi",
+        "maus-quin"
+      ],
+      "first_utc": "2026-10-13 11:25:33+00:00",
+      "last_utc": "2026-10-30 15:15:45+00:00"
+    },
+    "hand_masks": {
+      "frames": 193,
+      "with_crepe": 113,
+      "runs": 5,
+      "robots": [
+        "maus-pixi"
+      ],
+      "source": "private labels repo, with an update not merged there",
+      "only": "validation ok"
+    }
+  },
+  "metrics": {
+    "hand_masks_held_out": {
+      "reference": "reviewed hand masks, may be pixel-assisted",
+      "method": "each fold trains on four runs, scores the fifth",
+      "before_hand_tuning": {
+        "crepes": 113,
+        "iou": 0.96,
+        "iou_low": 0.903,
+        "missed": 0.027,
+        "empty": 80,
+        "false_on_empty": 0.0
+      },
+      "after_hand_tuning": {
+        "crepes": 113,
+        "iou": 0.965,
+        "iou_low": 0.922,
+        "missed": 0.0,
+        "empty": 80,
+        "false_on_empty": 0.05
+      },
+      "per_run": [
+        {
+          "before": {
+            "crepes": 17,
+            "iou": 0.972,
+            "iou_low": 0.924,
+            "missed": 0.059,
+            "empty": 4,
+            "false_on_empty": 0.0
+          },
+          "after": {
+            "crepes": 17,
+            "iou": 0.978,
+            "iou_low": 0.954,
+            "missed": 0.0,
+            "empty": 4,
+            "false_on_empty": 0.0
+          }
+        },
+        {
+          "before": {
+            "crepes": 45,
+            "iou": 0.968,
+            "iou_low": 0.925,
+            "missed": 0.0,
+            "empty": 24,
+            "false_on_empty": 0.0
+          },
+          "after": {
+            "crepes": 45,
+            "iou": 0.972,
+            "iou_low": 0.932,
+            "missed": 0.0,
+            "empty": 24,
+            "false_on_empty": 0.083
+          }
+        },
+        {
+          "before": {
+            "crepes": 27,
+            "iou": 0.965,
+            "iou_low": 0.928,
+            "missed": 0.0,
+            "empty": 8,
+            "false_on_empty": 0.0
+          },
+          "after": {
+            "crepes": 27,
+            "iou": 0.973,
+            "iou_low": 0.95,
+            "missed": 0.0,
+            "empty": 8,
+            "false_on_empty": 0.0
+          }
+        },
+        {
+          "before": {
+            "crepes": 22,
+            "iou": 0.934,
+            "iou_low": 0.834,
+            "missed": 0.0,
+            "empty": 40,
+            "false_on_empty": 0.0
+          },
+          "after": {
+            "crepes": 22,
+            "iou": 0.941,
+            "iou_low": 0.911,
+            "missed": 0.0,
+            "empty": 40,
+            "false_on_empty": 0.05
+          }
+        },
+        {
+          "before": {
+            "crepes": 2,
+            "iou": 0.0,
+            "iou_low": 0.0,
+            "missed": 1.0,
+            "empty": 4,
+            "false_on_empty": 0.0
+          },
+          "after": {
+            "crepes": 2,
+            "iou": 0.677,
+            "iou_low": 0.624,
+            "missed": 0.0,
+            "empty": 4,
+            "false_on_empty": 0.0
+          }
+        }
+      ],
+      "note": "folds, not the final model: it trained on all five"
+    },
+    "unseen_check_frames": {
+      "reference": "robot overlay outline, not ground truth",
+      "frames": 85,
+      "runs": 27,
+      "iou_median": 0.964,
+      "centre_error_median_share_of_plate_radius": 0.0086,
+      "per_robot": {
+        "maus-otto": {
+          "frames": 6,
+          "iou_median": 0.946
+        },
+        "maus-pixi": {
+          "frames": 25,
+          "iou_median": 0.975
+        },
+        "maus-quin": {
+          "frames": 54,
+          "iou_median": 0.963
+        }
+      }
+    }
+  },
+  "deployable": false,
+  "generalization": "not established",
+  "generalization_reason": "Hand masks cover one robot, there is no leave-one-robot-out check and maus-otto has only 6 unseen frames.",
+  "missing": [
+    "bootstrap intervals for the final model",
+    "leave-one-robot-out check, required by models/README.md",
+    "any measurement on a Raspberry Pi 5",
+    "robustness tests for real steam and light changes"
+  ],
+  "caveats": [
+    "Can mark a hand or sleeve as crepe.",
+    "False crepes on 4 of 80 empty plates in the held-out folds.",
+    "Hand masks come from one robot and may start from suggestions.",
+    "Scores used the slower full-size warp. The fast warp scored median IoU 0.962 vs 0.964 on 79 unseen frames, chosen on them.",
+    "Fixed batch of 1: frames must be run one at a time.",
+    "Check-frame scores use the robot's outline as the reference.",
+    "All hand-labelled runs are in the shared test split.",
+    "Needs a rectification transform for the run to read a frame."
+  ],
+  "out_of_scope": [
+    "fold state",
+    "fold angle: direction never beat the training average, and hand fine-tuning did not train it",
+    "holes: they are filled in the mask"
+  ],
+  "commit": null,
+  "write_up": "documentation/analysis/synthetic-crepes.md",
+  "commit_note": "trained on a local branch that was later squashed"
+}
