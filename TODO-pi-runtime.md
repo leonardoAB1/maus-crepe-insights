@@ -7,17 +7,33 @@
 - [x] Test imports without pandas, pyarrow, MCP and HTTP clients.
 - [x] Document tunnel-only private website access and timing definitions.
 - [x] Copy minimal source and launch a background installer on the Pi.
-- [ ] Install on the Pi and validate native performance when SSH recovers.
+- [x] Install on the Pi and validate native performance.
+- [x] Disable the desktop and set persistent console-mode boot.
+- [x] Enable a localhost website service for console-mode boots.
+- [x] Verify HTML, run JSON and video ranges through an SSH tunnel.
 
 ## Deployment status
 
-SSH initially stalled. A fresh connection later recovered and the minimal
-source was copied successfully. A background installer is running under
-`~/maus-fold-runtime/install.sh`, logging to `install.log`. It resumes the
-native pixi download, then installs the locked `pi` environment and verifies
-imports. Completion and native timing have not yet been verified.
+Installation completed on 2026-11-01 after recovery from network stalls
+and a user-requested power restart. Two concurrent downloads were stable;
+the native installation took approximately 31 minutes after resumption.
+
+The target is a Raspberry Pi 3 Model B with approximately 1 GB RAM. It now
+boots to `multi-user.target`; the display manager is stopped. The
+`maus-fold-web.service` system service runs as the unprivileged runtime user,
+is enabled for boot, and binds only to localhost port 8766.
 
 125 fold tests passed (3 skipped) using `pixi run python -m pytest`; lint,
-format and docs checks passed. The native ARM64 lock was resolved locally.
-No test video or robot credentials were transferred.
+format and docs checks passed. Native OpenCV 5.0 imports were verified.
+One private cached-video proxy and its metadata were transferred explicitly
+for the benchmark. No dashboard credentials or tokens were transferred.
+
+The 554-frame proxy used 672x380 input at 10 fps and approximately 900 px
+analysis. Median inference: 413.2 ms; rendering: 57.0 ms; full sampled-frame
+processing: 527.5 ms; wall time: 302 s. Every frame exceeded the 200 ms
+processing budget. The target is not met on this configuration.
+
+HTML, the full 554-row run API and a 1,024-byte video range were verified
+through an SSH tunnel. Power/throttling flags remained zero in checked
+readings. Full-resolution decoding performance was not measured.
 No credentials or private robot data are included in this branch.

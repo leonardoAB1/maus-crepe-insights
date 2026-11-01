@@ -55,5 +55,30 @@ final plot generation and HTTP serving. Record elapsed whole-command time
 separately if end-to-end throughput matters. Codec, resolution, CPU
 throttling, memory pressure and thread count can all affect results.
 
-The 200 ms budget is not proven until measured on the target Pi. Desktop
-measurements and a cross-platform lock solve are not native benchmarks.
+## Native smoke benchmark (2026-11-01)
+
+On a Raspberry Pi 3 Model B with approximately 1 GB RAM, console-mode boot,
+one OpenCV/BLAS thread and OpenCV 5.0.0, a private 554-frame proxy at
+672x380 input and 10 fps produced:
+
+| Measurement | Result |
+| --- | ---: |
+| Median inference | 413.2 ms/frame |
+| Median rendering | 57.0 ms/frame |
+| Median sampled-frame processing | 527.5 ms/frame |
+| Whole-command wall time | 302 seconds |
+| Frames over 200 ms processing budget | 554 of 554 |
+
+Analysis still rectified frames to approximately 900 px. This is a native
+algorithm smoke test, not a full-resolution decoding benchmark or a quality
+evaluation. Initial font-cache generation was included in wall time. Power
+and throttling flags were zero in checked readings. The **200 ms target is
+not met** on this configuration.
+
+The deployed website runs as an unprivileged system service named
+`maus-fold-web.service`, enabled for console-mode boots and still bound to
+localhost port 8766. The desktop was stopped and the default system target
+set to `multi-user.target`. Run-data and video-range endpoints were verified
+through an SSH tunnel. Source, environment and private outputs live under
+`~/maus-fold-runtime/`; `~/.local/bin/maus-detect` is the convenience command.
+The installation does not configure dashboard authentication or robot control.
