@@ -9,6 +9,12 @@ draws nothing on its own: layers arrive as records. As of today the human masks,
 the labeling export and the model predictions are the parts still to be wired in,
 and nothing is wired to a live stream yet.
 
+Live crêpe masks on video already exist elsewhere: the fold video analysis
+draws the classical or student mask on every sampled frame into
+`annotated.mp4`, and both review sites play it (see
+[vision pipeline](vision-pipeline.md#6-video-timeline)). This renderer is
+the generic path for drawing every layer at once.
+
 ## Run it
 
 ```bash
