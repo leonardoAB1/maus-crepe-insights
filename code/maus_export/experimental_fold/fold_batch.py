@@ -6,7 +6,7 @@ import math
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
-from .fold_backend import analysis_root
+from .fold_backend import MODELS, analysis_root
 from .fold_video import DEFAULT_ANALYSIS_FPS, analyse_video
 
 OUTPUT_FILES = (
@@ -53,62 +53,75 @@ def run_batch(
     data_dir = data_dir.resolve()
     if not (data_dir / "raw" / "runs").is_dir():
         raise ValueError("Data directory must contain raw/runs")
-    output_root = analysis_root(data_dir, model)
+    models = MODELS if model == "both" else (model,)
+    output_roots = {
+        backend: analysis_root(data_dir, backend) for backend in models
+    }
+    workers = max(threads, len(models))
     runs = discover_runs(data_dir)
     if run_ids is not None:
         if not set(run_ids).issubset(runs):
             raise ValueError("Requested video is not cached")
         runs = sorted(set(run_ids))
-    totals = {"total": len(runs), "completed": 0, "skipped": 0, "failed": 0}
+    totals = {
+        "total": len(runs) * len(models),
+        "completed": 0,
+        "skipped": 0,
+        "failed": 0,
+    }
     pending = []
     for run_id in runs:
-        output = output_root / str(run_id)
-        if not replace and all(
-            (output / name).is_file() for name in OUTPUT_FILES
-        ):
-            totals["skipped"] += 1
-        else:
-            pending.append(run_id)
+        for backend in models:
+            output = output_roots[backend] / str(run_id)
+            if not replace and all(
+                (output / name).is_file() for name in OUTPUT_FILES
+            ):
+                totals["skipped"] += 1
+            else:
+                pending.append((run_id, backend))
     print(
         f"Found {len(runs)} cached videos; {totals['skipped']} complete, "
-        f"{len(pending)} to process with {threads} threads.",
+        f"{len(pending)} backend jobs with {workers} shared workers.",
         flush=True,
     )
     queue = iter(pending)
-    with ThreadPoolExecutor(max_workers=threads) as pool:
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         active = {}
 
         def submit_next() -> None:
-            run_id = next(queue, None)
-            if run_id is not None:
+            job = next(queue, None)
+            if job is not None:
+                run_id, backend = job
                 future = pool.submit(
                     analyse_video,
                     data_dir,
                     run_id,
                     replace=True,
                     analysis_fps=analysis_fps,
-                    model=model,
+                    model=backend,
                 )
-                active[future] = run_id
+                active[future] = job
 
-        for _ in range(min(threads, len(pending))):
+        for _ in range(min(workers, len(pending))):
             submit_next()
         while active:
             finished, _ = wait(active, return_when=FIRST_COMPLETED)
             for future in finished:
-                run_id = active.pop(future)
+                run_id, backend = active.pop(future)
                 try:
                     result = future.result()
                 except Exception as error:
                     totals["failed"] += 1
                     print(
-                        f"Run {run_id}: failed ({type(error).__name__})",
+                        f"Run {run_id} ({backend}): failed "
+                        f"({type(error).__name__})",
                         flush=True,
                     )
                 else:
                     totals["completed"] += 1
                     print(
-                        f"Run {run_id}: completed ({result['frames']} frames)",
+                        f"Run {run_id} ({backend}): completed "
+                        f"({result['frames']} frames)",
                         flush=True,
                     )
                 submit_next()

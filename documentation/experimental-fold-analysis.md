@@ -4,12 +4,15 @@
 
 The **Video analysis runner** panel starts a background local runner without
 blocking playback or progress polling. Select a cached video, or **All
-pending cached videos**, choose the segmentation model, then press **Start
-analysis**. The **nthreads** selector allows **1** (default), **4** or **16**.
-These are concurrent video workers, not ONNX inference threads. A single
-selected video uses one worker regardless of the concurrency limit.
+pending cached videos**, then press **Start both analyses**. Classical CV
+and ONNX jobs run concurrently; the segmentation selector chooses which
+results to view, not which backend to launch. The **nthreads** selector
+allows **1** (default), **4** or **16**. Both backends share that worker pool,
+with a minimum of two workers even at 1 so both can run simultaneously.
+These are analysis workers, not ONNX inference threads. Batch totals count
+backend/video jobs, so one video contributes two jobs in both mode.
 
-Selecting a video explicitly rebuilds its derived analysis. All-pending
+Selecting a video explicitly rebuilds both derived analyses. All-pending
 mode skips completed outputs. Raw inputs are never changed and no videos
 are fetched. Progress and artifacts stay separate for Classical and ONNX.
 The subprocess uses the server's Python environment, so start the website

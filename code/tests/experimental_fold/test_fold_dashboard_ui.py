@@ -181,7 +181,7 @@ const setTimeout = () => {};
     }};
   };
   await document.querySelector('#start-runner').listeners.click();
-  assert.deepEqual(launched, {model: 'onnx', nthreads: 4, run_id: 2});
+  assert.deepEqual(launched, {model: 'both', nthreads: 4, run_id: 2});
   assert.equal(document.querySelector('#start-runner').disabled, true);
 })().catch(error => { console.error(error); process.exitCode = 1; });
 """
