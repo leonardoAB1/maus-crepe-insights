@@ -141,6 +141,15 @@ def main() -> None:
         "fold-dashboard", help="write local fold review dashboard"
     )
     data_dir_arg(fd)
+    fsl = sub.add_parser(
+        "fold-student", help="live video inference with the crepe student"
+    )
+    data_dir_arg(fsl)
+    fsl.add_argument("--ids", type=int, nargs="*", help="only these run ids")
+    fse = sub.add_parser(
+        "fold-student-eval", help="crepe student state at the check frames"
+    )
+    data_dir_arg(fse)
     ls = sub.add_parser(
         "label-states", help="print the unified crepe-state vocabulary"
     )
@@ -336,6 +345,14 @@ def main() -> None:
         from .fold_dashboard import build_dashboard
 
         print(build_dashboard(data_dir))
+    if args.cmd == "fold-student":
+        from .crepe_student import run_live as run_student
+
+        run_student(data_dir, set(args.ids) if args.ids else None)
+    if args.cmd == "fold-student-eval":
+        from .crepe_student import evaluate_check_frames
+
+        print(evaluate_check_frames(data_dir).to_string(index=False))
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,
