@@ -114,6 +114,32 @@ def evaluate(data_dir: Path) -> dict[str, int]:
             for state in STATES
         ]
         lines.append(f"| {expected} | " + " | ".join(counts) + " |")
+    if "rule_state" in passed.columns:
+        flips = passed[passed["rule_state"] != passed["predicted_state"]]
+        flip_correct = int(
+            (flips["predicted_state"] == flips["expected_state"]).sum()
+        )
+        zone_lines = [
+            "",
+            "## Boundary-zone classifier flips",
+            "",
+            f"- The model changed the rule's decision on {len(flips)} passed",
+            f"  frame(s); {flip_correct} of those changes were correct.",
+        ]
+        zone = passed[passed["expected_state"].isin(["half", "quarter"])]
+        if len(zone):
+            rule_correct = int(
+                (zone["rule_state"] == zone["expected_state"]).sum()
+            )
+            final_correct = int(
+                (zone["predicted_state"] == zone["expected_state"]).sum()
+            )
+            zone_lines.append(
+                f"- On {len(zone)} half/quarter frames, rule agreement was"
+                f" {rule_correct / len(zone):.1%} and final agreement"
+                f" {final_correct / len(zone):.1%}."
+            )
+        lines.extend(zone_lines)
     half = passed[passed["expected_state"] == "half"]
     if len(half):
         as_flat = int((half["predicted_state"] == "flat").sum())

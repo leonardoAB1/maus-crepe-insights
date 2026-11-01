@@ -142,7 +142,8 @@ remove only its incomplete generated evaluation files before rerunning it.
   flat-reference ID and predicted state. Failed processing has a status and is
   excluded from agreement; inspect the denominator in the report.
 - `report.md` and `evaluation/*.parquet`: state confusion counts by robot,
-  fold verdict counts, spread rank AUC, and geometry coverage.
+  fold verdict counts, spread rank AUC, boundary-zone classifier flips and
+  geometry coverage.
 - `review/contact-sheet.jpg`: private representative check frames, prioritizing
   mismatches. It is not an exhaustive dataset review.
 - `live/<run>/annotated.mp4`, `timeline.csv`, `observations.csv`,
