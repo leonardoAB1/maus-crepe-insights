@@ -366,6 +366,10 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 
 [Browse all documentation](documentation/README.md) by subject.
 
+Pitch deck: [assets/pitch/pitch-deck.pptx](assets/pitch/pitch-deck.pptx),
+with the talk track and the source of every number on a slide in
+[assets/pitch/notes.md](assets/pitch/notes.md).
+
 - [Project status: what works and what does not](documentation/status.md)
 
 - [What data the dashboard has](documentation/data/data.md)
