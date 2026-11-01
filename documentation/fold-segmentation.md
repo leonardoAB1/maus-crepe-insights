@@ -5,6 +5,9 @@ its measurements with robot checks. It is experimental and must not be used
 for robot control or to decide whether food is safe. It does not communicate
 with a robot or call dashboard write tools.
 
+For the minimal ARM64 detection and website environment, see
+[the Raspberry Pi runtime guide](system/raspberry-pi.md).
+
 ## Privacy
 
 Video frames can show people. Frames, masks, contact sheets, per-run tables,
