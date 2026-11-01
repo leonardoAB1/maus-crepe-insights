@@ -103,6 +103,15 @@ remove only its incomplete generated evaluation files before rerunning it.
    majority is the unverified visual estimate for that check. Ties, fewer than
    three predictions, or fold checks with no flat reference yet are unknown.
    This is delayed, experimental video inference, not a control system.
+   Each timeline row also carries the active logged phase, and the dough
+   dispensing samples (every ``spread_batter*`` phase variant, e.g.
+   ``spread_batter_concentric``) feed a coverage supervisor:
+   first, peak and settled-final (median of the last second) plate coverage,
+   plus an ``ok`` flag requiring at least 40% final coverage that keeps 70%
+   of the peak, so a dough that collapses after spreading is flagged. The
+   dough blob is rotation-invariant by construction because only its plate
+   coverage is used. These limits are provisional supervisor values, not
+   fitted ground truth.
 
 ## Outputs
 
@@ -120,12 +129,15 @@ remove only its incomplete generated evaluation files before rerunning it.
 - `live/<run>/annotated.mp4`, `timeline.csv`, `observations.csv`,
   `timeline.png` and, for newly processed videos, `summary.json`: private
   playback, per-frame processing status and per-check visual estimates with
-  their status.
+  their status. `timeline.csv` includes the active logged phase per frame;
+  `summary.json` includes the dough-dispensing coverage block (first, peak,
+  settled final fraction and the ``ok`` flag).
 - `live_checks.parquet` and `live_report.md`: fixed-seed, setup-balanced sample
   of 10 successful runs with all checks passed and 10 runs with a failed spread
   or fold check. Compares each check's visual estimate with the expected state
   and reports the robot verdict separately; checks without an estimate are
-  excluded from agreement.
+  excluded from agreement. It also reports how many sampled runs end the
+  dough-dispensing phase with a stable, adequately covered plate.
 
 Rank AUC uses passed checks as positive, average ranks for ties and the stated
 metric direction; a value below 0.5 indicates the opposite direction. No
@@ -160,10 +172,13 @@ On 2026-11-01, using the cached export and the method above:
   (empty 81.8%, flat 95.0%, half 100.0%, quarter 89.5%), with 97.6% on the
   ten all-passed runs and 84.6% on the ten runs with a failed check. Fold
   checks without a flat reference are reported unknown rather than guessed.
-  On the same host the median of per-run median processing times was 8.3
+  On the same host the median of per-run median processing times was 8.2
   ms/frame at 10 fps, far below the 200 ms/frame budget; this timing excludes
   video decoding, encoding and plotting. Raspberry Pi timing was not
-  measured.
+  measured. The dispensing supervisor found 19 of 20 sampled runs ending
+  with a stable dough coverage (median final 70% of the plate); the single
+  flagged run is a genuine fault, logged ``not_succeeded``, whose dough never
+  left a small blob and then disappeared.
 
 ## Limits
 

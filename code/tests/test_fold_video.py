@@ -9,7 +9,15 @@ import pandas as pd
 import pytest
 
 from maus_export.fold_plate import PlateEllipse
-from maus_export.fold_video import analyse_video
+from maus_export.fold_video import _phase_color, analyse_video
+
+
+def test_dispense_phase_variants_share_the_dough_color() -> None:
+    assert _phase_color("spread_batter") == "#e8a35d"
+    assert _phase_color("spread_batter_concentric") == "#e8a35d"
+    assert _phase_color("spread_batter_spiral") == "#e8a35d"
+    assert _phase_color("cook") == "#f2cf5b"
+    assert _phase_color("add_topping") is None
 
 
 def test_analyse_video_writes_timeline_without_seeking(

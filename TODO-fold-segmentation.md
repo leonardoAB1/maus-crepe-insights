@@ -17,6 +17,13 @@
 - [x] Validate with offline tests and the cached private export.
 - [x] Run lint, test and docs-check, then update the PR.
 
+- [x] Supervise dough dispensing from the video timeline.
+  - [x] Each timeline row carries the active logged phase.
+  - [x] `fold_dispense` summarizes ``spread_batter`` coverage (first, peak,
+    settled final) and flags runs whose final coverage is below 40% of the
+    plate or collapses below 70% of the measured peak.
+  - [x] Per-run `summary.json` and the sampled live report carry the verdict.
+
 - [x] Highlight all logged cooking phases, not just the fold.
   - [x] The API exposes every timed phase (dough, cooking, folding,
     cleaning, handover, discard, ...) instead of only `fold_carefully`.

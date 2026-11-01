@@ -296,12 +296,10 @@ def analyse_video(
                 ],
             )
             dispense = summarise_dispense(
-
-                    (row["video_t"], row["plate_fraction"])
-                    for row in rows
-                    if row["phase"] == "spread_batter"
-                    and row["plate_fraction"] != ""
-
+                (row["video_t"], row["plate_fraction"])
+                for row in rows
+                if row["phase"].startswith("spread_batter")
+                and row["plate_fraction"] != ""
             )
             (stage / "summary.json").write_text(
                 json.dumps(
@@ -372,6 +370,15 @@ PHASE_COLORS = {
 }
 
 
+def _phase_color(name: str) -> str | None:
+    """Color a logged phase; all ``spread_batter_*`` variants are dough."""
+    if name in PHASE_COLORS:
+        return PHASE_COLORS[name]
+    if name.startswith("spread_batter"):
+        return PHASE_COLORS["spread_batter"]
+    return None
+
+
 def _timeline_plot(
     path: Path,
     rows: list[dict],
@@ -412,10 +419,10 @@ def _timeline_plot(
                 [start, end],
                 len(STATE_ORDER) - 0.35,
                 len(STATE_ORDER) + 0.35,
-                color=PHASE_COLORS.get(name, "#243349"),
+                color=_phase_color(name) or "#243349",
                 alpha=0.85,
             )
-            if name in PHASE_COLORS and end - start > 12:
+            if _phase_color(name) is not None and end - start > 12:
                 axis.text(
                     (start + end) / 2,
                     len(STATE_ORDER) + 0.35,
