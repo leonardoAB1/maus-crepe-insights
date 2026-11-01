@@ -1,5 +1,8 @@
 """Synthetic warm food, neutral reflections and boundary arm tests."""
 
+import json
+from pathlib import Path
+
 import cv2
 import numpy as np
 import pytest
@@ -49,6 +52,25 @@ def test_broad_bright_background_is_not_an_arm() -> None:
     frame = np.full((200, 200, 3), 220, np.uint8)
     cv2.circle(frame, (100, 100), 75, (25, 25, 25), -1)
     assert not detector().segment(frame).any()
+
+
+def test_private_reference_dataset_tracks_used_samples(tmp_path: Path) -> None:
+    foreground = detector()
+    for value in range(20, 37):
+        foreground.segment(
+            np.full((200, 200, 3), value, np.uint8), learn_empty=True
+        )
+    foreground.save_reference(tmp_path)
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    assert manifest["observed_samples"] == 17
+    assert manifest["used_sample_count"] == 15
+    assert manifest["retained_samples"] == 15
+    assert len(list(tmp_path.glob("sample-*.png"))) == 15
+    assert (tmp_path / "median.png").is_file()
+    assert (tmp_path / "highlight-l.png").is_file()
+    before = foreground.reference_count
+    foreground.segment(empty())
+    assert foreground.reference_count == before
 
 
 def test_no_reference_learning_after_dispensing_or_from_dough() -> None:

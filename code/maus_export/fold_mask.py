@@ -70,6 +70,8 @@ class CrepeSegmenter:
         shape: tuple[int, int],
         plate: PlateEllipse,
         reference: np.ndarray | None = None,
+        *,
+        reference_upper_l: np.ndarray | None = None,
     ) -> None:
         self.shape = shape
         self.inside = ellipse_mask(shape, plate) != 0
@@ -84,6 +86,12 @@ class CrepeSegmenter:
             if reference.shape != (*shape, 3):
                 raise ValueError("Reference dimensions must match the frame")
             self.ref_l = cv2.cvtColor(reference, cv2.COLOR_BGR2LAB)[:, :, 0]
+        if reference_upper_l is not None:
+            if self.ref_l is None or reference_upper_l.shape != shape:
+                raise ValueError(
+                    "Highlight envelope requires matching reference"
+                )
+            self.ref_l = np.maximum(self.ref_l, reference_upper_l)
 
     def segment(self, frame: np.ndarray) -> np.ndarray:
         """Return a mask for a frame in the cached camera coordinates."""

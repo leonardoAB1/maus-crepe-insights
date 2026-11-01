@@ -65,6 +65,24 @@ def test_rejects_reference_that_cannot_be_exposure_matched() -> None:
         segment_crepe(frame, PlateEllipse(50, 50, 80, 80, 0), frame[:50])
 
 
+def test_highlight_envelope_rejects_variable_specular_patch() -> None:
+    plate = PlateEllipse(100, 100, 180, 180, 0)
+    reference = np.full((200, 200, 3), 25, np.uint8)
+    frame = reference.copy()
+    cv2.circle(frame, (100, 100), 35, (240, 240, 240), -1)
+    upper = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)[:, :, 0]
+    assert CrepeSegmenter((200, 200), plate, reference).segment(frame).any()
+    protected = CrepeSegmenter(
+        (200, 200), plate, reference, reference_upper_l=upper
+    )
+    assert not protected.segment(frame).any()
+    dough = frame.copy()
+    cv2.circle(dough, (55, 100), 45, (120, 185, 220), -1)
+    assert protected.segment(dough)[100, 50] == 255
+    with pytest.raises(ValueError, match="envelope"):
+        CrepeSegmenter((200, 200), plate, reference_upper_l=upper)
+
+
 def test_select_reference_priorities_and_compatibility() -> None:
     candidates = [
         EmptyReference("self", 10, "robot", 200, True),
