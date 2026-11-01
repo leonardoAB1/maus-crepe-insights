@@ -75,6 +75,19 @@ Both options use the same geometry and fold rules. Prepare both with
 <div class="notice">Experimental estimates, not ground truth or robot control.
 Robot verdicts can be wrong. Checks are shown after the robot tries each action;
 exact fold movement times are not logged. Video may contain people.</div>
+<section class="card" style="margin-top:18px"><h2>Video analysis runner</h2>
+<label>Video <select id="runner-video" aria-label="Video to analyze">
+<option value="">All pending cached videos</option></select></label>
+<label>nthreads <select id="nthreads" aria-label="Parallel video workers">
+<option value="1" selected>1</option><option value="4">4</option>
+<option value="16">16</option></select></label>
+<button id="start-runner" type="button" disabled>Start analysis</button>
+<p class="sub">Uses the selected segmentation model. nthreads is the number
+of videos processed concurrently, not ONNX inference threads. All pending
+skips completed results; choosing one video reanalyses that video. Raw inputs
+are never changed. Do not run a separate CLI batch against the same outputs.</p>
+<div id="runner-status" class="sub" role="status">Loading runner...</div>
+</section>
 <div class="grid"><div><section class="card"><h2>Playback</h2>
 <video id="video" controls preload="metadata"></video>
 <div id="progress" aria-live="polite"></div>
@@ -146,6 +159,58 @@ modelSelect.addEventListener('change', async () => {
   renderSidebar(); renderProgress(); draw();
   await pollProgress(false);
   if (id != null) await showRun(id, time);
+});
+let launchPending = false;
+let runnerOptionsKey = null;
+async function refreshRunner() {
+  const button = document.querySelector('#start-runner');
+  const status = document.querySelector('#runner-status');
+  try {
+    const response = await fetch('/api/runner' + modelQuery());
+    if (!response.ok) throw new Error('Runner unavailable');
+    const state = await response.json(), runs = state.runs || [];
+    const key = runs.join(',');
+    if (key !== runnerOptionsKey) {
+      const select = document.querySelector('#runner-video');
+      const chosen = select.value;
+      const all = textNode('option', 'All pending cached videos'); all.value = '';
+      select.replaceChildren(all);
+      for (const id of runs) {
+        const option = textNode('option', 'Run ' + id); option.value = String(id);
+        select.append(option);
+      }
+      select.value = runs.some(id => String(id) === chosen) ? chosen : '';
+      runnerOptionsKey = key;
+    }
+    button.disabled = launchPending || state.running || !runs.length;
+    if (!launchPending) status.textContent = state.running ?
+      'Running ' + state.model + ' with ' + state.nthreads + ' video workers.' :
+      state.returncode != null ? (state.returncode === 0 ? 'Runner completed.' :
+        'Runner failed. See per-video progress and private web-runner.log.') :
+      runs.length + ' cached videos available.';
+  } catch (_) {
+    button.disabled = true; status.textContent = 'Could not load runner status.';
+  }
+}
+document.querySelector('#start-runner').addEventListener('click', async () => {
+  if (launchPending) return;
+  launchPending = true;
+  document.querySelector('#start-runner').disabled = true;
+  const status = document.querySelector('#runner-status');
+  status.textContent = 'Starting analysis...';
+  try {
+    const id = document.querySelector('#runner-video').value;
+    const response = await fetch('/api/runner', {
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-Maus-Runner': '1'},
+      body: JSON.stringify({model: modelSelect.value || 'classical',
+        nthreads: Number(document.querySelector('#nthreads').value || 1),
+        run_id: id ? Number(id) : null})
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not start runner');
+    await pollProgress(false);
+  } catch (error) {status.textContent = error.message;}
+  finally {launchPending = false;}
 });
 function textNode(tag, text, cls) {
   const el = document.createElement(tag); el.textContent = text;
@@ -436,7 +501,10 @@ async function pollProgress(schedule = true) {
       await showRun(selectedId);
     }
   } catch (_) {connection.textContent = 'Connection lost; retrying…';}
-  finally {if (schedule) setTimeout(pollProgress, 1000);}
+  finally {
+    await refreshRunner();
+    if (schedule) setTimeout(pollProgress, 1000);
+  }
 }
 pollProgress();
 </script></body></html>

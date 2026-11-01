@@ -137,6 +137,10 @@ def main() -> None:
     )
     batch.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
     batch.add_argument(
+        "--model", choices=("classical", "onnx"), default="classical"
+    )
+    batch.add_argument("--ids", type=int, nargs="+", default=None)
+    batch.add_argument(
         "--threads",
         type=int,
         default=1,
@@ -393,6 +397,8 @@ def main() -> None:
                 threads=args.threads,
                 analysis_fps=args.fps,
                 replace=args.replace,
+                model=args.model,
+                run_ids=args.ids,
             )
         except ValueError as error:
             p.error(str(error))
