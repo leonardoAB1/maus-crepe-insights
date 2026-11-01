@@ -17,6 +17,13 @@ flowchart LR
     weights --> finetune[Fine-tuned model]
     finetune --> live[Live frame]
     models --> live
+    raw --> foldseg[Fold segmentation]
+    foldseg --> compare
+    masks --> overlay[Overlay renderer]
+    models --> overlay
+    overlay --> live
+    raw --> viewer[Run viewer]
+    masks --> viewer
 
     classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
     classDef partial fill:#ed6c02,stroke:#b53d00,color:#ffffff
@@ -24,4 +31,5 @@ flowchart LR
 
     class api,raw,mcap,table,vision,frames,models,pilot done
     class labels,masks,rectified,compare,weights partial
+    class foldseg,overlay,viewer partial
     class predict,finetune,live todo
