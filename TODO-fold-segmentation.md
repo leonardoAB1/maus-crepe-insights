@@ -47,13 +47,27 @@
 - [x] Result: 96.9% agreement on 988 passed checks (empty 96.0, flat 99.6,
     half 97.5, quarter 94.2), above the prototype's 94.6% on oblique frames.
 
+- [x] Refine the half/quarter boundary zone with a small classifier.
+  - [x] `fold_classifier`: numpy-only standardised logistic model over nine
+    geometry features, shipped weights plus `fit_logistic` to retrain.
+  - [x] Only acts in the zone (relative area 0.24-0.42) and only when the
+    model is at least 0.25 from an even split; rule decision kept as
+    `rule_state` for comparison.
+  - [x] Applied in both the offline segmentation and the live video path.
+  - [x] 10-fold cross validation on the 397 half/quarter check frames: rule
+    96.5% pair agreement, model 98.5%.
+- [x] Result: 97.8% agreement on 988 passed checks (empty 96.0, flat 99.6,
+    half 97.9, quarter 98.1); quarter/half confusion fell from 17 to 8
+    mislabels.
+
 ## Known follow-up
 
 - The rectified-frame thresholds were fitted on the same export they are
   evaluated on. Validate them on a separate held-out dataset before any
   deployment.
-- Quarter/half area overlap remains for the 12 quarter and 5 half frames
-  that sit in the boundary zone; a small classifier over the existing
-  geometry features could recover some of them.
+- The boundary-zone classifier recovered most of the remaining quarter/half
+  overlap (17 to 8 mislabels). The 4 remaining quarter and 4 half mislabels,
+  the flip margin and the shipped weights were all chosen on the same export
+  as the evaluation; validate them on held-out data before deployment.
 - 12 passed plate-clean frames show 4-19% plate residue; the robot verdict
   disagrees with the visible mask. Keep as a known robot-misverdict case.

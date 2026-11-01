@@ -14,6 +14,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .fold_classifier import refine_fold_state
 from .fold_dataset import (
     CALIBRATION_PATH,
     MAX_DURATION_DIFFERENCE,
@@ -131,12 +132,31 @@ def analyse_video(
                             geometry = measure_geometry(
                                 mask, plate, context=geometry_context
                             )
-                            prediction = classify_state(
-                                geometry.area,
-                                segmenter.plate_area,
-                                len(geometry.edges),
-                                flat_area,
-                                geometry.rect_aspect,
+                            prediction = refine_fold_state(
+                                classify_state(
+                                    geometry.area,
+                                    segmenter.plate_area,
+                                    len(geometry.edges),
+                                    flat_area,
+                                    geometry.rect_aspect,
+                                ),
+                                {
+                                    "relative": (
+                                        geometry.area / flat_area
+                                        if flat_area
+                                        else None
+                                    ),
+                                    "plate_fraction": geometry.plate_fraction,
+                                    "rect_aspect": geometry.rect_aspect,
+                                    "diameter_fraction": (
+                                        geometry.diameter_fraction
+                                    ),
+                                    "offset_fraction": geometry.offset_fraction,
+                                    "hole_fraction": geometry.hole_fraction,
+                                    "solidity": geometry.solidity,
+                                    "circularity": geometry.circularity,
+                                    "edge_count": len(geometry.edges),
+                                },
                             )
                             if reference is None and prediction == "empty":
                                 reference = image.copy()

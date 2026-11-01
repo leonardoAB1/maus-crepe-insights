@@ -97,7 +97,23 @@ remove only its incomplete generated evaluation files before rerunning it.
    edges do not change the decision: on rectified frames flat crepes often
    expose an edge and half folds often expose none. These thresholds
    describe the top-down view and were fitted on the local export.
-8. Whole-video analysis sequentially grabs frames at 10 Hz by default (a 200
+8. In the boundary zone between half and quarter (relative filled area
+   between 0.24 and 0.42, where the thresholds above overlap), a small
+   standardised logistic model over nine geometry features (relative area,
+   plate fraction, minimum-rectangle aspect, diameter and offset fractions,
+   hole fraction, solidity, circularity, edge count) may flip the rule's
+   half/quarter decision, and only when the model output is at least 0.25
+   away from an even split: on the local export every correct flip clears
+   that margin, so it costs nothing offline while rejecting low-confidence
+   flips on noisy live frames. Outside the zone, on any non-fold state, or
+   when a feature is missing, the rule's decision stands. The model is numpy-only
+   (a few multiplications per frame) so it fits the 200 ms budget and can be
+   swapped for an ONNX model later; `fold_classifier.fit_logistic` retrains
+   the shipped weights. Cross validation on the 397 half/quarter check
+   frames: rule 96.5% pair agreement, model 98.5%, with quarter recall
+   94.6% rising to 97.9%. The rule decision is kept in the `rule_state`
+   column for comparison.
+9. Whole-video analysis sequentially grabs frames at 10 Hz by default (a 200
    ms/frame budget, `--fps` for other rates) and rectifies to 900 by 900
    pixels. It learns the plate, first empty reference and flat area from
    frames already observed. Classification is still a per-frame estimate, but
@@ -152,21 +168,23 @@ On 2026-11-01, using the cached export and the method above:
 
 - 285 runs, 1,182 extracted frames; 158 videos failed the duration check and
   one check fell outside its video. Eight frames lacked a plate estimate.
-- On 988 usable passed checks, agreement was 96.9%, versus the prototype's
-  94.6% on 991 frames. Empty 96.0%, flat 99.6%, half 97.5%, quarter 94.2%.
+- On 988 usable passed checks, agreement was 97.8%, versus the prototype's
+  94.6% on 991 frames. Empty 96.0%, flat 99.6%, half 97.9%, quarter 98.1%.
   The thresholds were refit for the rectified top-down view, where a full
   crepe covers about 0.7 of the plate, a half fold about 0.3 and a quarter
   fold about 0.17. The old oblique-frame flat threshold of 0.24 sat below the
   median half-fold fraction of 0.318 and mislabeled 201 of 240 half frames.
   Requiring an elongated minimum-rectangle aspect (>= 1.4) for half folds
   separated narrow-wedge quarter folds from true half folds, raising quarter
-  agreement from 87.9% to 94.2%. The remaining errors and the 12 empty frames
-  with visible residue (4 to 19% of the plate) are area overlaps and robot
-  misverdicts, not threshold gaps. Agreement stayed within a point when the
-  flat, half and relative thresholds moved by 0.04, 0.02 and 0.04
-  respectively, and per-robot agreement was 96.3% (maus-pixi), 97.1%
-  (maus-quin) and 100% on the small maus-otto sample. All numbers are tuned
-  on this same export and need held-out validation before deployment.
+  agreement from 87.9% to 94.2%. The boundary-zone classifier then reduced
+  the quarter/half confusion from 17 mislabels to 8 (quarter 94.2% to
+  98.1%, half 97.5% to 97.9%, overall 96.9% to 97.8%). The remaining errors
+  and the 12 empty frames with visible residue (4 to 19% of the plate) are
+  area overlaps and robot misverdicts, not threshold gaps. Agreement stayed
+  within a point when the flat, half and relative thresholds moved by 0.04,
+  0.02 and 0.04 respectively, and per-robot agreement was 97.7% (maus-pixi),
+  97.8% (maus-quin) and 100% on the small maus-otto sample. All numbers are
+  tuned on this same export and need held-out validation before deployment.
 - Spread-verdict rank AUC was 0.653 for diameter fraction and 0.651 for offset
   fraction, versus the prototype best of 0.66. Centre coverage was 853/1,174,
   edge-angle coverage 531/1,174 and quarter-corner coverage 109/276.
@@ -175,10 +193,13 @@ On 2026-11-01, using the cached export and the method above:
   (empty 81.8%, flat 95.0%, half 100.0%, quarter 89.5%), with 97.6% on the
   ten all-passed runs and 84.6% on the ten runs with a failed check. Fold
   checks without a flat reference are reported unknown rather than guessed.
-  On the same host the median of per-run median processing times was 8.2
-  ms/frame at 10 fps, far below the 200 ms/frame budget; this timing excludes
-  video decoding, encoding and plotting. Raspberry Pi timing was not
-  measured. The dispensing supervisor found 19 of 20 sampled runs ending
+  The boundary-zone classifier changed no live estimate on this sample: its
+  one would-be low-confidence flip (a quarter crepe at 20.9% plate fraction)
+  is rejected by the 0.25 margin, so live agreement is unchanged while the
+  single-frame offline evaluation improves. On the same host the median of
+  per-run median processing times was 8.3 ms/frame at 10 fps, far below the
+  200 ms/frame budget; this timing excludes video decoding, encoding and
+  plotting. Raspberry Pi timing was not measured. The dispensing supervisor found 19 of 20 sampled runs ending
   with a stable dough coverage (median final 70% of the plate); the single
   flagged run is a genuine fault, logged ``not_succeeded``, whose dough never
   left a small blob and then disappeared.
@@ -189,7 +210,7 @@ Browned crepes can break into patches. A spatula or arm can look like a crepe
 in individual frames. Angles are in the corrected image, not calibrated robot
 coordinates. An incorrect flat reference can bias subsequent classifications.
 Camera movement or bad mean homographies can invalidate plate estimates.
-Contact sheets and videos may show people. Thresholds were tuned on the same
-export used for evaluation, so these numbers are not independent validation
-and may not generalize. Neither the robot verdict nor the visual estimate is
+Contact sheets and videos may show people. Thresholds and the boundary-zone
+classifier weights were tuned on the same export used for evaluation, so
+these numbers are not independent validation and may not generalize. Neither the robot verdict nor the visual estimate is
 guaranteed correct; the two are independent and may disagree.

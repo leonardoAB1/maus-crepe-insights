@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
+from .fold_classifier import refine_fold_state
 from .fold_geometry import measure_geometry
 from .fold_mask import EmptyReference, segment_crepe, select_reference
 from .fold_plate import detect_plate, ellipse_mask, median_plate
@@ -167,12 +168,27 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
                 )
             row["flat_reference_id"] = best["frame_id"] if best else None
             flat_area = best["area"] if best else None
-            row["predicted_state"] = classify_state(
+            rule_state = classify_state(
                 row["area"],
                 row["plate_area"],
                 row["edge_count"],
                 flat_area,
                 row["rect_aspect"] if pd.notna(row["rect_aspect"]) else None,
+            )
+            row["rule_state"] = rule_state
+            row["predicted_state"] = refine_fold_state(
+                rule_state,
+                {
+                    "relative": row["area"] / flat_area if flat_area else None,
+                    "plate_fraction": row["plate_fraction"],
+                    "rect_aspect": row["rect_aspect"],
+                    "diameter_fraction": row["diameter_fraction"],
+                    "offset_fraction": row["offset_fraction"],
+                    "hole_fraction": row["hole_fraction"],
+                    "solidity": row["solidity"],
+                    "circularity": row["circularity"],
+                    "edge_count": row["edge_count"],
+                },
             )
         pd.DataFrame(rows).to_parquet(stage / "features.parquet", index=False)
         shutil.move(str(stage / "masks"), str(masks_path))
