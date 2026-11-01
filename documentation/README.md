@@ -70,6 +70,8 @@ page per question.
   designed batch
 - [Fold risk from the spread check](analysis/fold-risk.md): whether the spread
   frame predicts a later fold failure
+- [Crepe position from synthetic images](analysis/synthetic-crepes.md): an
+  unused experiment on whether generated images can replace hand labels
 
 ## System
 
