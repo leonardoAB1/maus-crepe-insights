@@ -76,6 +76,10 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
             }
         )
     )
+    onnx = tmp_path / "fold_segmentation" / "live-onnx" / "1"
+    shutil.copytree(live, onnx)
+    (onnx / "annotated.mp4").write_bytes(b"abcdefghij")
+    (onnx / "timeline.csv").write_text("video_t,state\n0,flat\n")
     server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(tmp_path))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -100,6 +104,25 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
             assert [phase["time"] for phase in detail["phases"]] == [0, 5, 9]
             assert detail["dispense"]["final_fraction"] == 0.68
             assert detail["dispense"]["ok"] is True
+        with urlopen(base + "/api/run/1?model=onnx") as response:
+            detail = json.load(response)
+            assert detail["model"] == "onnx"
+            assert detail["timeline"][0]["state"] == "flat"
+        with urlopen(base + "/api/runs?model=onnx") as response:
+            assert json.load(response)[0]["id"] == 1
+        request = Request(
+            base + "/video/1?model=onnx", headers={"Range": "bytes=2-4"}
+        )
+        with urlopen(request) as response:
+            assert response.status == 206
+            assert response.read() == b"cde"
+        for query in ("model=unknown", "model=", "model=onnx&model=classical"):
+            with pytest.raises(HTTPError) as error:
+                urlopen(base + "/api/runs?" + query)
+            assert error.value.code == 400
+        with pytest.raises(HTTPError) as error:
+            urlopen(base + "/api/run/2?model=onnx")
+        assert error.value.code == 404
         request = Request(base + "/video/1", headers={"Range": "bytes=2-4"})
         with urlopen(request) as response:
             assert response.status == 206

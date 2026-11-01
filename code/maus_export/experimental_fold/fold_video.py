@@ -14,6 +14,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .fold_backend import OnnxForeground, analysis_root
 from .fold_classifier import refine_fold_state
 from .fold_config import DEFAULT_ANALYSIS_FPS
 from .fold_dataset import (
@@ -44,6 +45,7 @@ def analyse_video(
     *,
     replace: bool = False,
     analysis_fps: float = DEFAULT_ANALYSIS_FPS,
+    model: str = "classical",
 ) -> dict[str, float | int]:
     """Analyze one cached video sequentially and write private review outputs.
 
@@ -58,7 +60,7 @@ def analyse_video(
     run = json.loads((raw / "runs" / f"{run_id}.json").read_text())
     calibration = json.loads(CALIBRATION_PATH.read_text())
     video = raw / "media" / str(run_id) / "video.mp4"
-    root = data_dir / "fold_segmentation" / "live"
+    root = analysis_root(data_dir, model)
     root.mkdir(parents=True, exist_ok=True)
     destination = root / str(run_id)
     if destination.exists() and not replace:
@@ -132,16 +134,24 @@ def analyse_video(
                     if plate is not None:
                         try:
                             if segmenter is None:
-                                segmenter = LiveForeground(
-                                    image.shape[:2], plate
+                                foreground = (
+                                    OnnxForeground
+                                    if model == "onnx"
+                                    else LiveForeground
                                 )
+                                segmenter = foreground(image.shape[:2], plate)
                                 geometry_context = prepare_geometry(
                                     image.shape[:2], plate
                                 )
-                            raw_mask = segmenter.segment(
-                                image,
-                                learn_empty=index / fps < dispense_start,
-                            )
+                            if isinstance(segmenter, OnnxForeground):
+                                raw_mask = segmenter.segment_raw(
+                                    raw_frame, run["machineName"], calibration
+                                )
+                            else:
+                                raw_mask = segmenter.segment(
+                                    image,
+                                    learn_empty=index / fps < dispense_start,
+                                )
                             raw_fraction = float(
                                 np.count_nonzero(raw_mask)
                                 / segmenter.segmenter.plate_area
@@ -377,7 +387,12 @@ def analyse_video(
                             t > FRAME_BUDGET_MS for t in processing_times
                         ),
                         "analysis_fps": analysis_fps,
-                        "foreground_method": "diffuse_signed_reference_v2",
+                        "model": model,
+                        "foreground_method": (
+                            "crepe_student_raw_then_rectified"
+                            if model == "onnx"
+                            else "diffuse_signed_reference_v2"
+                        ),
                         "initial_cleaning_prep_end": cleaning_end,
                         "mask_window_frames": temporal.history.maxlen,
                         "toppings_stage_logged": any(

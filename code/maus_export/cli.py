@@ -107,6 +107,12 @@ def main() -> None:
     watch.add_argument("--fps", type=float, default=DEFAULT_ANALYSIS_FPS)
     watch.add_argument("--port", type=int, default=8766)
     watch.add_argument("--replace", action="store_true")
+    watch.add_argument(
+        "--model", choices=("classical", "onnx", "both"), default="classical"
+    )
+    live.add_argument(
+        "--model", choices=("classical", "onnx"), default="classical"
+    )
     watch.add_argument("--no-browser", action="store_true")
     live.add_argument("run_id", type=int)
     live.add_argument(
@@ -306,6 +312,7 @@ def main() -> None:
             fps=args.fps,
             port=args.port,
             open_browser=not args.no_browser,
+            model=args.model,
         )
     if args.cmd == "fold-experimental-live":
         from .experimental_fold.fold_video import analyse_video
@@ -316,6 +323,7 @@ def main() -> None:
                 args.run_id,
                 replace=args.replace,
                 analysis_fps=args.fps,
+                model=args.model,
             )
         )
     if args.cmd == "fold-live-eval":

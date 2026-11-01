@@ -8,6 +8,8 @@
 :root {color-scheme: dark; font-family: Inter, system-ui, sans-serif;
   background: #0a0f1d; color: #e8edf8}
 * {box-sizing: border-box} body {margin: 0} button {font: inherit}
+select {font: inherit; color: inherit; background: #18243a;
+  border: 1px solid #2f4864; border-radius: 6px; padding: 5px}
 .layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh}
 aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828}
 .brand {font-weight: 800; letter-spacing: -.04em; font-size: 24px}
@@ -45,7 +47,14 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 <div id="runs"><span class="muted">Loading videos...</span></div></aside>
 <main><header><div><div class="eyebrow" style="margin:0">Vision analysis</div>
 <h1 id="title">Run overview</h1><p>Review logged checks and visual estimates.</p></div>
-<span class="pill">Local data only</span></header>
+<label class="pill">Segmentation
+<select id="model" aria-label="Segmentation model">
+<option value="classical">Classical CV</option>
+<option value="onnx">ONNX student</option>
+</select></label></header>
+<p class="sub">ONNX: raw-frame inference, then perspective-corrected mask.
+Both options use the same geometry and fold rules. Only prepared analyses
+are listed; prepare both with <code>fold-watch --model both</code>.</p>
 <div class="notice">Experimental estimates, not ground truth or robot control.
 Robot verdicts can be wrong. Checks are shown after the robot tries each action;
 exact fold movement times are not logged. Video may contain people.</div>
@@ -100,6 +109,15 @@ function legend() {
 const video = document.querySelector('#video');
 const canvas = document.querySelector('#chart');
 let selected = null;
+const modelSelect = document.querySelector('#model');
+let requestVersion = 0;
+const modelQuery = () => '?model=' + encodeURIComponent(modelSelect.value);
+modelSelect.addEventListener('change', () => {
+  const id = selected?.id, time = video.currentTime || 0;
+  video.pause(); video.removeAttribute('src'); video.load(); selected = null;
+  document.querySelector('#events').textContent = 'Select a prepared run.';
+  draw(); init(id, time);
+});
 function textNode(tag, text, cls) {
   const el = document.createElement(tag); el.textContent = text;
   if (cls) el.className = cls; return el;
@@ -194,10 +212,18 @@ canvas.addEventListener('click', event => {
 });
 video.addEventListener('timeupdate', draw); video.addEventListener('loadedmetadata', draw);
 window.addEventListener('resize', draw);
-async function showRun(id) {
-  const response = await fetch('/api/run/' + id); if (!response.ok) return;
-  selected = await response.json(); document.querySelector('#title').textContent = 'Run ' + id;
-  video.src = '/video/' + id; const events = document.querySelector('#events');
+async function showRun(id, time = 0) {
+  const version = ++requestVersion, query = modelQuery();
+  try {
+  const response = await fetch('/api/run/' + id + query);
+  if (!response.ok) throw new Error('Analysis unavailable');
+  const result = await response.json();
+  if (version !== requestVersion) return;
+  selected = result; document.querySelector('#title').textContent = 'Run ' + id;
+  video.onloadedmetadata = () => {
+    video.currentTime = Math.min(time, video.duration || 0); draw();
+  };
+  video.src = '/video/' + id + query; const events = document.querySelector('#events');
   events.replaceChildren();
   for (const highlight of selected.highlights || []) {
     const marker = textNode('button', highlight.name, 'event');
@@ -239,12 +265,29 @@ async function showRun(id) {
   document.querySelectorAll('.run').forEach(el => el.classList.toggle('active', el.dataset.id == id));
   legend();
   draw();
+  } catch (_) {
+    if (version !== requestVersion) return;
+    selected = null; video.pause(); video.removeAttribute('src'); video.load();
+    document.querySelector('#events').textContent = 'Analysis unavailable.';
+    document.querySelector('#title').textContent = 'Could not load model analysis';
+    draw();
+  }
 }
-async function init() {
+async function init(preferredId = null, time = 0) {
+  const version = ++requestVersion;
   const container = document.querySelector('#runs');
+  document.querySelector('#title').textContent = 'Loading model analysis...';
   try {
-    const runs = await (await fetch('/api/runs')).json(); container.replaceChildren();
-    if (!runs.length) {container.textContent = 'No analysed videos yet.'; return;}
+    const response = await fetch('/api/runs' + modelQuery());
+    if (!response.ok) throw new Error('Could not list analyses');
+    const runs = await response.json();
+    if (version !== requestVersion) return;
+    container.replaceChildren();
+    if (!runs.length) {
+      container.textContent = 'No prepared analyses for this model.';
+      document.querySelector('#title').textContent = 'Model analysis unavailable';
+      return;
+    }
     for (const run of runs) {
       const failures = run.events.filter(event => event.ok === false).length;
       const button = textNode('button', 'Run ' + run.id, 'run'); button.dataset.id = run.id;
@@ -258,8 +301,15 @@ async function init() {
         run.dispense_ok === false ? 'sub fail' : 'sub muted'));
       button.onclick = () => showRun(run.id); container.append(button);
     }
-    showRun(runs[0].id);
-  } catch (_) {container.textContent = 'Could not load local videos.';}
+    if (preferredId && !runs.some(run => run.id === preferredId)) {
+      document.querySelector('#title').textContent =
+        'Run ' + preferredId + ' not prepared for this model';
+      return;
+    }
+    await showRun(preferredId || runs[0].id, time);
+  } catch (_) {
+    if (version === requestVersion) container.textContent = 'Could not load local videos.';
+  }
 }
 init();
 </script></body></html>

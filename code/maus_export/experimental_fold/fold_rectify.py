@@ -14,7 +14,11 @@ CALIBRATION_VERSION = 1
 
 
 def rectify_video_frame(
-    frame: np.ndarray, robot: str, calibration: dict[str, Any]
+    frame: np.ndarray,
+    robot: str,
+    calibration: dict[str, Any],
+    *,
+    is_mask: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Resize to the calibrated source size, then apply the robot transform.
 
@@ -36,11 +40,21 @@ def rectify_video_frame(
     if abs(ratio - 1) > ASPECT_RATIO_TOLERANCE:
         raise ValueError("Frame aspect ratio does not match camera calibration")
     if (frame_width, frame_height) != source_size:
-        frame = cv2.resize(frame, source_size, interpolation=cv2.INTER_AREA)
+        frame = cv2.resize(
+            frame,
+            source_size,
+            interpolation=cv2.INTER_NEAREST if is_mask else cv2.INTER_AREA,
+        )
     transform = {
         "schema_version": CALIBRATION_VERSION,
         "source_size": source_size,
         "target_size": target_size,
         "matrix": correction["matrix_mean"],
     }
+    if is_mask:
+        colour = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+        output, valid = rectify(
+            colour, transform, interpolation=cv2.INTER_NEAREST
+        )
+        return output[:, :, 0], valid
     return rectify(frame, transform)
