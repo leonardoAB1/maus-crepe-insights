@@ -8,6 +8,7 @@ from pathlib import Path
 
 import anyio
 
+from .experimental_fold.fold_config import DEFAULT_ANALYSIS_FPS
 from .fetch import DEFAULT_FROM, DEFAULT_TO, fetch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -71,10 +72,54 @@ def main() -> None:
     m.add_argument("--ids", type=int, nargs="*", help="only these run ids")
     sub.add_parser("table", help="build runs.csv / runs.parquet")
     sub.add_parser("training", help="export candidate run-start dataset")
+    for name, help_text in (
+        ("fold-experimental-frames", "extract experimental fold check frames"),
+        ("fold-experimental-segment", "segment experimental fold frames"),
+        ("fold-experimental-eval", "evaluate experimental fold segmentation"),
+        ("fold-live-eval", "evaluate sampled live videos"),
+        ("fold-review", "create a private contact sheet"),
+    ):
+        fold_command = sub.add_parser(name, help=help_text)
+        fold_command.add_argument(
+            "--data-dir",
+            type=Path,
+            default=argparse.SUPPRESS,
+            help="input and private output directory",
+        )
     sub.add_parser("vision-targets", help="join run-start and vision targets")
     sub.add_parser("audit", help="audit training and vision coverage")
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
+    )
+    dashboard = sub.add_parser(
+        "fold-experimental-dashboard", help="serve experimental video review"
+    )
+    dashboard.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    dashboard.add_argument("--port", type=int, default=8765)
+    live = sub.add_parser(
+        "fold-experimental-live", help="analyze one cached video experimentally"
+    )
+    watch = sub.add_parser(
+        "fold-watch", help="analyze cached videos and review"
+    )
+    watch.add_argument("run_ids", type=int, nargs="+")
+    watch.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    watch.add_argument("--fps", type=float, default=DEFAULT_ANALYSIS_FPS)
+    watch.add_argument("--port", type=int, default=8766)
+    watch.add_argument("--replace", action="store_true")
+    watch.add_argument("--no-browser", action="store_true")
+    live.add_argument("run_id", type=int)
+    live.add_argument(
+        "--fps",
+        type=float,
+        default=DEFAULT_ANALYSIS_FPS,
+        help="analysis frames per second (default: 10 within a 200 ms budget)",
+    )
+    live.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    live.add_argument(
+        "--replace",
+        action="store_true",
+        help="replace this run's existing analysis after successful processing",
     )
     ex = sub.add_parser(
         "example", help="draw the annotated vision example figure"
@@ -141,6 +186,15 @@ def main() -> None:
         "fold-dashboard", help="write local fold review dashboard"
     )
     data_dir_arg(fd)
+    fsl = sub.add_parser(
+        "fold-student", help="live video inference with the crepe student"
+    )
+    data_dir_arg(fsl)
+    fsl.add_argument("--ids", type=int, nargs="*", help="only these run ids")
+    fse = sub.add_parser(
+        "fold-student-eval", help="crepe student state at the check frames"
+    )
+    data_dir_arg(fse)
     ls = sub.add_parser(
         "label-states", help="print the unified crepe-state vocabulary"
     )
@@ -230,6 +284,52 @@ def main() -> None:
         from .to_table import build_table
 
         build_table(data_dir)
+    if args.cmd == "fold-experimental-frames":
+        from .experimental_fold.fold_dataset import extract_frames
+
+        print(extract_frames(data_dir))
+    if args.cmd == "fold-experimental-segment":
+        from .experimental_fold.fold_segment import segment_dataset
+
+        print(segment_dataset(data_dir))
+    if args.cmd == "fold-experimental-eval":
+        from .experimental_fold.fold_eval import evaluate
+
+        print(evaluate(data_dir))
+    if args.cmd == "fold-watch":
+        from .experimental_fold.fold_watch import watch_videos
+
+        watch_videos(
+            data_dir,
+            args.run_ids,
+            replace=args.replace,
+            fps=args.fps,
+            port=args.port,
+            open_browser=not args.no_browser,
+        )
+    if args.cmd == "fold-experimental-live":
+        from .experimental_fold.fold_video import analyse_video
+
+        print(
+            analyse_video(
+                data_dir,
+                args.run_id,
+                replace=args.replace,
+                analysis_fps=args.fps,
+            )
+        )
+    if args.cmd == "fold-live-eval":
+        from .experimental_fold.fold_live_eval import evaluate_live
+
+        print(evaluate_live(data_dir))
+    if args.cmd == "fold-review":
+        from .experimental_fold.fold_review import contact_sheet
+
+        print(f"Review frames: {contact_sheet(data_dir)}")
+    if args.cmd == "fold-experimental-dashboard":
+        from .experimental_fold.fold_dashboard import serve_dashboard
+
+        serve_dashboard(data_dir, args.port)
     if args.cmd == "training":
         from .training_dataset import (
             TrainingInputError,
@@ -336,6 +436,14 @@ def main() -> None:
         from .fold_dashboard import build_dashboard
 
         print(build_dashboard(data_dir))
+    if args.cmd == "fold-student":
+        from .crepe_student import run_live as run_student
+
+        run_student(data_dir, set(args.ids) if args.ids else None)
+    if args.cmd == "fold-student-eval":
+        from .crepe_student import evaluate_check_frames
+
+        print(evaluate_check_frames(data_dir).to_string(index=False))
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,
