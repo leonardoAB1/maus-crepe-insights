@@ -9,13 +9,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .fold_diffuse import diffuse_mask
 from .fold_mask import CrepeSegmenter
 from .fold_plate import PlateEllipse
 
 MIN_DOUGH_B = 136
 MAX_DOUGH_A = 145
 MIN_LIGHTNESS = 90
-MIN_SEED_FRACTION = 0.35
 BOUNDARY_MARGIN = 0.08
 MIN_EXTERNAL_PIXELS = 30
 MAX_ARM_WIDTH_FRACTION = 0.50
@@ -32,11 +32,11 @@ class ForegroundOccluded(ValueError):
 
 
 class LiveForeground:
-    """Keep warm dough components; abstain on bright rim-crossing objects.
+    """Keep changed diffuse pixels; abstain on bright rim-crossing objects.
 
-    Neutral metal and highlights are not food seeds. Components may include
-    pale dough when sufficient warm pixels support them. White dough and
-    coloured tools remain known limitations, not solved recognition problems.
+    Neutral highlights are removed pixel by pixel, even if attached to food.
+    Brightness alone cannot identify food. White dough and coloured tools
+    remain known limitations, not solved recognition problems.
     The adapter can be replaced without changing geometry or check voting.
     """
 
@@ -49,6 +49,7 @@ class LiveForeground:
         self.used_samples: list[np.ndarray] = []
         self.used_sample_count = 0
         self.reference_image: np.ndarray | None = None
+        self.reference_lab: np.ndarray | None = None
         self.reference_upper_l: np.ndarray | None = None
         self.rim = max(plate.width, plate.height) * BOUNDARY_MARGIN
         self.inner = (
@@ -123,6 +124,9 @@ class LiveForeground:
                     ),
                     size,
                 )
+                self.reference_lab = cv2.cvtColor(
+                    self.reference_image, cv2.COLOR_BGR2LAB
+                )
                 self.segmenter = CrepeSegmenter(
                     frame.shape[:2],
                     self.plate,
@@ -130,14 +134,9 @@ class LiveForeground:
                     reference_upper_l=self.reference_upper_l,
                 )
                 self.reference_ready = True
-        mask = self.segmenter.segment(frame)
-        count, labels = cv2.connectedComponents(mask)
-        result = np.zeros_like(mask)
-        for label in range(1, count):
-            pixels = labels == label
-            if warm[pixels].mean() >= MIN_SEED_FRACTION:
-                result[pixels] = mask[pixels]
-        return result
+        return diffuse_mask(
+            lab, inside, self.reference_lab, self.reference_upper_l
+        )
 
     def save_reference(self, directory: Path) -> None:
         """Write a private reproducible reference set, not a public fixture."""
