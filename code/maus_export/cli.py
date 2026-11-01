@@ -253,6 +253,8 @@ def main() -> None:
     vw.add_argument("--masks-dir", type=Path, default=None)
     vw.add_argument("--producer", default="pixel_masks")
     vw.add_argument("--run-id", type=int, default=None)
+    vw.add_argument("--crepe-model", type=Path, default=None)
+    vw.add_argument("--crepe-transform", type=Path, default=None)
     vw.add_argument("--host", default="127.0.0.1")
     vw.add_argument("--port", type=int, default=8087)
     a = sub.add_parser("all", help="fetch + mcap + table + vision")
@@ -522,6 +524,8 @@ def main() -> None:
             masks_dir=args.masks_dir,
             producer=args.producer,
             run_id=args.run_id,
+            crepe_model=args.crepe_model,
+            crepe_transform=args.crepe_transform,
         )
         serve(app, host=args.host, port=args.port)
 

@@ -11,6 +11,8 @@ fail with a readable message rather than silently returning nothing.
 from __future__ import annotations
 
 import base64
+import json
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
@@ -21,10 +23,13 @@ import numpy as np
 
 from .crepe_states import UnknownState, normalise
 from .pixel_masks import DEFAULT_CONFIG, PixelMaskConfig, suggest_masks
+from .synthetic_crepes import MAX_U8, clean_mask, rectify_for_model
 
 MASK_ENCODING = ".png"
 MATERIAL_LAYER = "material"
 HOLE_LAYER = "holes"
+CREPE_THRESHOLD = 0.5
+MILLISECONDS = 1000
 
 
 class ProducerError(RuntimeError):
@@ -228,10 +233,75 @@ class CheckVerdictProducer:
         )
 
 
+@dataclass
+class CrepePoseProducer:
+    """Crepe mask from the crepe-pose ONNX model, drawn on the video frame.
+
+    The model reads rectified frames, so each frame goes through the run's
+    rectification and the mask comes back through its inverse.
+    """
+
+    model: Path
+    transform: Path
+    session: Any = None
+    last_ms: float = 0.0
+    name: str = "crepe_pose"
+    describes: str = (
+        "experiment, unused: crepe mask from crepe-pose, no fold state"
+    )
+
+    def _load(self) -> tuple[np.ndarray, tuple[int, int]]:
+        try:
+            import onnxruntime
+        except ImportError as error:
+            raise ProducerError(
+                "crepe pose needs onnxruntime: run in the ml environment"
+            ) from error
+        if not self.model.is_file():
+            raise ProducerError(f"cannot read the crepe model {self.model}")
+        if not self.transform.is_file():
+            raise ProducerError(f"cannot read the transform {self.transform}")
+        if self.session is None:
+            self.session = onnxruntime.InferenceSession(str(self.model))
+        transform = json.loads(self.transform.read_text())
+        size = tuple(int(value) for value in transform["target_size"])
+        return np.array(transform["matrix"], np.float64), size
+
+    def layers(self, frame: np.ndarray, context: FrameContext) -> LayerSet:
+        matrix, size = self._load()
+        started = time.perf_counter()
+        small = rectify_for_model(frame, matrix, size[0])
+        pixels = small.astype(np.float32) / MAX_U8
+        batch = pixels.transpose(2, 0, 1)[None]
+        chances = self.session.run(None, {"x": batch})[0][0, 0]
+        found = clean_mask(chances > CREPE_THRESHOLD)
+        wide = cv2.resize(
+            found.astype(np.uint8), size, interpolation=cv2.INTER_NEAREST
+        )
+        self.last_ms = (time.perf_counter() - started) * MILLISECONDS
+        height, width = frame.shape[:2]
+        material = cv2.warpPerspective(
+            wide,
+            matrix,
+            (width, height),
+            flags=cv2.INTER_NEAREST | cv2.WARP_INVERSE_MAP,
+        )
+        return LayerSet(
+            notes=[
+                "crepe-pose mask, an experiment: see synthetic-crepes.md",
+                "can mark a hand or sleeve as crepe",
+            ],
+            material=material > 0,
+            producer=self.name,
+        )
+
+
 def default_producers(
     *,
     records: Mapping[int, Mapping[str, Any]] | None = None,
     masks_dir: Path | None = None,
+    crepe_model: Path | None = None,
+    crepe_transform: Path | None = None,
 ) -> dict[str, Any]:
     """The producers the viewer offers, in display order."""
     registry: dict[str, Any] = {}
@@ -241,6 +311,10 @@ def default_producers(
         )
     registry["pixel_masks"] = PixelMaskProducer(records=records or {})
     registry["check_verdict"] = CheckVerdictProducer()
+    if crepe_model is not None and crepe_transform is not None:
+        registry["crepe_pose"] = CrepePoseProducer(
+            model=crepe_model, transform=crepe_transform
+        )
     return registry
 
 

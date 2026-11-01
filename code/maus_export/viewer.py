@@ -105,6 +105,8 @@ class ViewerApp:
         masks_dir: Path | None = None,
         producer: str = DEFAULT_PRODUCER,
         run_id: int | None = None,
+        crepe_model: Path | None = None,
+        crepe_transform: Path | None = None,
     ) -> None:
         self.video = video.resolve()
         if not self.video.is_file():
@@ -114,7 +116,10 @@ class ViewerApp:
         self.run_id = run_id
         self.info = probe_video(self.video)
         self.producers = default_producers(
-            records=self.records, masks_dir=self.masks_dir
+            records=self.records,
+            masks_dir=self.masks_dir,
+            crepe_model=crepe_model,
+            crepe_transform=crepe_transform,
         )
         if producer not in self.producers:
             raise ViewerError(f"unknown producer {producer}")

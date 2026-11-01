@@ -10,6 +10,7 @@ import pytest
 
 from maus_export.producers import (
     CheckVerdictProducer,
+    CrepePoseProducer,
     FrameContext,
     LayerSet,
     PixelMaskProducer,
@@ -184,3 +185,68 @@ def test_layer_json_reports_mask_areas() -> None:
 def test_layer_json_without_masks_has_no_areas() -> None:
     payload = LayerSet(state="flat").to_json()
     assert payload["areas"] == {}
+
+
+class StandInModel:
+    """Marks a fixed square of the rectified view, like a tiny crepe model."""
+
+    def run(self, _names: object, inputs: dict) -> list[np.ndarray]:
+        assert inputs["x"].shape == (1, 3, 160, 160)
+        chances = np.zeros((1, 1, 160, 160), np.float32)
+        chances[0, 0, 40:120, 40:120] = 1.0
+        return [chances]
+
+
+def crepe_files(tmp_path: Path, matrix: list[list[float]]) -> tuple[Path, Path]:
+    model = tmp_path / "model.onnx"
+    model.write_bytes(b"stand-in")
+    transform = tmp_path / "transform.json"
+    transform.write_text(
+        json.dumps({"matrix": matrix, "target_size": [320, 320]})
+    )
+    return model, transform
+
+
+def test_crepe_pose_maps_the_mask_back_to_the_frame(tmp_path: Path) -> None:
+    pytest.importorskip("onnxruntime")
+    # The rectified view is the frame shifted 20 pixels to the right
+    shift = [[1.0, 0.0, 20.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    model, transform = crepe_files(tmp_path, shift)
+    producer = CrepePoseProducer(
+        model=model, transform=transform, session=StandInModel()
+    )
+    frame = np.zeros((320, 400, 3), np.uint8)
+    layers = producer.layers(frame, FrameContext(frame_index=0))
+    assert layers.material.shape == frame.shape[:2]
+    ys, xs = np.nonzero(layers.material)
+    assert (ys.min(), ys.max()) == pytest.approx((80, 239), abs=2)
+    assert (xs.min(), xs.max()) == pytest.approx((60, 219), abs=2)
+
+
+def test_crepe_pose_names_a_missing_file(tmp_path: Path) -> None:
+    pytest.importorskip("onnxruntime")
+    missing = tmp_path / "missing.onnx"
+    producer = CrepePoseProducer(model=missing, transform=missing)
+    with pytest.raises(ProducerError, match="crepe model"):
+        producer.layers(np.zeros((8, 8, 3), np.uint8), FrameContext(0))
+
+
+def test_crepe_pose_is_offered_only_with_a_model_and_transform(
+    tmp_path: Path,
+) -> None:
+    assert "crepe_pose" not in default_producers()
+    registry = default_producers(
+        crepe_model=tmp_path / "m", crepe_transform=tmp_path / "t"
+    )
+    assert "crepe_pose" in registry
+
+
+def test_crepe_pose_reports_how_long_the_model_took(tmp_path: Path) -> None:
+    pytest.importorskip("onnxruntime")
+    same = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    model, transform = crepe_files(tmp_path, same)
+    producer = CrepePoseProducer(
+        model=model, transform=transform, session=StandInModel()
+    )
+    producer.layers(np.zeros((320, 320, 3), np.uint8), FrameContext(0))
+    assert producer.last_ms > 0
