@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -31,6 +32,8 @@ def run_details(data_dir: Path, run_id: int) -> dict:
             "observation": None,
             "observed_at": None,
             "observation_status": "not_evaluated",
+            "verdict": "unknown",
+            "confidence": 0.0,
         }
         for event in check_starts(run["logs"])
     ]
@@ -51,6 +54,8 @@ def run_details(data_dir: Path, run_id: int) -> dict:
                 else None
             )
             event["observation_status"] = observation["status"]
+            event["verdict"] = observation.get("verdict", "unknown")
+            event["confidence"] = float(observation.get("confidence") or 0)
     phases = [
         {"time": float(phase["elapsed_sec"]), "name": phase["phase"]}
         for phase in run["phases"]
@@ -108,6 +113,14 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
                             {
                                 "id": info["id"],
                                 "events": info["events"],
+                                "visual_failures": sum(
+                                    event["verdict"] == "failure"
+                                    for event in info["events"]
+                                ),
+                                "visual_unknown": sum(
+                                    event["verdict"] == "unknown"
+                                    for event in info["events"]
+                                ),
                                 "dispense_ok": (info["dispense"] or {}).get(
                                     "ok"
                                 ),
@@ -174,11 +187,16 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
-def serve_dashboard(data_dir: Path, port: int = 8765) -> None:
+def serve_dashboard(
+    data_dir: Path, port: int = 8765, *, open_browser: bool = False
+) -> None:
     """Serve private data only on localhost until interrupted."""
     server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(data_dir))
-    print(f"Private dashboard: http://127.0.0.1:{server.server_port}/")
+    url = f"http://127.0.0.1:{server.server_port}/"
+    print(f"Private dashboard: {url}", flush=True)
     try:
+        if open_browser:
+            webbrowser.open(url)
         server.serve_forever()
     finally:
         server.server_close()

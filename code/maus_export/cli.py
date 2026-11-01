@@ -8,6 +8,7 @@ from pathlib import Path
 import anyio
 
 from .fetch import DEFAULT_FROM, DEFAULT_TO, fetch
+from .fold_config import DEFAULT_ANALYSIS_FPS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -89,8 +90,15 @@ def main() -> None:
     dashboard.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
     dashboard.add_argument("--port", type=int, default=8765)
     live = sub.add_parser("fold-live", help="analyze one cached video")
-    from .fold_video import DEFAULT_ANALYSIS_FPS
-
+    watch = sub.add_parser(
+        "fold-watch", help="analyze cached videos and review"
+    )
+    watch.add_argument("run_ids", type=int, nargs="+")
+    watch.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    watch.add_argument("--fps", type=float, default=DEFAULT_ANALYSIS_FPS)
+    watch.add_argument("--port", type=int, default=8766)
+    watch.add_argument("--replace", action="store_true")
+    watch.add_argument("--no-browser", action="store_true")
     live.add_argument("run_id", type=int)
     live.add_argument(
         "--fps",
@@ -185,6 +193,17 @@ def main() -> None:
         from .fold_eval import evaluate
 
         print(evaluate(data_dir))
+    if args.cmd == "fold-watch":
+        from .fold_watch import watch_videos
+
+        watch_videos(
+            data_dir,
+            args.run_ids,
+            replace=args.replace,
+            fps=args.fps,
+            port=args.port,
+            open_browser=not args.no_browser,
+        )
     if args.cmd == "fold-live":
         from .fold_video import analyse_video
 

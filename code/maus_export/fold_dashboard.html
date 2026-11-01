@@ -60,8 +60,11 @@ exact fold movement times are not logged. Video may contain people.</div>
 <section class="card chart"><h2>Check snapshots</h2>
 <p>Dots are unverified vision estimates after logged checks, not continuous
 fold states. Grey lines are check starts. The top strip shows the logged
-phases and the bottom band traces dough plate coverage during dispensing
-against the 40% supervisor target. Click the chart to seek.</p>
+phases and the bottom band traces plate coverage throughout the video.
+Gaps mean unknown or occluded, not zero area. The dashed line is the
+40% dispensing target only. Click the chart to seek.
+Confidence is vote support including invalid samples, not a calibrated
+probability of correctness.</p>
 <canvas id="chart" aria-label="Check snapshots, click to seek"></canvas>
 <p class="sub" id="phase-legend" style="margin-top:8px"></p></section></div>
 <section class="card"><h2>Robot checks</h2><p>Expected state and robot verdict
@@ -126,8 +129,7 @@ function draw() {
     }
   }
   c.globalAlpha = 1;
-  const doughRows = selected.timeline.filter(row =>
-    (row.phase || '').startsWith('spread_batter') && row.plate_fraction !== '');
+  const doughRows = selected.timeline;
   if (doughRows.length) {
     const dTop = height - 40, dBottom = height - 14;
     const yF = f => dBottom - Math.max(0, Math.min(1, f)) * (dBottom - dTop);
@@ -137,19 +139,21 @@ function draw() {
     c.beginPath(); c.moveTo(pad, yF(0.4)); c.lineTo(width, yF(0.4)); c.stroke();
     c.setLineDash([]);
     c.fillStyle = '#91a4bd'; c.font = '10px system-ui';
-    c.fillText('dough', 8, dBottom - 4);
-    const pts = doughRows.map(row => [xAt(Number(row.video_t)),
-      yF(Number(row.plate_fraction))]);
+    c.fillText('area', 8, dBottom - 4);
     c.beginPath();
-    for (let i = 0; i < pts.length; i++) {
-      if (i === 0) c.moveTo(pts[i][0], pts[i][1]); else c.lineTo(pts[i][0], pts[i][1]);
+    let connected = false;
+    for (const row of doughRows) {
+      if (row.plate_fraction === '' ||
+          !Number.isFinite(Number(row.plate_fraction))) {
+        connected = false; continue;
+      }
+      const x = xAt(Number(row.video_t));
+      const y = yF(Number(row.plate_fraction));
+      if (connected) c.lineTo(x, y); else c.moveTo(x, y);
+      connected = true;
     }
-    c.strokeStyle = '#e8a35d'; c.globalAlpha = .95; c.lineWidth = 1.5; c.stroke();
+    c.strokeStyle = '#e8a35d'; c.lineWidth = 1.5; c.stroke();
     c.lineWidth = 1;
-    c.lineTo(pts[pts.length - 1][0], dBottom);
-    c.lineTo(pts[0][0], dBottom); c.closePath();
-    c.globalAlpha = .22; c.fillStyle = '#e8a35d'; c.fill();
-    c.globalAlpha = 1;
   }
   for (const event of selected.events) {
     c.strokeStyle = '#8295ac'; c.globalAlpha = .55;
@@ -159,6 +163,10 @@ function draw() {
       c.globalAlpha = 1; c.fillStyle = colors[states.indexOf(event.observation)] || '#fff';
       c.beginPath(); c.arc(xAt(event.observed_at), yAt(event.observation), 5, 0, 2 * Math.PI);
       c.fill();
+      c.font = '10px system-ui';
+      c.fillText((event.verdict || 'unknown') + ' ' +
+        Math.round((event.confidence || 0) * 100) + '%',
+        xAt(event.observed_at) + 7, yAt(event.observation) - 8);
     }
   }
   c.globalAlpha = 1; c.strokeStyle = '#ffffff'; c.lineWidth = 2;
@@ -188,6 +196,10 @@ async function showRun(id) {
     button.append(textNode('span', 'Expected from log: ' + event.expected, 'sub'));
     button.append(textNode('span', robot, event.ok === false ? 'sub fail' : 'sub muted'));
     button.append(textNode('span', visual + ' (unverified)', 'sub'));
+    button.append(textNode('span', 'Visual verdict: ' +
+      (event.verdict || 'unknown') + ' | vote confidence: ' +
+      Math.round((event.confidence || 0) * 100) + '%',
+      event.verdict === 'failure' ? 'sub fail' : 'sub muted'));
     button.append(textNode('span', 'Check starts at ' + Math.max(0, event.time).toFixed(1) + 's', 'sub'));
     button.onclick = () => {
       video.currentTime = Math.max(0, event.observed_at ?? event.time);
@@ -208,6 +220,9 @@ async function init() {
       const button = textNode('button', 'Run ' + run.id, 'run'); button.dataset.id = run.id;
       button.append(textNode('span', failures ? failures + ' robot-reported failures' :
         'No reported failures', failures ? 'sub fail' : 'sub muted'));
+      button.append(textNode('span',
+        (run.visual_failures || 0) + ' visual failures, ' +
+        (run.visual_unknown || 0) + ' unknown checks', 'sub'));
       button.append(textNode('span', run.dispense_ok === true ? 'Dough: stable' :
         run.dispense_ok === false ? 'Dough: flagged' : 'Dough: not measured',
         run.dispense_ok === false ? 'sub fail' : 'sub muted'));
