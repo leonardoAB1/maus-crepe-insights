@@ -8,6 +8,8 @@
 :root {color-scheme: dark; font-family: Inter, system-ui, sans-serif;
   background: #0a0f1d; color: #e8edf8}
 * {box-sizing: border-box} body {margin: 0} button {font: inherit}
+select {font: inherit; color: inherit; background: #18243a;
+  border: 1px solid #2f4864; border-radius: 6px; padding: 5px}
 .layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh;
   align-items: start}
 aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828;
@@ -62,7 +64,14 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 <div id="failed-runs"></div></details></aside>
 <main><header><div><div class="eyebrow" style="margin:0">Vision analysis</div>
 <h1 id="title">Run overview</h1><p>Review logged checks and visual estimates.</p></div>
-<span class="pill">Local data only</span></header>
+<label class="pill">Segmentation
+<select id="model" aria-label="Segmentation model">
+<option value="classical">Classical CV</option>
+<option value="onnx">ONNX student</option>
+</select></label></header>
+<p class="sub">ONNX: raw-frame inference, then perspective-corrected mask.
+Both options use the same geometry and fold rules. Prepare both with
+<code>fold-watch --model both</code>.</p>
 <div class="notice">Experimental estimates, not ground truth or robot control.
 Robot verdicts can be wrong. Checks are shown after the robot tries each action;
 exact fold movement times are not logged. Video may contain people.</div>
@@ -125,6 +134,19 @@ let selectedId = null;
 let cachedRuns = new Map();
 let progressJobs = new Map();
 const runButtons = new Map();
+const modelSelect = document.querySelector('#model');
+const modelQuery = () => modelSelect.value === 'onnx' ? '?model=onnx' : '';
+let requestVersion = 0;
+modelSelect.addEventListener('change', async () => {
+  const id = selectedId, time = video.currentTime || 0;
+  ++requestVersion;
+  cachedRuns.clear(); progressJobs.clear(); completedRuns = null;
+  selected = null; video.removeAttribute('src'); video.load();
+  document.querySelector('#original').hidden = true;
+  renderSidebar(); renderProgress(); draw();
+  await pollProgress(false);
+  if (id != null) await showRun(id, time);
+});
 function textNode(tag, text, cls) {
   const el = document.createElement(tag); el.textContent = text;
   if (cls) el.className = cls; return el;
@@ -219,28 +241,33 @@ canvas.addEventListener('click', event => {
 });
 video.addEventListener('timeupdate', draw); video.addEventListener('loadedmetadata', draw);
 window.addEventListener('resize', draw);
-async function showRun(id) {
+async function showRun(id, time = 0) {
+  const version = ++requestVersion, query = modelQuery();
   document.querySelector('#original').hidden = true;
   selectedId = id;
   selected = null;
   document.querySelector('#title').textContent = 'Run ' + id;
   video.removeAttribute('src'); video.load();
   const events = document.querySelector('#events');
-  events.textContent = 'Video and checks will be available after processing completes.';
+  events.textContent = 'No prepared analysis for this model. Video and checks will be available after processing completes.';
   renderSidebar(); renderProgress(); draw();
   if (!cachedRuns.has(id)) return;
   try {
-    const response = await fetch('/api/run/' + id);
+    const response = await fetch('/api/run/' + id + query);
     if (!response.ok) throw new Error('Run unavailable');
     const detail = await response.json();
-    if (selectedId !== id) return;
+    if (selectedId !== id || version !== requestVersion) return;
     selected = detail;
   } catch (_) {
-    if (selectedId === id) events.textContent = 'Could not load this run. Select it to retry.';
+    if (selectedId === id && version === requestVersion)
+      events.textContent = 'Could not load this run. Select it to retry.';
     return;
   }
-  video.src = '/video/' + id;
-  document.querySelector('#original').href = '/original-video/' + id;
+  video.onloadedmetadata = () => {
+    video.currentTime = Math.min(time, video.duration || 0); draw();
+  };
+  video.src = '/video/' + id + query;
+  document.querySelector('#original').href = '/original-video/' + id + query;
   document.querySelector('#original').hidden = false;
   events.replaceChildren();
   for (const highlight of selected.highlights || []) {
@@ -375,22 +402,27 @@ function renderProgress() {
   container.append(textNode('span', 'End-to-end analysed-frame speed, not source video FPS.', 'sub'));
 }
 async function refreshRuns() {
-  const response = await fetch('/api/runs');
+  const query = modelQuery();
+  const response = await fetch('/api/runs' + query);
   if (!response.ok) throw new Error('Runs unavailable');
-  cachedRuns = new Map((await response.json()).map(run => [run.id, run]));
+  const runs = await response.json();
+  if (query === modelQuery()) cachedRuns = new Map(runs.map(run => [run.id, run]));
 }
 let completedRuns = null;
-async function pollProgress() {
+async function pollProgress(schedule = true) {
+  const query = modelQuery();
   const connection = document.querySelector('#connection');
   try {
-    const response = await fetch('/api/progress');
+    const response = await fetch('/api/progress' + query);
     if (!response.ok) throw new Error('Progress unavailable');
     const jobs = await response.json();
+    if (query !== modelQuery()) return;
     const previous = progressJobs.get(selectedId);
     progressJobs = new Map(jobs.map(job => [job.id, job]));
     const completed = jobs.filter(job => job.state === 'completed').map(job =>
       job.id + ':' + job.updated_at).join(',');
     if (completedRuns === null || completed !== completedRuns) await refreshRuns();
+    if (query !== modelQuery()) return;
     completedRuns = completed;
     connection.textContent = '';
     renderSidebar(); renderProgress();
@@ -404,7 +436,7 @@ async function pollProgress() {
       await showRun(selectedId);
     }
   } catch (_) {connection.textContent = 'Connection lost; retrying…';}
-  finally {setTimeout(pollProgress, 1000);}
+  finally {if (schedule) setTimeout(pollProgress, 1000);}
 }
 pollProgress();
 </script></body></html>

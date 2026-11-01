@@ -143,6 +143,24 @@ const setTimeout = () => {};
   assert.equal(sidebar.children.length, 1);
   assert.equal(video.src, '/video/2');
   assert.match(panel.textContent, /completed/);
+  modelSelect.value = 'onnx';
+  completedRuns = null;
+  const requested = [];
+  global.fetch = async path => {
+    requested.push(path);
+    return {ok: true, json: async () => {
+      if (path === '/api/progress?model=onnx') return [completed];
+      if (path === '/api/runs?model=onnx')
+        return [{id: 2, events: [], dispense_ok: null}];
+      return {id: 2, timeline: [], events: []};
+    }};
+  };
+  await pollProgress(false);
+  await showRun(2, 12);
+  assert.equal(video.src, '/video/2?model=onnx');
+  assert.equal(document.querySelector('#original').href,
+    '/original-video/2?model=onnx');
+  assert.ok(requested.every(path => path.endsWith('?model=onnx')));
 })().catch(error => { console.error(error); process.exitCode = 1; });
 """
     path = tmp_path / "dashboard-ui.js"
