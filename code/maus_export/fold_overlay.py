@@ -130,6 +130,11 @@ def annotate_frame(
             )
         if geometry.corner_angle is not None:
             lines.append(f"Corner angle: {geometry.corner_angle:.0f} deg")
+        if geometry.rect_angle is not None:
+            lines.append(
+                f"Fold axis: {geometry.rect_angle:.0f} deg | "
+                f"Aspect: {geometry.rect_aspect:.2f}"
+            )
     panel_height = min(frame.shape[0], TEXT_Y + len(lines) * TEXT_STEP)
     panel_width = min(frame.shape[1], PANEL_WIDTH)
     panel = output[:panel_height, :panel_width]

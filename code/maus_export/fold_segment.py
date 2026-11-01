@@ -127,6 +127,8 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
                         if geometry.corner
                         else None,
                         "corner_angle": geometry.corner_angle,
+                        "rect_aspect": geometry.rect_aspect,
+                        "rect_angle": geometry.rect_angle,
                     }
                 )
             except (ValueError, cv2.error):
@@ -166,7 +168,11 @@ def segment_dataset(data_dir: Path) -> dict[str, int]:
             row["flat_reference_id"] = best["frame_id"] if best else None
             flat_area = best["area"] if best else None
             row["predicted_state"] = classify_state(
-                row["area"], row["plate_area"], row["edge_count"], flat_area
+                row["area"],
+                row["plate_area"],
+                row["edge_count"],
+                flat_area,
+                row["rect_aspect"] if pd.notna(row["rect_aspect"]) else None,
             )
         pd.DataFrame(rows).to_parquet(stage / "features.parquet", index=False)
         shutil.move(str(stage / "masks"), str(masks_path))

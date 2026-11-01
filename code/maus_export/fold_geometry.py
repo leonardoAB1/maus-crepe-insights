@@ -45,6 +45,8 @@ class CrepeGeometry:
     edges: tuple[FoldEdge, ...]
     corner: tuple[float, float] | None
     corner_angle: float | None
+    rect_aspect: float | None
+    rect_angle: float | None
 
 
 @dataclass(frozen=True)
@@ -175,7 +177,7 @@ def measure_geometry(
     plate_diameter = math.sqrt(plate.width * plate.height)
     if not contours:
         return CrepeGeometry(
-            0, 0, None, 0, 0, None, 0, None, None, (), None, None
+            0, 0, None, 0, 0, None, 0, None, None, (), None, None, None, None
         )
     filled = np.zeros_like(binary)
     cv2.drawContours(filled, contours, -1, 255, cv2.FILLED)
@@ -203,6 +205,7 @@ def measure_geometry(
         context.rim_distance if context else None,
     )
     corner, corner_angle = _corner(edges)
+    rect_aspect, rect_angle = _minimum_rect(filled)
     return CrepeGeometry(
         area,
         area / plate_area,
@@ -216,4 +219,39 @@ def measure_geometry(
         edges,
         corner,
         corner_angle,
+        rect_aspect,
+        rect_angle,
     )
+
+
+def _minimum_rect(filled: np.ndarray) -> tuple[float | None, float | None]:
+    """Aspect ratio and long-axis angle of the mask minimum rectangle.
+
+    A half fold is a half disc (about 2:1) while a quarter fold and a
+    full crepe are close to square. The angle is the long axis in image
+    degrees from 0 to 180, so it tracks fold rotation on rectified
+    frames even when no straight edge is detected.
+    """
+    contours, _ = cv2.findContours(
+        filled, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    if not contours:
+        return None, None
+    largest = max(contours, key=cv2.contourArea)
+    if cv2.contourArea(largest) < 1.0:
+        return None, None
+    (_, _), (width, height), _ = cv2.minAreaRect(largest)
+    short = min(width, height)
+    long = max(width, height)
+    if short <= 0:
+        return None, None
+    box = cv2.boxPoints(cv2.minAreaRect(largest))
+    best = 0.0
+    best_length = -1.0
+    for i in range(4):
+        delta = box[(i + 1) % 4] - box[i]
+        length = float(np.linalg.norm(delta))
+        if length > best_length:
+            best_length = length
+            best = math.degrees(math.atan2(delta[1], delta[0])) % STRAIGHT_ANGLE
+    return long / short, best

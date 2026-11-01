@@ -17,6 +17,7 @@ FLAT_PLATE_FRACTION = 0.49
 FLAT_REFERENCE_FRACTION = 0.75
 HALF_REFERENCE_FRACTION = 0.32
 HALF_PLATE_FRACTION = 0.21
+HALF_MIN_ASPECT = 1.4
 
 
 def classify_state(
@@ -24,13 +25,16 @@ def classify_state(
     plate_area: float,
     straight_edges: int,
     flat_area: float | None = None,
+    rect_aspect: float | None = None,
 ) -> FoldState:
     """Classify a measured mask; zero area denotes no detected crepe.
 
     The caller must not use the frame under evaluation as its flat reference.
     Areas must use the same coordinate system and plate mask. Straight edges
     do not influence the decision on rectified frames, where flat crepes
-    often expose a fold edge and half folds often expose none.
+    often expose a fold edge and half folds often expose none. A half fold
+    must also be elongated: its minimum rectangle is about 2:1, while a
+    quarter fold folded into a narrow wedge can match a half fold area.
     """
     if (
         not math.isfinite(area)
@@ -42,18 +46,27 @@ def classify_state(
             flat_area is not None
             and (not math.isfinite(flat_area) or flat_area <= 0)
         )
+        or (
+            rect_aspect is not None
+            and (not math.isfinite(rect_aspect) or rect_aspect <= 0)
+        )
     ):
-        raise ValueError("Invalid areas or edge count")
+        raise ValueError("Invalid areas, edge count or aspect ratio")
     if area == 0:
         return "empty"
     fraction = area / plate_area
     relative = area / flat_area if flat_area is not None else None
+    elongated = rect_aspect is None or rect_aspect >= HALF_MIN_ASPECT
     if fraction >= FLAT_PLATE_FRACTION:
         return "flat"
     if relative is not None and relative >= FLAT_REFERENCE_FRACTION:
         return "flat"
-    if relative is not None and relative >= HALF_REFERENCE_FRACTION:
+    if (
+        elongated
+        and relative is not None
+        and relative >= HALF_REFERENCE_FRACTION
+    ):
         return "half"
-    if fraction >= HALF_PLATE_FRACTION:
+    if elongated and fraction >= HALF_PLATE_FRACTION:
         return "half"
     return "quarter"

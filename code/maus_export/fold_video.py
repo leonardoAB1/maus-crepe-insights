@@ -127,6 +127,7 @@ def analyse_video(
                                 segmenter.plate_area,
                                 len(geometry.edges),
                                 flat_area,
+                                geometry.rect_aspect,
                             )
                             if reference is None and prediction == "empty":
                                 reference = image.copy()
@@ -219,6 +220,9 @@ def analyse_video(
                             else "",
                             "corner_angle": geometry.corner_angle
                             if geometry
+                            else "",
+                            "rect_angle": geometry.rect_angle
+                            if geometry and geometry.rect_angle is not None
                             else "",
                         }
                     )

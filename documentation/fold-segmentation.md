@@ -23,8 +23,8 @@ pixi run fold-frames --data-dir "$DATA"
 pixi run fold-segment --data-dir "$DATA"
 pixi run fold-eval --data-dir "$DATA"
 pixi run fold-review --data-dir "$DATA"
-pixi run fold-live 1234 --data-dir "$DATA"   # default 5 fps (200 ms/frame)
-pixi run fold-live 1234 --fps 10 --data-dir "$DATA"
+pixi run fold-live 1234 --data-dir "$DATA"   # default 10 fps (200 ms/frame)
+pixi run fold-live 1234 --fps 5 --data-dir "$DATA"
 pixi run fold-live-eval --data-dir "$DATA"
 pixi run fold-dashboard --data-dir "$DATA"
 ```
@@ -74,16 +74,22 @@ remove only its incomplete generated evaluation files before rerunning it.
    diameter, with RMS distance at most 2.5% of chord length and median rim
    distance at least 3% of plate diameter. Report edge angle and the
    intersection and angle of the two longest edges where defined.
-6. Classify in order: no crepe is empty; plate fraction >= 0.49 or
+6. Measure the minimum-area rectangle of the filled mask: its aspect ratio
+   and long-axis angle. A half disc is about 2:1, a quarter fold and a full
+   crepe are close to square, and the long-axis angle tracks fold rotation
+   on the rectified top-down view with coverage on every non-empty mask.
+7. Classify in order: no crepe is empty; plate fraction >= 0.49 or
    flat-reference fraction >= 0.75 is flat. Otherwise, flat-reference
-   fraction >= 0.32 or plate fraction >= 0.21 is half; anything smaller is
-   quarter. The flat reference is the largest filled area among the run's
-   other flat frames, so an occluded check frame cannot shrink it. A flat
-   frame cannot use itself as its own reference. Straight edges do not change
-   the decision: on rectified frames flat crepes often expose an edge and
-   half folds often expose none. These thresholds describe the top-down
-   view and were fitted on the local export.
-7. Whole-video analysis sequentially grabs frames at 10 Hz by default (a 200
+   fraction >= 0.32 or plate fraction >= 0.21 is half, but only when the
+   minimum-rectangle aspect is at least 1.4: a quarter fold folded into a
+   narrow wedge can match a half fold area without being elongated.
+   Anything smaller is quarter. The flat reference is the largest filled
+   area among the run's other flat frames, so an occluded check frame cannot
+   shrink it. A flat frame cannot use itself as its own reference. Straight
+   edges do not change the decision: on rectified frames flat crepes often
+   expose an edge and half folds often expose none. These thresholds
+   describe the top-down view and were fitted on the local export.
+8. Whole-video analysis sequentially grabs frames at 10 Hz by default (a 200
    ms/frame budget, `--fps` for other rates) and rectifies to 900 by 900
    pixels. It learns the plate, first empty reference and flat area from
    frames already observed. Classification is still a per-frame estimate, but
@@ -126,25 +132,30 @@ On 2026-11-01, using the cached export and the method above:
 
 - 285 runs, 1,182 extracted frames; 158 videos failed the duration check and
   one check fell outside its video. Eight frames lacked a plate estimate.
-- On 988 usable passed checks, agreement was 95.9%, versus the prototype's
-  94.6% on 991 frames. Empty 96.0%, flat 99.6%, half 98.8%, quarter 87.9%.
+- On 988 usable passed checks, agreement was 96.9%, versus the prototype's
+  94.6% on 991 frames. Empty 96.0%, flat 99.6%, half 97.5%, quarter 94.2%.
   The thresholds were refit for the rectified top-down view, where a full
   crepe covers about 0.7 of the plate, a half fold about 0.3 and a quarter
   fold about 0.17. The old oblique-frame flat threshold of 0.24 sat below the
   median half-fold fraction of 0.318 and mislabeled 201 of 240 half frames.
-  The remaining quarter errors and the 12 empty frames with visible residue
-  (4 to 19% of the plate) are area overlaps and robot misverdicts, not
-  threshold gaps. All numbers are tuned on this same export and need
-  held-out validation before deployment.
+  Requiring an elongated minimum-rectangle aspect (>= 1.4) for half folds
+  separated narrow-wedge quarter folds from true half folds, raising quarter
+  agreement from 87.9% to 94.2%. The remaining errors and the 12 empty frames
+  with visible residue (4 to 19% of the plate) are area overlaps and robot
+  misverdicts, not threshold gaps. Agreement stayed within a point when the
+  flat, half and relative thresholds moved by 0.04, 0.02 and 0.04
+  respectively, and per-robot agreement was 96.3% (maus-pixi), 97.1%
+  (maus-quin) and 100% on the small maus-otto sample. All numbers are tuned
+  on this same export and need held-out validation before deployment.
 - Spread-verdict rank AUC was 0.653 for diameter fraction and 0.651 for offset
   fraction, versus the prototype best of 0.66. Centre coverage was 853/1,174,
   edge-angle coverage 531/1,174 and quarter-corner coverage 109/276.
 - In the sampled check-synchronized evaluation, 80/82 logged checks across 20
-  runs produced an estimate; agreement with the expected state was 88.8%
-  (empty 81.8%, flat 95.0%, half 100.0%, quarter 78.9%), with 95.1% on the
-  ten all-passed runs and 82.1% on the ten runs with a failed check. Fold
+  runs produced an estimate; agreement with the expected state was 91.2%
+  (empty 81.8%, flat 95.0%, half 100.0%, quarter 89.5%), with 97.6% on the
+  ten all-passed runs and 84.6% on the ten runs with a failed check. Fold
   checks without a flat reference are reported unknown rather than guessed.
-  On the same host the median of per-run median processing times was 8.2
+  On the same host the median of per-run median processing times was 8.3
   ms/frame at 10 fps, far below the 200 ms/frame budget; this timing excludes
   video decoding, encoding and plotting. Raspberry Pi timing was not
   measured.

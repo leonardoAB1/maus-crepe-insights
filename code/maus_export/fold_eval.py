@@ -151,6 +151,7 @@ def evaluate(data_dir: Path) -> dict[str, int]:
         ("centre", "centre_x"),
         ("edge angle", "edge_angle"),
         ("quarter corner", "corner_x"),
+        ("fold rect angle", "rect_angle"),
     ):
         subset = (
             usable[usable["expected_state"] == "quarter"]

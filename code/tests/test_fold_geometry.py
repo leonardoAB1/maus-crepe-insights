@@ -55,3 +55,19 @@ def test_empty_geometry() -> None:
     assert geometry.centre is None
     assert geometry.edges == ()
     assert geometry.corner is None
+    assert geometry.rect_aspect is None
+    assert geometry.rect_angle is None
+
+
+def test_minimum_rect_aspect_and_angle() -> None:
+    plate = PlateEllipse(120, 120, 220, 220, 0)
+    square = np.zeros((240, 240), np.uint8)
+    cv2.rectangle(square, (90, 90), (150, 150), 255, -1)
+    geometry = measure_geometry(square, plate)
+    assert geometry.rect_aspect == pytest.approx(1, abs=0.05)
+    assert geometry.rect_angle in (0, 90)
+    bar = np.zeros((240, 240), np.uint8)
+    cv2.rectangle(bar, (70, 115), (170, 125), 255, -1)
+    geometry = measure_geometry(bar, plate)
+    assert geometry.rect_aspect == pytest.approx(10, rel=0.1)
+    assert geometry.rect_angle == pytest.approx(0, abs=1)
