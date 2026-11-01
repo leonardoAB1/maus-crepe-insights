@@ -34,6 +34,8 @@ it.
 - Fine-tuning against predictions: [project status](documentation/status.md)
 - How far each challenge task got:
   [challenge coverage](documentation/status.md#brief-coverage)
+- The challenge brief, restated and mapped to what we built:
+  [challenge brief](documentation/brief.md)
 
 ## The challenge: three tasks
 
