@@ -1,27 +1,54 @@
-flowchart LR
-    api[Dashboard API] --> raw[Raw run JSON]
-    raw --> mcap[MCAP per run]
-    raw --> table[Runs table]
-    raw --> vision[Vision scores]
-    vision --> table
-    table --> frames[Frame table]
-    frames --> models[ONNX models]
-    raw --> pilot[Frame pilot]
-    pilot --> labels[Human labels]
-    labels --> masks[Reviewed masks]
-    masks --> rectified[Rectified frames]
-    models --> predict[Model predictions]
-    predict --> compare[Deviation scoring]
-    rectified --> compare
-    compare --> weights[Weighted dataset]
-    weights --> finetune[Fine-tuned model]
-    finetune --> live[Live frame]
-    models --> live
+flowchart TD
+    subgraph data[Data]
+        api[Dashboard API] --> raw[Raw run JSON]
+        raw --> mcap[MCAP per run]
+        raw --> table[Runs table]
+        raw --> vision[Vision scores]
+        vision --> table
+        table --> frames[Frame table]
+    end
+
+    subgraph frame_models[Frame models]
+        frames --> split[Per-robot split]
+        frames --> embed[Frame embedder]
+        split --> verdict[Check verdicts]
+        split --> foldstate[Fold state]
+        split --> reason[Failure reasons]
+        split --> risk[Fold risk]
+        embed --> verdict
+        embed --> foldstate
+        embed --> reason
+        vision --> risk
+    end
+
+    subgraph labels_path[Labels and masks]
+        raw --> pilot[Frame pilot]
+        pilot --> labels[Human labels]
+        labels --> masks[Reviewed masks]
+        masks --> rectified[Rectified frames]
+        raw --> foldseg[Fold segmentation]
+    end
+
+    foldseg -. cross-check .-> foldstate
+
+    subgraph live_path[Live frame]
+        verdict --> predict[Model predictions]
+        foldstate --> predict
+        reason --> predict
+        predict --> compare[Deviation scoring]
+        rectified --> compare
+        compare --> weights[Weighted dataset]
+        weights --> finetune[Fine-tuned model]
+        predict --> pi[Pi runtime]
+        finetune --> pi
+        pi --> live[Live frame]
+    end
 
     classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
     classDef partial fill:#ed6c02,stroke:#b53d00,color:#ffffff
     classDef todo fill:#616161,stroke:#424242,color:#ffffff
 
-    class api,raw,mcap,table,vision,frames,models,pilot done
-    class labels,masks,rectified,compare,weights partial
-    class predict,finetune,live todo
+    class api,raw,mcap,table,vision,frames,split,embed,pilot done
+    class verdict,foldstate,reason,risk,labels,masks,rectified partial
+    class foldseg,compare,weights partial
+    class predict,finetune,pi,live todo
