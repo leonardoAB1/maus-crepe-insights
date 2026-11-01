@@ -410,7 +410,22 @@ def _timeline_plot(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    figure, axis = plt.subplots(figsize=(12, 3.4))
+    dough = [
+        (float(row["video_t"]), float(row["plate_fraction"]))
+        for row in rows
+        if row["phase"].startswith("spread_batter")
+        and row["plate_fraction"] != ""
+    ]
+    figure, axis = plt.subplots(
+        2 if dough else 1,
+        1,
+        figsize=(12, 4.6 if dough else 3.4),
+        sharex=True,
+        gridspec_kw={"height_ratios": [3, 1]} if dough else None,
+    )
+    axis = figure.axes[0]
+    if dough:
+        dough_axis = figure.axes[1]
     observations = [row for row in rows if row["state"] in STATE_ORDER]
     axis.scatter(
         [row["video_t"] for row in observations],
@@ -453,6 +468,14 @@ def _timeline_plot(
                 )
         axis.set_ylim(-0.6, len(STATE_ORDER) + 1.0)
     axis.set_yticks(range(len(STATE_ORDER)), STATE_ORDER)
+    if dough:
+        times = [value for value, _ in dough]
+        values = [value for _, value in dough]
+        dough_axis.fill_between(times, 0, values, color="#e8a35d", alpha=0.3)
+        dough_axis.plot(times, values, color="#e8a35d", linewidth=1)
+        dough_axis.axhline(0.4, color="grey", linestyle="--", linewidth=0.8)
+        dough_axis.set_ylim(0, 1)
+        dough_axis.set_ylabel("Dough coverage")
     axis.set_xlabel("Video time (s); lines = logged check starts")
     figure.tight_layout()
     figure.savefig(path)

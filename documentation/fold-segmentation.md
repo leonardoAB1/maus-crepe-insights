@@ -42,7 +42,8 @@ The chart's top strip shows the logged cooking phases — dough
 read against the phase the robot was in. The chart's bottom band traces dough
 plate coverage during the `spread_batter*` phases against the dashed 40%
 supervisor target, so a dispensing collapse is visible at a glance. The
-per-run `timeline.png` plot marks the same phase bands.
+per-run `timeline.png` plot marks the same phase bands and adds a matching
+dough-coverage subplot with the 40% target line.
 
 All outputs are under `$DATA/fold_segmentation/`. To avoid accidental loss,
 commands refuse to overwrite their outputs. Move old generated files or use a

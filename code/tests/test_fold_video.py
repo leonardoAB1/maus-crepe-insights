@@ -108,3 +108,33 @@ def test_analyse_video_writes_timeline_without_seeking(
     assert summary["dispense"]["frames"] == 0
     assert summary["dispense"]["ok"] is None
     assert not (out / "old-marker").exists()
+
+
+def _timeline_rows(with_dough: bool) -> list[dict]:
+    rows = [
+        {
+            "video_t": t,
+            "state": ("flat" if with_dough and t >= 2 else None),
+            "phase": "spread_batter" if with_dough and 2 <= t < 4 else "",
+            "plate_fraction": ("0.6" if with_dough and 2 <= t < 4 else ""),
+        }
+        for t in (0.0, 1.0, 2.0, 3.0, 5.0)
+    ]
+    return rows
+
+
+def test_timeline_plot_dough_band_toggle(tmp_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from maus_export.fold_video import _timeline_plot
+
+    with_dough = tmp_path / "dough.png"
+    _timeline_plot(with_dough, _timeline_rows(True), [])
+    without_dough = tmp_path / "plain.png"
+    _timeline_plot(without_dough, _timeline_rows(False), [])
+    assert with_dough.is_file() and without_dough.is_file()
+    assert plt.imread(str(with_dough)).shape[0] > 400  # two stacked subplots
+    assert plt.imread(str(without_dough)).shape[0] < 400
