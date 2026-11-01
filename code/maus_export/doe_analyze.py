@@ -341,4 +341,7 @@ def model_card(result: dict[str, Any], outcomes: list[str]) -> dict[str, Any]:
 
 
 def dump_json(data: dict[str, Any], path: Path) -> None:
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    # LF on every OS, so files written on Windows never commit CRLF
+    path.write_text(
+        json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )

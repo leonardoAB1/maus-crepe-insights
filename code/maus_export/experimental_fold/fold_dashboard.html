@@ -69,6 +69,9 @@ exact fold movement times are not logged. Video may contain people.</div>
 <div class="grid"><div><section class="card"><h2>Playback</h2>
 <video id="video" controls preload="metadata"></video>
 <div id="progress" aria-live="polite"></div>
+<p class="sub">Low-bandwidth playback when available.
+<a id="original" href="#" download hidden>Download original analysis video</a>
+(full quality, larger file).</p>
 <p class="sub">Overlay: <span style="color:#50d25f">green mask</span> ·
 <span style="color:#46c8eb">plate</span> ·
 <span style="color:#ffd21e">fold edges</span> ·
@@ -217,6 +220,7 @@ canvas.addEventListener('click', event => {
 video.addEventListener('timeupdate', draw); video.addEventListener('loadedmetadata', draw);
 window.addEventListener('resize', draw);
 async function showRun(id) {
+  document.querySelector('#original').hidden = true;
   selectedId = id;
   selected = null;
   document.querySelector('#title').textContent = 'Run ' + id;
@@ -236,6 +240,8 @@ async function showRun(id) {
     return;
   }
   video.src = '/video/' + id;
+  document.querySelector('#original').href = '/original-video/' + id;
+  document.querySelector('#original').hidden = false;
   events.replaceChildren();
   for (const highlight of selected.highlights || []) {
     const marker = textNode('button', highlight.name, 'event');

@@ -91,6 +91,10 @@ def main() -> None:
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
+    sub.add_parser(
+        "overlay-pose",
+        help="crepe position and angle per check attempt from the overlays",
+    )
     dashboard = sub.add_parser(
         "fold-experimental-dashboard", help="serve experimental video review"
     )
@@ -427,6 +431,10 @@ def main() -> None:
         from .vision_metrics import build_vision_table
 
         build_vision_table(data_dir)
+    if args.cmd == "overlay-pose":
+        from .overlay_pose import build_pose_table
+
+        build_pose_table(data_dir)
     if args.cmd == "analyze":
         from .analysis import N_BOOT, run_analysis
 
