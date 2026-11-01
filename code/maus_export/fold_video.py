@@ -29,6 +29,7 @@ from .fold_overlay import annotate_frame
 from .fold_plate import detect_plate
 from .fold_rectify import rectify_video_frame
 from .fold_reference import VisualFlatReference
+from .fold_stages import INITIAL_CLEANING_LABEL, initial_cleaning_end
 from .fold_state import STATE_ORDER, classify_state
 from .fold_sync import CheckWindowEvaluator
 from .fold_temporal import MaskWarming, TemporalMask
@@ -83,6 +84,7 @@ def analyse_video(
             ),
             key=lambda item: item[0],
         )
+        cleaning_end = initial_cleaning_end(phases)
         events = [
             (video_time(event, origin), event)
             for event in check_starts(run["logs"])
@@ -218,7 +220,11 @@ def analyse_video(
                         status,
                         check=latest.event.name if latest else None,
                         expected=latest.event.state if latest else None,
-                        phase=_phase_at(index / fps, phases),
+                        phase=(
+                            INITIAL_CLEANING_LABEL
+                            if index / fps < cleaning_end
+                            else _phase_at(index / fps, phases)
+                        ),
                     )
                     render_times.append(
                         (time.perf_counter() - render_started)
@@ -243,6 +249,7 @@ def analyse_video(
                         {
                             "video_t": index / fps,
                             "phase": _phase_at(index / fps, phases),
+                            "initial_cleaning_prep": index / fps < cleaning_end,
                             "prediction": prediction or "",
                             "structural_prediction": structural_prediction
                             or "",
@@ -370,6 +377,8 @@ def analyse_video(
                             t > FRAME_BUDGET_MS for t in processing_times
                         ),
                         "analysis_fps": analysis_fps,
+                        "foreground_method": "diffuse_pixel_evidence_v1",
+                        "initial_cleaning_prep_end": cleaning_end,
                         "mask_window_frames": temporal.history.maxlen,
                         "toppings_stage_logged": any(
                             str(row["phase"]).startswith("add_topping")
@@ -526,7 +535,22 @@ def _timeline_plot(
                     va="bottom",
                     fontsize=7,
                 )
-        axis.set_ylim(-0.6, len(STATE_ORDER) + 1.0)
+        cleaning_end = initial_cleaning_end(phases)
+        if cleaning_end > 0:
+            axis.fill_between(
+                [0, cleaning_end],
+                len(STATE_ORDER) + 0.6,
+                len(STATE_ORDER) + 0.9,
+                color="#59c1e0",
+            )
+            axis.text(
+                0,
+                len(STATE_ORDER) + 1.0,
+                INITIAL_CLEANING_LABEL,
+                fontsize=7,
+                va="bottom",
+            )
+        axis.set_ylim(-0.6, len(STATE_ORDER) + 1.6)
     axis.set_yticks(range(len(STATE_ORDER)), STATE_ORDER)
     if dough:
         times = [value for value, _ in dough]

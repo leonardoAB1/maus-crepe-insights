@@ -117,7 +117,8 @@ def annotate_frame(
         ]
     if phase:
         label = "toppings" if phase.startswith("add_topping") else phase
-        lines.append(f"Stage: {label} (log)")
+        source = "" if phase.endswith("(inferred)") else " (log)"
+        lines.append(f"Stage: {label}{source}")
     if geometry is not None and geometry.centre is not None:
         lines.append(
             f"Area: {geometry.plate_fraction:.1%} plate | "

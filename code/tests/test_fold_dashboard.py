@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 import maus_export
-from maus_export.fold_dashboard import make_handler
+from maus_export.fold_dashboard import make_handler, run_details
 
 
 def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
@@ -108,6 +108,40 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_initial_cleaning_highlight_preserves_logged_phases(
+    tmp_path: Path,
+) -> None:
+    live = tmp_path / "fold_segmentation/live/1"
+    runs = tmp_path / "raw/runs"
+    live.mkdir(parents=True)
+    runs.mkdir(parents=True)
+    (live / "timeline.csv").write_text("video_t,state\n0,\n")
+    phases = [
+        {
+            "phase": name,
+            "elapsed_sec": time,
+            "timestamp": f"2026-01-01T10:00:{time:02d}",
+        }
+        for time, name in ((0, "init"), (3, "prepare"), (8, "oil"))
+    ]
+    (runs / "1.json").write_text(json.dumps({"phases": phases, "logs": []}))
+    detail = run_details(tmp_path, 1)
+    assert detail["highlights"] == [
+        {
+            "start": 0,
+            "end": 8,
+            "name": "initial cleaning/prep (inferred)",
+            "source": "inferred_preparation",
+        }
+    ]
+    assert [p["name"] for p in detail["phases"]] == [
+        "init",
+        "prepare",
+        "oil",
+    ]
+    assert detail["events"] == []
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")

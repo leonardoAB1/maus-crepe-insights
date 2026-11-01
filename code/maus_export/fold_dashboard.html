@@ -63,6 +63,8 @@ fold states. Grey lines are check starts. The top strip shows the logged
 phases, including toppings when logged, and the bottom band traces plate
 coverage throughout the video. Toppings is a logged stage, not a visual
 classification or confirmation that ingredients were dispensed.
+The cyan initial cleaning/prep strip is inferred from preparation timing,
+not proof of a logged cleaning action.
 Gaps mean unknown or occluded, not zero area. The dashed line is the
 40% dispensing target only. Click the chart to seek.
 Confidence is vote support including invalid samples, not a calibrated
@@ -133,6 +135,13 @@ function draw() {
     }
   }
   c.globalAlpha = 1;
+  for (const highlight of selected.highlights || []) {
+    c.fillStyle = '#59c1e0';
+    c.fillRect(xAt(highlight.start), 29,
+      Math.max(2, xAt(highlight.end) - xAt(highlight.start)), 7);
+    c.font = '10px system-ui';
+    c.fillText(highlight.name, xAt(highlight.start) + 3, 47);
+  }
   const doughRows = selected.timeline;
   if (doughRows.length) {
     const dTop = height - 40, dBottom = height - 14;
@@ -190,6 +199,14 @@ async function showRun(id) {
   selected = await response.json(); document.querySelector('#title').textContent = 'Run ' + id;
   video.src = '/video/' + id; const events = document.querySelector('#events');
   events.replaceChildren();
+  for (const highlight of selected.highlights || []) {
+    const marker = textNode('button', highlight.name, 'event');
+    marker.append(textNode('span',
+      'Preparation interval; a cleaning action is not explicitly logged',
+      'sub'));
+    marker.onclick = () => {video.currentTime = highlight.start;};
+    events.append(marker);
+  }
   for (const phase of selected.phases || []) {
     if (!phase.name.startsWith('add_topping')) continue;
     const marker = textNode('button', 'Toppings stage (log)', 'event');

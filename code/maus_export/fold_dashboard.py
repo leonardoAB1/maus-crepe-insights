@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .fold_frames import check_starts, phase_clock_origin, video_time
+from .fold_stages import INITIAL_CLEANING_LABEL, initial_cleaning_end
 
 CHUNK_SIZE = 1024 * 1024
 PAGE = Path(__file__).with_name("fold_dashboard.html")
@@ -61,6 +62,21 @@ def run_details(data_dir: Path, run_id: int) -> dict:
         for phase in run["phases"]
         if phase.get("phase") and phase.get("elapsed_sec") is not None
     ]
+    cleaning_end = initial_cleaning_end(
+        [(phase["time"], phase["name"]) for phase in phases]
+    )
+    highlights = (
+        [
+            {
+                "start": 0.0,
+                "end": cleaning_end,
+                "name": INITIAL_CLEANING_LABEL,
+                "source": "inferred_preparation",
+            }
+        ]
+        if cleaning_end > 0
+        else []
+    )
     dispense = None
     summary_path = root / "summary.json"
     if summary_path.is_file():
@@ -71,6 +87,7 @@ def run_details(data_dir: Path, run_id: int) -> dict:
         "id": run_id,
         "events": events,
         "phases": phases,
+        "highlights": highlights,
         "dispense": dispense,
         "timeline": timeline,
     }
