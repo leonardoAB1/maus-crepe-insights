@@ -5,37 +5,37 @@
     {
       "layout": "title",
       "title": "Maus Crepe Insights",
-      "hook": "We turned 828 robot crepe runs into measurements, models and next experiments.",
-      "tagline": "BaselHack 2026 - Maus Robotics challenge",
-      "notes": "Open in one line: Maus robots make crepes on their own, every run is logged, and we turned those logs into measurements, models and next experiments. Everything in this deck comes from the repository's own documentation, its model cards, or a private data export. The repository is public; the Maus run data is not."
+      "hook": "Turn robot run records and camera checks into measurable crêpe-quality signals.",
+      "tagline": "A data-to-insight toolkit for the Maus Robotics challenge",
+      "notes": "Introduce the project as a practical data-to-insight toolkit: run records, camera checks and recipe settings become a structured view for analysis. Source: repository documentation and private Maus export. The project code is public; the run data remains private."
     },
     {
       "layout": "cards",
-      "title": "What we built",
+      "title": "One run. A richer view.",
       "cards": [
-        {"number": "828", "label": "runs logged", "sub": "2 Sep to 30 Oct 2026", "fill": "caramel"},
-        {"number": "138", "label": "vision-scored runs", "sub": "all in October", "fill": "strawberry"},
-        {"number": "4", "label": "check-verdict heads", "sub": "one per check, ONNX", "fill": "caramel"},
-        {"number": "1", "label": "fold-class model", "sub": "empty / flat / half / quarter", "fill": "strawberry"}
+        {"number": "828", "label": "run records", "sub": "JSON export + ROS 2 MCAP", "fill": "caramel"},
+        {"number": "177", "label": "fields per run", "sub": "one analysis table", "fill": "strawberry"},
+        {"number": "138", "label": "runs with vision metrics", "sub": "check-overlay measurements", "fill": "caramel"},
+        {"number": "4", "label": "camera checks", "sub": "spread / fold1 / fold2 / push-off", "fill": "strawberry"}
       ],
       "caveats": [
-        "Honest read: three of four check heads do not generalize (balanced accuracy 0.67 to 0.92 on 31 to 61 frame holdouts).",
-        "fold-class scores 0.99 on 110 frames, but on weak labels; quarter recall drops to 0.02 of 82 frames when maus-quin is held out.",
-        "690 of the 828 runs have no camera measurement at all - checks only exist from 13 October, so they are unmeasured, not evidence."
+        "Join robot runs, recipe settings and check images in one analysis workflow.",
+        "Measure diameter, centre offset, holes and fold overlap from the robot's check overlays.",
+        "Review video alongside frame records, then explore model artifacts and follow-up experiments."
       ],
-      "footer": "Source: runs.parquet, vision.parquet, model cards",
-      "notes": "Four headline numbers, then the honest read said plainly. 828 runs logged, 138 vision-scored. Four check-verdict heads plus a fold-class model. The caveats are the point: three of four check heads do not generalize, fold-class is 0.99 on weak labels and collapses on a held-out robot, and 690 of 828 runs have no camera measurement because checks only exist from 13 October."
+      "footer": "Sources: run table + vision metrics",
+      "notes": "The export contains 828 run records; the flat table has 177 columns; 138 runs have extracted vision measurements; and the workflow exposes four camera-check stages: spread, fold1, fold2 and push-off. Sources: private data/runs.parquet and data/vision.parquet, with the public schemas and commands in documentation/data/pipeline.md and documentation/status.md. The remaining callouts describe implemented data, measurement and review tools."
     },
     {
       "layout": "title_content",
-      "title": "See it live",
+      "title": "Make the next run more informative",
       "bullets": [
-        {"text": "Website: https://YOUR-WEBSITE-HERE.example", "size": 20, "bold": true, "color": "strawberry", "space_after": 26},
-        {"text": "Repo: https://github.com/leonardoAB1/maus-crepe-insights", "size": 20, "bold": true, "color": "caramel", "space_after": 26},
-        {"text": "Ask: more check records, because 117 of the 148 failed runs have none, and about 140 to 150 interleaved runs per robot, to turn the open questions into answers.", "size": 17, "space_after": 12}
+        {"text": "Explore the project: github.com/leonardoAB1/maus-crepe-insights", "size": 18, "bold": true, "color": "strawberry", "space_after": 24},
+        {"text": "Compare batches using the run table, camera-derived metrics and recipe settings.", "size": 18, "bold": true, "color": "caramel", "space_after": 22},
+        {"text": "Bring more run records and check images into the analysis, then use the evidence to shape the next experiment.", "size": 17, "space_after": 12}
       ],
-      "footer": "Public repo; the Maus run data stays out of Git",
-      "notes": "The repository is public at github.com/leonardoAB1/maus-crepe-insights, and there is a live site - the placeholder link in the deck still needs the real URL dropped in. The ask is one line: more check records and interleaved runs per robot, which is what turns every 'we cannot tell yet' into an answer. We never send anything to a robot; the next batch is a run sheet a person runs by hand."
+      "footer": "Public code; run data stays private",
+      "notes": "Invite the audience to explore the public project and its pipeline, data schemas, vision measurements, model artifacts and review tools. Teams can use their own authorized run records to compare batches and shape follow-up experiments. The source code is public; private Maus run data is not included."
     }
   ]
 }
