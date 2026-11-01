@@ -191,6 +191,56 @@ Rank AUC uses passed checks as positive, average ranks for ties and the stated
 metric direction; a value below 0.5 indicates the opposite direction. No
 threshold is chosen using the AUC.
 
+## Temporal masks and toppings markers
+
+`add_topping*` phases appear as pink **toppings (log)** intervals, clickable
+stage events and video labels. This marker comes only from stage timing. It
+is not a visual food state, ingredient classifier or confirmation that topping
+application succeeded. Fold predictions remain empty, flat, half or quarter.
+Changing a cooking phase to a toppings phase does not change classification.
+
+Live masks use a strict majority of the most recent five valid binary masks.
+At least three frames are required at startup and after occlusions or failed
+measurements. No future frames are read. At 10 fps this suppresses isolated
+one-frame flashes but adds approximately 0.2 seconds of transition delay.
+Occlusion resets history instead of carrying the last mask across a missing
+measurement. `temporal_warming` means unknown, not an empty plate.
+
+The live empty-reference dataset now retains up to 15 low-warmth, unoccluded
+pre-dispensing frames at 225 by 225 pixels. At the first three samples and
+every five accepted samples thereafter it rebuilds a median colour image
+and a per-pixel 90th-percentile Lab lightness envelope. Reference matching
+uses the greater of median and envelope lightness, so previously observed
+bright glare is less likely to count as changed food. This remains causal,
+with no robot verdict or expected-state input. No reference is invented when
+the video has no usable pre-dispensing footage.
+
+Each new `live/<run>/reference/` directory contains the exact small sample set
+used, `median.png`, `highlight-l.png` and `manifest.json`. The manifest records
+observed and used sample counts, readiness, percentile and sample size.
+These private reference datasets can be inspected or rebuilt from the cached
+video; they must never be committed or used as public test fixtures.
+
+`timeline.csv` adds `raw_plate_fraction` (unaveraged foreground pixel coverage)
+and `structural_prediction`. Existing `plate_fraction` remains filled contour
+coverage from the averaged mask, so the two fractions differ both because of
+smoothing and hole filling. The summary records the averaging window and
+`toppings_stage_logged`, not toppings detection or topping success.
+
+A bright reflection outside the sampled envelope can still pass; suppressing
+highlights can hide pale dough over a bright plate patch. Narrow-arm detection
+and the warmth gate are unchanged. Averaging can smear moving masks, and
+three-frame reacquisition can reduce usable votes near a check. Inspect the
+unknown denominator, not only agreement or confidence. Raspberry Pi runtime
+and held-out detection quality have not been validated.
+
+On 2026-11-01 a private 1,607-frame smoke test retained 1,435 measurements,
+109 occlusions and 63 temporal warm-up frames. It accepted 68 empty-reference
+frames and saved the 15 samples used by the last completed reference update.
+Median desktop processing was 50.1 ms/frame with another batch active. The
+local dashboard API exposed the toppings interval and full timeline. This
+checks execution and output wiring, not held-out accuracy improvement.
+
 ## Historical metrics snapshot (before cleanup)
 
 These results describe the original reference selection, which consulted

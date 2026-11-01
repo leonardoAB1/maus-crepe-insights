@@ -5,10 +5,26 @@
 - [x] Keep fold classification independent of topping labels and recipes.
 - [x] Expand empty references to 15 samples with a highlight envelope.
 - [x] Save a private reference dataset and manifest with each analyzed run.
-- [ ] Validate synthetic tests, formatting, lint and docs checks.
-- [ ] Run isolated cached-video validation without changing the active rebuild.
-- [ ] Document limits and aggregate experiment results.
-- [ ] Commit logical steps and open a stacked PR on #156.
+- [x] Validate synthetic tests, formatting, lint and docs checks.
+- [x] Run isolated cached-video validation without changing the active rebuild.
+- [x] Document limits and aggregate experiment results.
+- [x] Commit logical steps for references, averaging and stage markers.
+- [ ] Merge after #156 and required CI checks pass.
+
+## Validation (2026-11-01)
+
+- 113 fold tests passed, 3 skipped; lint, format and docs checks passed.
+- Private smoke test: 1,607 frames; 1,435 valid, 109 occluded and 63 warming.
+- Reference dataset: 68 accepted frames observed, 15 retained samples from
+  the most recent completed update at accepted sample 65.
+- Median desktop processing was 50.1 ms/frame while another batch was active.
+  Raspberry Pi performance and held-out quality remain unmeasured.
+- API verified a logged toppings interval and full timeline on port 8769.
+- The inherited full-suite vision-target subprocess stall is not resolved
+  by this change; see the parent cleanup TODO.
+- A pixel-coverage smoothing comparison is not an accuracy result, because
+  the reported filled-contour coverage also differs from raw mask coverage.
+  No held-out improvement is claimed.
 
 ## Decisions
 
