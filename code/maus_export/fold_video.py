@@ -31,6 +31,7 @@ from .fold_rectify import rectify_video_frame
 from .fold_reference import VisualFlatReference
 from .fold_state import STATE_ORDER, classify_state
 from .fold_sync import CheckWindowEvaluator
+from .fold_temporal import MaskWarming, TemporalMask
 
 FRAME_BUDGET_MS = 200.0
 MILLISECONDS_PER_SECOND = 1000
@@ -95,6 +96,7 @@ def analyse_video(
         segmenter = None
         geometry_context = None
         flat_reference = VisualFlatReference()
+        temporal = TemporalMask()
         times: list[float] = []
         render_times: list[float] = []
         processing_times: list[float] = []
@@ -120,6 +122,8 @@ def analyse_video(
                     if plate is None:
                         plate = detect_plate(image)
                     prediction = None
+                    structural_prediction = None
+                    raw_fraction: float | str = ""
                     mask = None
                     geometry = None
                     status = "plate_not_found"
@@ -132,10 +136,17 @@ def analyse_video(
                                 geometry_context = prepare_geometry(
                                     image.shape[:2], plate
                                 )
-                            mask = segmenter.segment(
+                            raw_mask = segmenter.segment(
                                 image,
                                 learn_empty=index / fps < dispense_start,
                             )
+                            raw_fraction = float(
+                                np.count_nonzero(raw_mask)
+                                / segmenter.segmenter.plate_area
+                            )
+                            mask = temporal.update(raw_mask)
+                            if mask is None:
+                                raise MaskWarming("Collecting causal masks")
                             geometry = measure_geometry(
                                 mask, plate, context=geometry_context
                             )
@@ -165,13 +176,18 @@ def analyse_video(
                                     "edge_count": len(geometry.edges),
                                 },
                             )
+                            structural_prediction = prediction
                             status = "ok"
+                        except MaskWarming:
+                            status = "temporal_warming"
                         except ForegroundOccluded:
+                            temporal.reset()
                             mask = None
                             geometry = None
                             prediction = None
                             status = "occluded"
                         except (ValueError, cv2.error):
+                            temporal.reset()
                             mask = None
                             geometry = None
                             prediction = None
@@ -184,7 +200,7 @@ def analyse_video(
                         is not None,
                     )
                     flat_reference.observe(
-                        prediction,
+                        structural_prediction,
                         geometry.area if geometry is not None else None,
                     )
                     latest = completed[-1] if completed else None
@@ -198,10 +214,11 @@ def analyse_video(
                         plate,
                         mask,
                         geometry,
-                        latest.observation if latest else None,
+                        latest.observation if latest else prediction,
                         status,
                         check=latest.event.name if latest else None,
                         expected=latest.event.state if latest else None,
+                        phase=_phase_at(index / fps, phases),
                     )
                     render_times.append(
                         (time.perf_counter() - render_started)
@@ -227,6 +244,9 @@ def analyse_video(
                             "video_t": index / fps,
                             "phase": _phase_at(index / fps, phases),
                             "prediction": prediction or "",
+                            "structural_prediction": structural_prediction
+                            or "",
+                            "raw_plate_fraction": raw_fraction,
                             "state": latest.observation
                             if latest and latest.observation
                             else "",
@@ -271,6 +291,8 @@ def analyse_video(
                     writer.release()
             if not rows:
                 raise ValueError("No video frames analyzed")
+            if segmenter is not None:
+                segmenter.save_reference(stage / "reference")
             with (stage / "timeline.csv").open("w", newline="") as file:
                 out = csv.DictWriter(file, fieldnames=list(rows[0]))
                 out.writeheader()
@@ -348,6 +370,11 @@ def analyse_video(
                             t > FRAME_BUDGET_MS for t in processing_times
                         ),
                         "analysis_fps": analysis_fps,
+                        "mask_window_frames": temporal.history.maxlen,
+                        "toppings_stage_logged": any(
+                            str(row["phase"]).startswith("add_topping")
+                            for row in rows
+                        ),
                         "dispense": {
                             "frames": dispense.frames,
                             "first_fraction": dispense.first_fraction,
@@ -400,6 +427,7 @@ PHASE_COLORS = {
     "fold_carefully": "#9d8cff",
     "wipe_spatula": "#59c1e0",
     "plate_handover": "#61d8a2",
+    "add_topping": "#ec86cb",
     "discard_crepe": "#8295ac",
 }
 
@@ -410,6 +438,8 @@ def _phase_color(name: str) -> str | None:
         return PHASE_COLORS[name]
     if name.startswith("spread_batter"):
         return PHASE_COLORS["spread_batter"]
+    if name.startswith("add_topping"):
+        return PHASE_COLORS["add_topping"]
     return None
 
 

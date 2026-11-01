@@ -73,6 +73,7 @@ def test_check_labels_and_verdicts_do_not_change_predictions(
         ("spread", "crepe spread successfully"),
         ("fold2", "failed synthetic check"),
     ):
+        run["phases"][0]["phase"] = "add_topping" if name == "fold2" else "cook"
         run["logs"] = [
             {
                 "timestamp": "2026-01-01T10:00:01",
@@ -92,3 +93,5 @@ def test_check_labels_and_verdicts_do_not_change_predictions(
     pd.testing.assert_frame_equal(timelines[0][columns], timelines[1][columns])
     assert "flat" in set(timelines[0].prediction)
     assert "half" in set(timelines[0].prediction)
+    assert set(timelines[1].phase) == {"add_topping"}
+    assert "toppings" not in set(timelines[1].prediction)

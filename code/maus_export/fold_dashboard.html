@@ -60,7 +60,9 @@ exact fold movement times are not logged. Video may contain people.</div>
 <section class="card chart"><h2>Check snapshots</h2>
 <p>Dots are unverified vision estimates after logged checks, not continuous
 fold states. Grey lines are check starts. The top strip shows the logged
-phases and the bottom band traces plate coverage throughout the video.
+phases, including toppings when logged, and the bottom band traces plate
+coverage throughout the video. Toppings is a logged stage, not a visual
+classification or confirmation that ingredients were dispensed.
 Gaps mean unknown or occluded, not zero area. The dashed line is the
 40% dispensing target only. Click the chart to seek.
 Confidence is vote support including invalid samples, not a calibrated
@@ -80,6 +82,7 @@ const phaseStyles = {
   fold_carefully: ['folding', '#9d8cff'],
   wipe_spatula: ['cleaning', '#59c1e0'],
   plate_handover: ['handover', '#61d8a2'],
+  add_topping: ['toppings (log)', '#ec86cb'],
   discard_crepe: ['discard', '#8295ac']
 };
 function legend() {
@@ -115,7 +118,8 @@ function draw() {
   const xAt = t => pad + Math.max(0, Math.min(1, t / duration)) * (width - pad);
   const yAt = s => 140 - Math.max(0, states.indexOf(s)) * 40;
   const styleFor = name => phaseStyles[name] ||
-    (name.startsWith('spread_batter') ? phaseStyles.spread_batter : null);
+    (name.startsWith('spread_batter') ? phaseStyles.spread_batter :
+      name.startsWith('add_topping') ? phaseStyles.add_topping : null);
   const phases = [...(selected.phases || [])].sort((a, b) => a.time - b.time);
   for (let i = 0; i < phases.length; i++) {
     const start = phases[i], end = phases[i + 1];
@@ -186,6 +190,15 @@ async function showRun(id) {
   selected = await response.json(); document.querySelector('#title').textContent = 'Run ' + id;
   video.src = '/video/' + id; const events = document.querySelector('#events');
   events.replaceChildren();
+  for (const phase of selected.phases || []) {
+    if (!phase.name.startsWith('add_topping')) continue;
+    const marker = textNode('button', 'Toppings stage (log)', 'event');
+    marker.append(textNode('span',
+      'Logged at ' + Number(phase.time).toFixed(1) + 's; not a visual verdict',
+      'sub'));
+    marker.onclick = () => {video.currentTime = Math.max(0, phase.time);};
+    events.append(marker);
+  }
   for (const event of selected.events) {
     const button = textNode('button', event.name.replaceAll('_', ' '), 'event');
     const robot = event.ok === true ? 'Robot reports pass' :
@@ -205,7 +218,7 @@ async function showRun(id) {
       video.currentTime = Math.max(0, event.observed_at ?? event.time);
     }; events.append(button);
   }
-  if (!selected.events.length) events.textContent = 'No check-start logs found.';
+  if (!events.children.length) events.textContent = 'No logged events found.';
   document.querySelectorAll('.run').forEach(el => el.classList.toggle('active', el.dataset.id == id));
   legend();
   draw();

@@ -17,7 +17,8 @@ def test_dispense_phase_variants_share_the_dough_color() -> None:
     assert _phase_color("spread_batter_concentric") == "#e8a35d"
     assert _phase_color("spread_batter_spiral") == "#e8a35d"
     assert _phase_color("cook") == "#f2cf5b"
-    assert _phase_color("add_topping") is None
+    assert _phase_color("add_topping") == "#ec86cb"
+    assert _phase_color("add_topping_chocolate") == "#ec86cb"
 
 
 def test_analyse_video_writes_timeline_without_seeking(
@@ -104,6 +105,8 @@ def test_analyse_video_writes_timeline_without_seeking(
     timeline_columns = pd.read_csv(out / "timeline.csv").columns
     assert "plate_fraction" in timeline_columns
     assert "phase" in timeline_columns
+    assert "raw_plate_fraction" in timeline_columns
+    assert "structural_prediction" in timeline_columns
     assert "verdict" in timeline_columns
     assert "confidence" in timeline_columns
     assert checks.iloc[0]["verdict"] == "unknown"
@@ -111,6 +114,9 @@ def test_analyse_video_writes_timeline_without_seeking(
     summary = json.loads((out / "summary.json").read_text())
     assert summary["dispense"]["frames"] == 0
     assert summary["dispense"]["ok"] is None
+    assert summary["mask_window_frames"] == 5
+    assert summary["toppings_stage_logged"] is False
+    assert (out / "reference" / "manifest.json").is_file()
     assert not (out / "old-marker").exists()
 
 

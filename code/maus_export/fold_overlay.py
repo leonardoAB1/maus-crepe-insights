@@ -44,6 +44,7 @@ def annotate_frame(
     *,
     check: str | None = None,
     expected: str | None = None,
+    phase: str = "",
 ) -> np.ndarray:
     """Draw the current mask and measurements without modifying the input.
 
@@ -108,12 +109,15 @@ def annotate_frame(
                     cv2.LINE_AA,
                 )
     if check is None:
-        lines = [f"No logged-check evaluation | {status}"]
+        lines = [f"Vision frame: {state or 'unknown'} | {status}"]
     else:
         lines = [
             f"Check {check}: expected {expected or '-'} (log)",
             f"Vision: {state or 'unknown'} (unverified) | {status}",
         ]
+    if phase:
+        label = "toppings" if phase.startswith("add_topping") else phase
+        lines.append(f"Stage: {label} (log)")
     if geometry is not None and geometry.centre is not None:
         lines.append(
             f"Area: {geometry.plate_fraction:.1%} plate | "
