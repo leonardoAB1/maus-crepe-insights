@@ -31,6 +31,10 @@
   - [x] The dashboard chart draws a labelled phase strip with a legend so a
     check dot reads against the phase the robot was in.
   - [x] The per-run `timeline.png` marks the same phase bands.
+  - [x] The dashboard chart's bottom band traces dough plate coverage during
+    ``spread_batter*`` phases against the 40% supervisor target, and the
+    embedded page script is syntax-checked by the test suite when node is
+    available.
 
 - [x] Re-fit the state-rule thresholds for rectified top-down frames.
   - [x] Flat threshold 0.49 (median full crepe covers ~0.7 of the plate);

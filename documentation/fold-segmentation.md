@@ -39,8 +39,10 @@ without a fresh `summary.json`).
 The chart's top strip shows the logged cooking phases — dough
 (`spread_batter`), cooking (`cook`), folding (`fold_carefully`), cleaning
 (`wipe_spatula`) and handover (`plate_handover`) — so a check dot can be
-read against the phase the robot was in. The per-run `timeline.png` plot
-marks the same phase bands.
+read against the phase the robot was in. The chart's bottom band traces dough
+plate coverage during the `spread_batter*` phases against the dashed 40%
+supervisor target, so a dispensing collapse is visible at a glance. The
+per-run `timeline.png` plot marks the same phase bands.
 
 All outputs are under `$DATA/fold_segmentation/`. To avoid accidental loss,
 commands refuse to overwrite their outputs. Move old generated files or use a

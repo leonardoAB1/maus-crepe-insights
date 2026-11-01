@@ -1,6 +1,9 @@
 """Local dashboard routes and video range requests."""
 
 import json
+import re
+import shutil
+import subprocess
 import threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -9,6 +12,7 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+import maus_export
 from maus_export.fold_dashboard import make_handler
 
 
@@ -104,3 +108,21 @@ def test_dashboard_routes_and_private_video_ranges(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_dashboard_page_script_parses(tmp_path: Path) -> None:
+    """The embedded dashboard script must stay valid JavaScript."""
+    html = (
+        Path(maus_export.__file__).with_name("fold_dashboard.html").read_text()
+    )
+    match = re.search(r"<script>([\s\S]*?)</script>", html)
+    assert match is not None, "no <script> block found"
+    script = tmp_path / "dashboard.js"
+    script.write_text(match.group(1))
+    result = subprocess.run(
+        [shutil.which("node"), "--check", str(script)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
