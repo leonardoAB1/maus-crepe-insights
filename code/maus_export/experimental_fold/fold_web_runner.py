@@ -59,7 +59,7 @@ class WebRunner:
         run_id = request.get("run_id")
         if type(threads) is not int or threads not in THREAD_COUNTS:
             raise ValueError("nthreads must be 1, 4 or 16")
-        if model not in MODELS:
+        if model not in (*MODELS, "both"):
             raise ValueError("Unknown segmentation model")
         if run_id is not None and (type(run_id) is not int or run_id < 0):
             raise ValueError("Invalid run identifier")
@@ -70,7 +70,7 @@ class WebRunner:
             if not runs or (run_id is not None and run_id not in runs):
                 raise ValueError("Requested video is not cached")
             if (
-                model == "onnx"
+                model in {"onnx", "both"}
                 and importlib.util.find_spec("onnxruntime") is None
             ):
                 raise ValueError(
@@ -102,6 +102,7 @@ class WebRunner:
                 )
             self.options = {
                 "nthreads": threads,
+                "workers": max(threads, len(MODELS) if model == "both" else 1),
                 "model": model,
                 "run_id": run_id,
             }

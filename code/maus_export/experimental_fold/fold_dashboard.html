@@ -85,10 +85,12 @@ exact fold movement times are not logged. Video may contain people.</div>
 <label>nthreads <select id="nthreads" aria-label="Parallel video workers">
 <option value="1" selected>1</option><option value="4">4</option>
 <option value="16">16</option></select></label>
-<button id="start-runner" type="button" disabled>Start analysis</button>
-<p class="sub">Uses the selected segmentation model. nthreads is the number
-of videos processed concurrently, not ONNX inference threads. All pending
-skips completed results; choosing one video reanalyses that video. Raw inputs
+<button id="start-runner" type="button" disabled>Start both analyses</button>
+<p class="sub">Starts Classical CV and ONNX together. The segmentation selector
+chooses which results to view. nthreads limits the shared worker pool, not
+ONNX inference threads; at 1, both mode uses 2 workers for concurrency.
+All pending skips completed results; choosing one video reanalyses both.
+Raw inputs
 are never changed. Do not run a separate CLI batch against the same outputs.</p>
 <div id="runner-status" class="sub" role="status">Loading runner...</div>
 </section>
@@ -202,7 +204,7 @@ async function refreshRunner() {
     }
     button.disabled = launchPending || state.running || !runs.length;
     if (!launchPending) status.textContent = state.running ?
-      'Running ' + state.model + ' with ' + state.nthreads + ' video workers.' :
+      'Running ' + state.model + ' with ' + (state.workers || state.nthreads) + ' shared workers.' :
       state.returncode != null ? (state.returncode === 0 ? 'Runner completed.' :
         'Runner failed. See per-video progress and private web-runner.log.') :
       runs.length + ' cached videos available.';
@@ -220,7 +222,7 @@ document.querySelector('#start-runner').addEventListener('click', async () => {
     const id = document.querySelector('#runner-video').value;
     const response = await fetch('/api/runner', {
       method: 'POST', headers: {'Content-Type': 'application/json', 'X-Maus-Runner': '1'},
-      body: JSON.stringify({model: modelSelect.value || 'classical',
+      body: JSON.stringify({model: 'both',
         nthreads: Number(document.querySelector('#nthreads').value || 1),
         run_id: id ? Number(id) : null})
     });
