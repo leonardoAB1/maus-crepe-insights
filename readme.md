@@ -65,56 +65,85 @@ Task by task, with what exists and what is missing:
 
 <!-- diagram: status -->
 ```mermaid
-flowchart LR
-    api[Dashboard API] --> raw[Raw run JSON]
-    raw --> mcap[MCAP per run]
-    raw --> table[Runs table]
-    raw --> vision[Vision scores]
-    vision --> table
-    table --> frames[Frame table]
-    frames --> models[ONNX models]
-    raw --> pilot[Frame pilot]
-    pilot --> labels[Human labels]
-    labels --> masks[Reviewed masks]
-    masks --> rectified[Rectified frames]
-    models --> predict[Model predictions]
-    predict --> compare[Deviation scoring]
-    rectified --> compare
-    compare --> weights[Weighted dataset]
-    weights --> finetune[Fine-tuned model]
-    finetune --> live[Live frame]
-    models --> live
-    raw --> foldseg[Fold segmentation]
-    foldseg --> compare
-    masks --> overlay[Overlay renderer]
-    models --> overlay
-    overlay --> live
-    raw --> viewer[Run viewer]
-    masks --> viewer
+flowchart TD
+    subgraph data[Data]
+        api[Dashboard API] --> raw[Raw run JSON]
+        raw --> mcap[MCAP per run]
+        raw --> table[Runs table]
+        raw --> vision[Vision scores]
+        vision --> table
+        table --> frames[Frame table]
+    end
+
+    subgraph frame_models[Frame models]
+        frames --> split[Per-robot split]
+        frames --> embed[Frame embedder]
+        split --> verdict[Check verdicts]
+        split --> foldstate[Fold state]
+        split --> reason[Failure reasons]
+        split --> risk[Fold risk]
+        embed --> verdict
+        embed --> foldstate
+        embed --> reason
+        vision --> risk
+    end
+
+    subgraph labels_path[Labels and masks]
+        raw --> pilot[Frame pilot]
+        pilot --> labels[Human labels]
+        labels --> masks[Reviewed masks]
+        masks --> rectified[Rectified frames]
+        raw --> foldseg[Fold segmentation]
+        raw --> viewer[Run viewer]
+        masks --> viewer
+    end
+
+    foldseg -. cross-check .-> foldstate
+
+    subgraph live_path[Live frame]
+        verdict --> predict[Model predictions]
+        foldstate --> predict
+        reason --> predict
+        predict --> compare[Deviation scoring]
+        rectified --> compare
+        foldseg --> compare
+        compare --> weights[Weighted dataset]
+        weights --> finetune[Fine-tuned model]
+        predict --> overlay[Overlay renderer]
+        masks --> overlay
+        predict --> pi[Pi runtime]
+        finetune --> pi
+        overlay --> live[Live frame]
+        pi --> live
+    end
 
     classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
     classDef partial fill:#ed6c02,stroke:#b53d00,color:#ffffff
     classDef todo fill:#616161,stroke:#424242,color:#ffffff
 
-    class api,raw,mcap,table,vision,frames,models,pilot done
-    class labels,masks,rectified,compare,weights partial
-    class foldseg,overlay,viewer partial
-    class predict,finetune,live todo
+    class api,raw,mcap,table,vision,frames,split,embed,pilot done
+    class verdict,foldstate,reason,risk,labels,masks,rectified partial
+    class foldseg,overlay,viewer,compare,weights partial
+    class predict,finetune,pi,live todo
 ```
 <!-- /diagram -->
 
-Green is built and verified, amber is built but not yet proven end to
-end, grey is not built. The data path, the runs and frame tables, the
-vision scores, the ONNX models and the labeling app are green. The
-overlay renderer, the run viewer and the fold segmentation are amber for
-the same reason, working code without an end-to-end proof: the overlay
-draws the layers onto a video and only the records sidecar feeds it, the
-viewer plays a run and answers with the pixel-mask suggestion only, and
-the fold segmentation is merged and evaluated on the same export it was
-tuned on. A live frame still needs two more things: a reviewed mask
-export, which is blocked on the frames whose hole brush overlaps the
-material brush, and a material-mask model to predict with. The gaps and
-the numbers behind each colour are in
+Green is built and verified, amber is built but not yet proven, grey is
+not built. The data path, the frame table, the per-robot split and the
+frame embedder are green. The four frame models are amber: they run and
+ship as ONNX, but the check verdicts do not yet generalize across robots,
+fold state and failure reasons rest on labels derived from the robot's own
+checks, and fold risk shows no signal. The overlay renderer, the run
+viewer and the fold segmentation are amber for the same reason, working
+code without an end-to-end proof: the overlay draws the layers onto a
+video and only the records sidecar feeds it, the viewer plays a run and
+answers with the pixel-mask suggestion only, and the fold segmentation is
+merged and evaluated on the same export it was tuned on. It also serves
+as an independent cross-check for fold state. A live frame still needs a
+prediction runtime on the Pi (in review), a reviewed mask export, which
+is blocked on the frames whose hole brush overlaps the material brush,
+and a material-mask model. The gaps and the numbers behind each colour
+are in
 [documentation/status.md](documentation/status.md).
 
 ## How it works
@@ -365,6 +394,10 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 ## Documentation
 
 [Browse all documentation](documentation/README.md) by subject.
+
+Pitch deck: [assets/pitch/pitch-deck.pptx](assets/pitch/pitch-deck.pptx),
+with the talk track and the source of every number on a slide in
+[assets/pitch/notes.md](assets/pitch/notes.md).
 
 - [Project status: what works and what does not](documentation/status.md)
 
