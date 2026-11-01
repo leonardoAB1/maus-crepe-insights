@@ -28,6 +28,9 @@ incomplete, the row says so, and the section after it names what is missing.
 | Labeling projects, one app per person | `code/labeling` helpers | set 2: 525 phase tasks with 186 labels, 525 mask tasks with 113 submissions. Set 1 still holds zero labels |
 | Mask prefill suggestions | mask-assist helper | 301 editable predictions on set 2, applied only to untouched tasks |
 | One state vocabulary for labels and models | `code/maus_export/crepe_states.py` | six states, legacy labels and model labels mapped on |
+| Video overlay renderer | `pixi run maus-export overlay` | draws masks, states, checks and deviation scores onto a recorded video or a camera index, with a JSONL sidecar of exactly what was drawn, and never overwrites an output. Only the records sidecar feeds it so far |
+| Local run viewer | `pixi run maus-export view` | a loopback web app that plays a run with the mask suggestions and the frame record beside it. It names the producers it does not have, and no model answers yet |
+| Fold segmentation from video | `pixi run fold-frames`, `fold-segment`, `fold-eval` | 1,183 frames from 286 runs, 88.5 percent agreement on the passed checks. Thresholds were tuned on the same export it is evaluated on |
 | Deviation and fine-tuning pipeline | `code/maus_export/label_deviation.py` | deviation scoring and a weighted fine-tuning dataset, 27 offline tests. It has never compared a real prediction with a real reviewed mask |
 
 ## Not working, not finished or not verified
