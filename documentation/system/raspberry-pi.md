@@ -50,6 +50,20 @@ ssh -L 8766:127.0.0.1:8766 raspi@PI_ADDRESS
 Then open `http://127.0.0.1:8766/` locally. Keep this private default unless
 the operator explicitly authorizes unauthenticated network access.
 
+## Vision models
+
+`detect` also runs the merged vision models on every check still of the
+runs it analyzes (`--classify`, on by default; `--no-classify` skips it).
+One ONNX session, `code/models/vision-pipeline/model.onnx`, gives the check
+verdict, fold class and failure reasons; the crepe-student mask adds the
+crepe area. Results go to `fold_segmentation/live/<id>/pipeline.csv` and show
+on each check in the website, with a "disagrees with robot" marker.
+
+- Copy the check stills (`raw/media/<id>/NN_<check>_frame.jpg`) with the run;
+  checks without a still are skipped. Video frames are not classified yet
+- If onnxruntime or the model files are missing, detection and the website
+  still run; only the model results are absent
+
 ## Explicit LAN access
 
 `--host 0.0.0.0 --port 80` exposes the website on IPv4 network interfaces.

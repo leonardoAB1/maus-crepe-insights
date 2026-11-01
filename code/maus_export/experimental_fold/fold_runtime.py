@@ -27,6 +27,12 @@ def main(argv: list[str] | None = None, *, pi_profile: bool = False) -> None:
     )
     parser.add_argument("--replace", action="store_true")
     parser.add_argument("--analyze-only", action="store_true")
+    parser.add_argument(
+        "--classify",
+        action=argparse.BooleanOptionalAction,
+        default=pi_profile,
+        help="run the vision model pipeline on each check still",
+    )
     parser.set_defaults(compress_playback=False)
     if pi_profile:
         parser.add_argument(
@@ -54,6 +60,8 @@ def main(argv: list[str] | None = None, *, pi_profile: bool = False) -> None:
                 analysis_fps=args.fps,
             )
             print(f"Run {run_id}: {result}", flush=True)
+            if args.classify:
+                classify(args.data_dir, run_id, args.threads)
             if args.compress_playback:
                 from .fold_pi import ensure_pi_playback
 
@@ -84,6 +92,27 @@ def main(argv: list[str] | None = None, *, pi_profile: bool = False) -> None:
         finally:
             if worker is not None:
                 worker.stop()
+
+
+_PIPELINE: list = []
+
+
+def classify(data_dir: Path, run_id: int, threads: int) -> None:
+    """Run the merged vision models on a run; skip when unavailable."""
+    try:
+        from ..vision_pipeline import VisionPipeline, classify_run
+
+        if not _PIPELINE:
+            _PIPELINE.append(VisionPipeline(threads=threads))
+        rows = classify_run(data_dir, run_id, _PIPELINE[0])
+    except (ImportError, OSError, ValueError) as error:
+        print(
+            f"Vision models unavailable: {type(error).__name__}: {error}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+    print(f"Run {run_id}: {len(rows)} check frames classified", flush=True)
 
 
 if __name__ == "__main__":
