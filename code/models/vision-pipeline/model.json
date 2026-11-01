@@ -1,0 +1,185 @@
+{
+  "name": "vision-pipeline",
+  "description": "Frame embedder and every embedding head merged into one graph: one raw check frame in (frame_preprocess.preprocess), check verdicts, fold class and failure reasons out. No retraining; metrics and caveats are those of each source model card.",
+  "inputs": [
+    {
+      "name": "x",
+      "dtype": "float32",
+      "shape": [
+        null,
+        3,
+        224,
+        224
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "embedding",
+      "dtype": "float32",
+      "shape": [
+        null,
+        576
+      ]
+    },
+    {
+      "name": "check_verdict.spread",
+      "dtype": "float32",
+      "shape": [
+        null,
+        2
+      ],
+      "classes": [
+        "fail",
+        "pass"
+      ],
+      "source": "code/models/check-verdict/spread"
+    },
+    {
+      "name": "check_verdict.fold1",
+      "dtype": "float32",
+      "shape": [
+        null,
+        2
+      ],
+      "classes": [
+        "fail",
+        "pass"
+      ],
+      "source": "code/models/check-verdict/fold1"
+    },
+    {
+      "name": "check_verdict.fold2",
+      "dtype": "float32",
+      "shape": [
+        null,
+        2
+      ],
+      "classes": [
+        "fail",
+        "pass"
+      ],
+      "source": "code/models/check-verdict/fold2"
+    },
+    {
+      "name": "check_verdict.push_off",
+      "dtype": "float32",
+      "shape": [
+        null,
+        2
+      ],
+      "classes": [
+        "fail",
+        "pass"
+      ],
+      "source": "code/models/check-verdict/push_off"
+    },
+    {
+      "name": "fold_class",
+      "dtype": "float32",
+      "shape": [
+        null,
+        4
+      ],
+      "classes": [
+        "empty",
+        "flat",
+        "half",
+        "quarter"
+      ],
+      "source": "code/models/fold-class"
+    },
+    {
+      "name": "failure_reason.fold2.shape",
+      "dtype": "float32",
+      "shape": [
+        null,
+        2
+      ],
+      "classes": [
+        "not_shape",
+        "shape"
+      ],
+      "source": "code/models/failure-reason/fold2/shape"
+    },
+    {
+      "name": "failure_reason.fold2.residue",
+      "dtype": "float32",
+      "shape": [
+        null,
+        2
+      ],
+      "classes": [
+        "not_residue",
+        "residue"
+      ],
+      "source": "code/models/failure-reason/fold2/residue"
+    },
+    {
+      "name": "failure_reason.spread.too_small",
+      "dtype": "float32",
+      "shape": [
+        null,
+        2
+      ],
+      "classes": [
+        "not_too_small",
+        "too_small"
+      ],
+      "source": "code/models/failure-reason/spread/too_small"
+    }
+  ],
+  "preprocess": "maus_export.frame_preprocess.preprocess",
+  "sources": {
+    "frame-embedder": {
+      "path": "code/models/frame-embedder/model.onnx",
+      "sha256": "9a799e91f6286419b3a6d6f3ef226cfcfec3cfc1b957cbe39c51560fc0130c1b"
+    },
+    "check_verdict.spread": {
+      "path": "code/models/check-verdict/spread/model.onnx",
+      "sha256": "1525d4f5b94bb2cc67f058575794a97e5d57d217db80d9227edae0a767b555d7"
+    },
+    "check_verdict.fold1": {
+      "path": "code/models/check-verdict/fold1/model.onnx",
+      "sha256": "f59ad734719cc99c088e3d3fb5ef75c086c55585b786ebb9ac9f3824fd92f09c"
+    },
+    "check_verdict.fold2": {
+      "path": "code/models/check-verdict/fold2/model.onnx",
+      "sha256": "a50ee37900c8c8d7b13c2ed01d0aca832b8e576728102a70b35b7805382d38c7"
+    },
+    "check_verdict.push_off": {
+      "path": "code/models/check-verdict/push_off/model.onnx",
+      "sha256": "fb7593ca0099064c0309c67f7a07cb4ba78882a818ca51b45a3a7201dc504bc6"
+    },
+    "fold_class": {
+      "path": "code/models/fold-class/model.onnx",
+      "sha256": "3abf883e9c4d20797fb8da416baca0166d345bac08e47516a392afcf5b437482"
+    },
+    "failure_reason.fold2.shape": {
+      "path": "code/models/failure-reason/fold2/shape/model.onnx",
+      "sha256": "0498f1026f514a9f7b9fafd6a83bd01b42c2d815d8b59088b52b13eb927600fd"
+    },
+    "failure_reason.fold2.residue": {
+      "path": "code/models/failure-reason/fold2/residue/model.onnx",
+      "sha256": "8203a5474ee7cf492550e281c5a52e0c4e942d319d8da2678c1a2fbbb7bd6076"
+    },
+    "failure_reason.spread.too_small": {
+      "path": "code/models/failure-reason/spread/too_small/model.onnx",
+      "sha256": "2a7135918e25f1bcd49e0aba9a48fd5dcfe2035844daecefbb5a37b32626f71f"
+    }
+  },
+  "companion": {
+    "crepe-student": "runs beside it in maus_export.vision_pipeline (different input size), gives the crepe mask and area share"
+  },
+  "onnx": {
+    "opset": 17,
+    "parity_atol": 0.0001,
+    "parity_max_abs_diff": 0.0,
+    "parity": "ok"
+  },
+  "caveats": [
+    "check-verdict and failure-reason heads learned the robot's own verdicts (weak labels) and do not all generalize across robots; read each source card",
+    "trained on still check frames; video frames are not validated"
+  ],
+  "commit": "b5f5b2f705674ad979ebfe35c7c760ef16b6f1ef"
+}

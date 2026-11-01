@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from ..vision_pipeline import read_results
 from .fold_frames import check_starts, phase_clock_origin, video_time
 from .fold_playback import playback_video
 from .fold_progress import read_progress
@@ -61,6 +62,7 @@ def run_details(data_dir: Path, run_id: int) -> dict:
             event["observation_status"] = observation["status"]
             event["verdict"] = observation.get("verdict", "unknown")
             event["confidence"] = float(observation.get("confidence") or 0)
+    attach_models(events, root)
     phases = [
         {"time": float(phase["elapsed_sec"]), "name": phase["phase"]}
         for phase in run["phases"]
@@ -95,6 +97,15 @@ def run_details(data_dir: Path, run_id: int) -> dict:
         "dispense": dispense,
         "timeline": timeline,
     }
+
+
+def attach_models(events: list[dict], root: Path) -> None:
+    """Add vision pipeline results to events, matched by check and attempt."""
+    results = read_results(root)
+    attempts: dict[str, int] = {}
+    for event in events:
+        attempts[event["name"]] = attempts.get(event["name"], 0) + 1
+        event["model"] = results.get((event["name"], attempts[event["name"]]))
 
 
 def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
@@ -158,6 +169,11 @@ def make_handler(data_dir: Path) -> type[BaseHTTPRequestHandler]:
                                 ),
                                 "dispense_ok": (info["dispense"] or {}).get(
                                     "ok"
+                                ),
+                                "model_disagreements": sum(
+                                    (event["model"] or {}).get("agrees")
+                                    is False
+                                    for event in info["events"]
                                 ),
                             }
                         )

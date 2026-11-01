@@ -46,6 +46,10 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 .event {display: block; width: 100%; margin-top: 9px; border: 1px solid #29394e;
   background: #18263b; color: #eef3fe; text-align: left; padding: 12px;
   border-radius: 10px; cursor: pointer} .event:hover {border-color: #75a7ff}
+.chip {display: inline-block; margin: 6px 6px 0 0; padding: 2px 8px;
+  border-radius: 999px; font-size: 12px; border: 1px solid #2f4360}
+.chip.ok {border-color: #2f7a5c} .chip.fail {border-color: #8a3a45}
+.chip.warn {color: #efcc83; border-color: #6b5634}
 .ok {color: #61d8a2} .fail {color: #ff8b95} .muted {color: #96a8c0}
 .notice {border: 1px solid #6b5634; color: #efcc83; padding: 12px;
   border-radius: 10px; font-size: 13px; margin-top: 20px}
@@ -108,6 +112,20 @@ const phaseStyles = {
   add_topping: ['toppings (log)', '#ec86cb'],
   discard_crepe: ['discard', '#8295ac']
 };
+function modelLine(model) {
+  const line = document.createElement('div');
+  const pct = value => Math.round(value * 100) + '%';
+  if (model.verdict) line.append(textNode('span', 'Model: ' + model.verdict +
+    ' (fail ' + pct(model.p_fail) + ')', 'chip ' + (model.verdict === 'fail' ? 'fail' : 'ok')));
+  if (model.agrees === false) line.append(textNode('span', 'Disagrees with robot', 'chip warn'));
+  line.append(textNode('span', 'Fold: ' + model.fold_state + ' ' + pct(model.fold_p), 'chip'));
+  for (const [reason, p] of Object.entries(model.reasons || {}))
+    line.append(textNode('span', reason.replaceAll('_', ' ') + ' ' + pct(p),
+      'chip' + (p >= 0.5 ? ' fail' : '')));
+  if (model.crepe_share !== null && model.crepe_share !== undefined)
+    line.append(textNode('span', 'Crepe area ' + pct(model.crepe_share), 'chip'));
+  return line;
+}
 function legend() {
   const el = document.querySelector('#phase-legend');
   el.replaceChildren();
@@ -275,6 +293,7 @@ async function showRun(id) {
       Math.round((event.confidence || 0) * 100) + '%',
       event.verdict === 'failure' ? 'sub fail' : 'sub muted'));
     button.append(textNode('span', 'Check starts at ' + Math.max(0, event.time).toFixed(1) + 's', 'sub'));
+    if (event.model) button.append(modelLine(event.model));
     button.onclick = () => {
       video.currentTime = Math.max(0, event.observed_at ?? event.time);
     }; events.append(button);
@@ -338,6 +357,8 @@ function renderSidebar() {
       button.append(textNode('span',
         (run.visual_failures || 0) + ' visual failures, ' +
         (run.visual_unknown || 0) + ' unknown checks', 'sub'));
+      if (run.model_disagreements) button.append(textNode('span',
+        run.model_disagreements + ' model disagreements', 'sub fail'));
       button.append(textNode('span', run.dispense_ok === true ? 'Dough: stable' :
         run.dispense_ok === false ? 'Dough: flagged' : 'Dough: not measured',
         run.dispense_ok === false ? 'sub fail' : 'sub muted'));
