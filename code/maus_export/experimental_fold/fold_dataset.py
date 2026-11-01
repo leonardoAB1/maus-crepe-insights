@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 import cv2
-import pandas as pd
 
 from .fold_frames import check_events, phase_clock_origin, video_time
 from .fold_rectify import rectify_video_frame
@@ -56,6 +55,8 @@ def extract_frames(
     Run-level input failures are counted, not printed with private metadata.
     Staging prevents partial frames from appearing as a completed dataset.
     """
+    import pandas as pd
+
     calibration = json.loads(calibration_path.read_text())
     output = data_dir / "fold_segmentation"
     output.mkdir(parents=True, exist_ok=True)

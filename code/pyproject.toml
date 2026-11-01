@@ -48,7 +48,7 @@ packages = ["maus_export", "maus_classify", "docsync"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64", "linux-aarch64"]
 
 [tool.pixi.dependencies]
 python = "3.12.*"
@@ -92,9 +92,24 @@ robustness-example = "maus-classify robustness-example"
 fold-crosscheck = "maus-classify fold-crosscheck"
 notebook = "jupyter lab notebooks"
 
+[tool.pixi.feature.pi.dependencies]
+python = "3.12.*"
+numpy = ">=2"
+py-opencv = { version = ">=5.0.0,<6", build = "*headless*" }
+matplotlib-base = ">=3.11.2,<4"
+
+[tool.pixi.feature.pi.activation.env]
+OMP_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
+MKL_NUM_THREADS = "1"
+
+[tool.pixi.feature.pi.tasks]
+detect = "python -m maus_export.experimental_fold.fold_pi"
+
 [tool.pixi.environments]
-default = { features = ["dev"], solve-group = "default" }
-ml = { features = ["ml", "dev"], solve-group = "default" }
+default = { features = ["dev"], solve-group = "default", platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"] }
+ml = { features = ["ml", "dev"], solve-group = "default", platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"] }
+pi = { features = ["pi"], no-default-feature = true, platforms = ["linux-aarch64"] }
 
 [tool.pixi.tasks]
 export = "maus-export"
