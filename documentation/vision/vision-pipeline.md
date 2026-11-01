@@ -5,20 +5,22 @@ video to an answer on why a run failed. This page is the map: each stage
 says what it does, what it writes and where its own page is. All inputs and
 outputs are private run data and stay in `data/`.
 
+<!-- diagram: vision-pipeline -->
 ```mermaid
 flowchart LR
-  raw[Check stills] --> fix[Image correction]
-  vid[Run video] --> fix
-  ovl[Robot overlays] --> read[Overlay scores]
-  fix --> seg[Crepe segmentation]
-  seg --> state[Fold state]
-  raw --> heads[Frame models]
-  state --> time[Video timeline]
-  log[Robot logs] --> time
-  time --> page[Review pages]
-  read --> why[Failure insight]
-  heads --> why
+    raw[Check stills] --> fix[Image correction]
+    vid[Run video] --> fix
+    ovl[Robot overlays] --> read[Overlay scores]
+    fix --> seg[Crepe segmentation]
+    seg --> state[Fold state]
+    raw --> heads[Frame models]
+    state --> time[Video timeline]
+    log[Robot logs] --> time
+    time --> page[Review pages]
+    read --> why[Failure insight]
+    heads --> why
 ```
+<!-- /diagram -->
 
 | stage | question | page |
 |---|---|---|

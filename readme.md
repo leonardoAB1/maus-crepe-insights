@@ -280,6 +280,26 @@ flowchart LR
 ```
 <!-- /diagram -->
 
+**Our vision pipeline.** From check stills and run videos to fold states, check verdicts and failure insight.
+Each stage and its own page are in [documentation/vision/vision-pipeline.md](documentation/vision/vision-pipeline.md).
+
+<!-- diagram: vision-pipeline -->
+```mermaid
+flowchart LR
+    raw[Check stills] --> fix[Image correction]
+    vid[Run video] --> fix
+    ovl[Robot overlays] --> read[Overlay scores]
+    fix --> seg[Crepe segmentation]
+    seg --> state[Fold state]
+    raw --> heads[Frame models]
+    state --> time[Video timeline]
+    log[Robot logs] --> time
+    time --> page[Review pages]
+    read --> why[Failure insight]
+    heads --> why
+```
+<!-- /diagram -->
+
 **What the vision scores measure.** The robot's check overlays already mark the crêpe outline, holes,
 residue and the ideal fold shape. `pixi run vision` reads those marks back as numbers per run (diameter,
 centre offset, bare plate inside the crêpe, fold overlap, fold-2/fold-1 area ratio, browning), so failures become measurable
