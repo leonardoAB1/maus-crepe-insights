@@ -34,6 +34,17 @@ flowchart LR
 | 8. Insight | what leads to a failure? | [fold risk](../analysis/fold-risk.md) |
 | 9. Review | see it all next to the video | [run viewer](review-app.md) |
 
+## The three challenge tasks
+
+| task | approach | stages |
+|---|---|---|
+| 1. Spread quality | overlay scores, our own crêpe mask, dough check | 3, 4, 6, 7 |
+| 2. Position and orientation | top-down view, overlay pose, mask geometry | 2, 3, 4 |
+| 3. Fold detection | fold-class head, student rule, classical rule | 5, 6, 7 |
+
+The per-task approach, results and gaps are in the
+[README](../../readme.md#how-we-tackled-them).
+
 ## 1. Inputs
 
 - **Check stills.** Each robot vision check leaves a raw `frame` and an
