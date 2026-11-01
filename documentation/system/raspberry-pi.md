@@ -62,6 +62,37 @@ program's default whenever `--host` is omitted.
 Remove `/etc/systemd/system/maus-fold-web.service.d/lan.conf`, reload systemd
 and restart the service to restore the original localhost port 8766 setup.
 
+## Slow-network video playback
+
+Analysis writes a full-quality `annotated.mp4`; on a slow wireless link it
+can be too large to stream. Prepare a separate low-bandwidth copy without
+rerunning detection:
+
+```bash
+pixi run -e pi python -m maus_export.fold_playback \
+  --data-dir /path/to/private/data 3351
+```
+
+This requires `ffmpeg`, present in the locked Pi environment. It creates
+`playback.mp4` with H.264/yuv420p, 480 px width, approximately 120 kbps,
+two-second keyframes at the default 10 fps, and fast-start container metadata.
+Use `--width` and `--bitrate-kbps` for higher quality on a faster network,
+and `--replace` to rebuild an existing playback copy.
+
+The site selects the copy only when its manifest matches the original size
+and modification time, otherwise falling back to the original. Failed
+encoding never publishes partial output. Both normal and suffix byte ranges
+are supported. The original remains available through the download link.
+HTML and graph JSON use gzip when accepted by the client; videos are never
+recompressed by the HTTP server.
+
+On the private deployment, a 55.4-second video shrank from 11,983,439 bytes
+to 833,753 bytes (about 14 times smaller). Graph JSON shrank from 303,006 to
+26,789 bytes. These are transport reductions, not improved visual accuracy.
+The low-bitrate preview loses detail: inspect the original for fine geometry.
+Proxy encoding is an explicit post-processing step, separate from inference
+and its recorded frame timings. Newly analyzed videos need this step too.
+
 ## Performance interpretation
 
 Compare `median_ms` (rectification and inference), `median_render_ms`,
