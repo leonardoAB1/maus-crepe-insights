@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cv2
-import pandas as pd
 
 from .fold_geometry import GeometryFeatures, mask_geometry
 from .fold_mask import crepe_mask
 from .fold_plate import PlateEllipse, detect_plate_ellipse, median_ellipse
+
+if TYPE_CHECKING:
+    # Only segment_frames needs pandas; the Pi env imports this without it.
+    import pandas as pd
 
 EMPTY_STATE = "empty"
 FLAT_STATE = "flat"
@@ -115,6 +118,8 @@ def _nearest_reference(
 
 def segment_frames(data_dir: Path) -> pd.DataFrame:
     """Build features.parquet for extracted fold frames."""
+    import pandas as pd
+
     output = data_dir / "fold_segmentation"
     frames = pd.read_parquet(output / "frames.parquet")
     if frames.empty:

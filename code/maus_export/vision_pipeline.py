@@ -48,7 +48,8 @@ FAIL_CLASS = "fail"
 FAIL_THRESHOLD = 0.5
 
 # crepe-student input contract (models/crepe-student/model.json preprocess);
-# kept here because maus_export.crepe_student imports pandas
+# kept here so this module does not import crepe_student and its fold
+# analysis dependencies
 STUDENT_SIZE = (384, 216)  # width, height
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)

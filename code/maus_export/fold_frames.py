@@ -7,11 +7,14 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
-import pandas as pd
+
+if TYPE_CHECKING:
+    # Only build_frames needs pandas; the Pi env imports this without it.
+    import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CALIBRATION_PATH = REPO_ROOT / "robot-image-calibration.json"
@@ -280,6 +283,8 @@ def build_frames(
     run_ids: set[int] | None = None,
 ) -> pd.DataFrame:
     """Build frames and frames.parquet under data/fold_segmentation/."""
+    import pandas as pd
+
     output_dir = data_dir / OUTPUT_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, Any]] = []

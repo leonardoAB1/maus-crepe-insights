@@ -19,11 +19,10 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import cv2
 import numpy as np
-import pandas as pd
 
 from .fold_live import (
     ANALYSIS_FPS,
@@ -34,6 +33,10 @@ from .fold_live import (
     majority_vote,
 )
 from .fold_state import EMPTY_STATE, FLAT_STATE, HALF_STATE, QUARTER_STATE
+
+if TYPE_CHECKING:
+    # Only the offline evaluation helpers need pandas; the Pi env has none.
+    import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODEL_PATH = REPO_ROOT / "code" / "models" / "crepe-student" / "model.onnx"
@@ -376,6 +379,8 @@ def check_frame_states(
     The flat area of a run is the area at its spread check. A spread
     frame itself has no flat reference, as in the live state machine.
     """
+    import pandas as pd
+
     is_flat = frames["expected_state"] == FLAT_STATE
     with_crepe = areas >= MIN_CREPE_SHARE
     flat = areas[is_flat & with_crepe].groupby(frames["run_id"]).first()
@@ -397,6 +402,8 @@ def evaluate_check_frames(
     every check from the run video and writes
     ``fold_segmentation/student/features.parquet`` and ``metrics.csv``.
     """
+    import pandas as pd
+
     from .fold_frames import video_path
 
     student = student or CrepeStudent.load()
@@ -428,6 +435,8 @@ def is_test_run(run_id: int) -> bool:
 
 def agreement(frames: pd.DataFrame) -> pd.DataFrame:
     """Agreement with the check moment on passed checks, per group."""
+    import pandas as pd
+
     passed = frames[frames["check_ok"].astype(bool)]
     passed = passed.assign(
         split=passed["run_id"].map(
