@@ -3,6 +3,10 @@
 - [Project report (PDF)](../assets/project-report.pdf), with the
   [LaTeX source](../assets/project-report.tex)
 
+Picking the project up after BaselHack? Read the
+[handover guide](handover.md) first. The final presentation is in
+[assets/pitch](../assets/pitch/README.md).
+
 Start with [what works and what does not](status.md). It lists the capabilities,
 the gaps and the numbers behind each claim. Everything below goes deeper, one
 page per question.
