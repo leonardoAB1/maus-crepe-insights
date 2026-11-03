@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .fold_backend import MODELS
+
 DEFAULT_PORT = 8766
 DEFAULT_THREADS = 1
 DEFAULT_FPS = 10.0
@@ -26,6 +28,12 @@ def main(argv: list[str] | None = None, *, pi_profile: bool = False) -> None:
         help="bind address; non-loopback exposes unauthenticated private data",
     )
     parser.add_argument("--replace", action="store_true")
+    parser.add_argument(
+        "--model",
+        choices=MODELS,
+        default="classical",
+        help="segmentation backend for the analysed runs",
+    )
     parser.add_argument("--analyze-only", action="store_true")
     parser.add_argument(
         "--classify",
@@ -58,6 +66,7 @@ def main(argv: list[str] | None = None, *, pi_profile: bool = False) -> None:
                 run_id,
                 replace=args.replace,
                 analysis_fps=args.fps,
+                model=args.model,
             )
             print(f"Run {run_id}: {result}", flush=True)
             if args.classify:
@@ -66,7 +75,7 @@ def main(argv: list[str] | None = None, *, pi_profile: bool = False) -> None:
                 from .fold_pi import ensure_pi_playback
 
                 try:
-                    ensure_pi_playback(args.data_dir, run_id)
+                    ensure_pi_playback(args.data_dir, run_id, model=args.model)
                 except (
                     OSError,
                     ValueError,

@@ -41,6 +41,32 @@ def test_pi_analysis_automatically_prepares_playback(
     assert calls == ["analyze"]
 
 
+def test_pi_detect_passes_model_to_analysis_and_playback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_video.analyse_video",
+        lambda *a, **k: calls.append(("analyze", k["model"])),
+    )
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_pi.ensure_pi_playback",
+        lambda *a, **k: calls.append(("compress", k["model"])),
+    )
+    main(
+        [
+            "1",
+            "--data-dir",
+            str(tmp_path),
+            "--analyze-only",
+            "--no-classify",
+            "--model",
+            "onnx",
+        ]
+    )
+    assert calls == [("analyze", "onnx"), ("compress", "onnx")]
+
+
 def test_pi_website_starts_and_stops_background_worker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

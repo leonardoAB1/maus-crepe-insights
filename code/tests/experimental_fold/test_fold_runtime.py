@@ -8,6 +8,8 @@ import pytest
 
 from maus_export.experimental_fold.fold_runtime import main
 
+ONNX = ["--model", "onnx"]
+
 
 def test_video_imports_without_export_dependencies() -> None:
     result = subprocess.run(
@@ -77,6 +79,21 @@ def test_analyze_only_does_not_start_website(
     main(["1", "1", "--data-dir", str(tmp_path), "--analyze-only"])
     assert len(calls) == 1
     assert calls[0][1]["analysis_fps"] == 10
+    assert calls[0][1]["model"] == "classical"
+
+
+def test_model_flag_reaches_analysis(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_video.analyse_video",
+        lambda *args, **kwargs: calls.append(kwargs["model"]),
+    )
+    main(["2", "--data-dir", str(tmp_path), "--analyze-only"] + ONNX)
+    assert calls == ["onnx"]
+    with pytest.raises(SystemExit):
+        main(["2", "--data-dir", str(tmp_path), "--model", "sam"])
 
 
 def test_website_only_does_not_load_video(
