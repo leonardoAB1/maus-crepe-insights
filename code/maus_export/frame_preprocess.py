@@ -14,6 +14,7 @@ from typing import Any
 import cv2
 import numpy as np
 
+RAW_SIZE = (900, 509)  # width, height of a raw check still
 # (x, y, w, h) on the raw 900x509 frame; covers the plate on all robots
 PLATE_CROP = (190, 0, 570, 509)
 INPUT_SIZE = 224
