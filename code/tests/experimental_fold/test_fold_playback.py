@@ -67,6 +67,35 @@ def test_failed_encoding_does_not_publish_partial_proxy(
     assert not list(directory.glob(".playback-*"))
 
 
+def test_onnx_proxy_uses_onnx_folder_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    classical = tmp_path / "fold_segmentation/live/1"
+    onnx = tmp_path / "fold_segmentation/live-onnx/1"
+    for directory in (classical, onnx):
+        directory.mkdir(parents=True)
+        (directory / "annotated.mp4").write_bytes(b"synthetic-original")
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_playback.shutil.which",
+        lambda _: "ffmpeg",
+    )
+    sources = []
+
+    def encode(command: list[str], **kwargs: object) -> None:
+        sources.append(Path(command[command.index("-i") + 1]))
+        Path(command[-1]).write_bytes(b"small-proxy")
+
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_playback.subprocess.run", encode
+    )
+    prepare_playback(tmp_path, 1, model="onnx")
+    assert sources == [onnx / "annotated.mp4"]
+    assert playback_video(onnx).name == "playback.mp4"
+    assert playback_video(classical) == classical / "annotated.mp4"
+    with pytest.raises(ValueError):
+        prepare_playback(tmp_path, 1, model="unknown")
+
+
 @pytest.mark.parametrize("width,bitrate", [(1, 120), (3, 120), (480, 0)])
 def test_invalid_proxy_settings(
     tmp_path: Path, width: int, bitrate: int

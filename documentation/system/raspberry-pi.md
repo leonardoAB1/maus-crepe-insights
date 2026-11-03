@@ -10,6 +10,43 @@ headless OpenCV, NumPy and non-interactive Matplotlib. It excludes the
 project's default feature, export/auth clients, pandas, Parquet tools and
 ML training packages. Native codec and numerical libraries are still needed.
 The web server uses Python's standard library and binds to localhost only.
+The ONNX backend (`--model onnx`) also runs without pandas: the crepe
+student imports pandas only in its offline evaluation helpers.
+
+## Deploy from main
+
+The same steps work on a fresh Raspberry Pi 3 or Pi 5 with 64-bit Raspberry
+Pi OS. Models (`code/models/*/model.onnx`) and
+`robot-image-calibration.json` are committed, so the clone has them. Only
+the private run data has to be copied.
+
+1. Install pixi for the service user and clone the repo, for example to
+   `~/maus-fold-runtime`
+2. From `code/`, install the locked Pi environment:
+
+   ```bash
+   pixi install -e pi --locked
+   ```
+
+3. Copy the private data next to the clone, for example to
+   `~/maus-fold-runtime/data`: `raw/runs/<id>.json` and
+   `raw/media/<id>/video.mp4`, plus the check stills if you have them
+4. Analyze runs with the classical or the ONNX backend (see below)
+5. Install the example systemd unit from `code/deploy/pi/`. It is not
+   installed automatically. Edit `User`, `WorkingDirectory`, the pixi path
+   and `--data-dir` first; the committed values are examples from the
+   original deployment (user `raspi`)
+
+   ```bash
+   sudo cp code/deploy/pi/maus-fold-web.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now maus-fold-web.service
+   ```
+
+The base unit serves on localhost port 8766, restarts on failure and limits
+BLAS/OpenMP to one thread. For LAN access add the `lan.conf` drop-in, but
+read [Explicit LAN access](#explicit-lan-access) first: it serves private
+data without authentication.
 
 From `code/` on a 64-bit Raspberry Pi, with pixi installed:
 
@@ -34,7 +71,15 @@ pixi run -e pi detect --data-dir /path/to/private/data --port 8766
 
 # Explicitly rebuild an existing analysis.
 pixi run -e pi detect --data-dir /path/to/private/data 3344 --replace
+
+# Analyze with the crepe-student ONNX backend instead of the classical one.
+pixi run -e pi detect --data-dir /path/to/private/data 3344 --model onnx
 ```
+
+`--model` is `classical` (default) or `onnx`. Classical results go to
+`fold_segmentation/live/<id>/`, ONNX results to
+`fold_segmentation/live-onnx/<id>/`; the website switches between them with
+`?model=onnx`.
 
 The default is 10 analyzed frames per second and one OpenCV thread.
 `--threads` changes the latter. BLAS/OpenMP are limited to one thread by
@@ -71,12 +116,23 @@ It serves private videos and run data with no authentication or encryption.
 Use only on a trusted network with the data owner's explicit authorization;
 no router port forwarding or internet exposure is configured.
 
-The authorized Pi deployment uses a `maus-fold-web.service` drop-in with
+The authorized Pi deployment uses a `maus-fold-web.service` drop-in
+(example: `code/deploy/pi/maus-fold-web.service.d/lan.conf`) with
 `AmbientCapabilities=CAP_NET_BIND_SERVICE` and
 `CapabilityBoundingSet=CAP_NET_BIND_SERVICE`. This permits port 80 while
 keeping the service under its unprivileged user rather than running Python
 as root. The service stays enabled across reboots. Localhost remains the
 program's default whenever `--host` is omitted.
+
+To install it, only after that authorization:
+
+```bash
+sudo mkdir -p /etc/systemd/system/maus-fold-web.service.d
+sudo cp code/deploy/pi/maus-fold-web.service.d/lan.conf \
+  /etc/systemd/system/maus-fold-web.service.d/
+sudo systemctl daemon-reload
+sudo systemctl restart maus-fold-web.service
+```
 
 Remove `/etc/systemd/system/maus-fold-web.service.d/lan.conf`, reload systemd
 and restart the service to restore the original localhost port 8766 setup.
@@ -87,7 +143,10 @@ Analysis writes a full-quality `annotated.mp4`; on a slow wireless link it
 can be too large to stream. The Pi profile automatically prepares a separate
 low-bandwidth copy after analysis. Its website also scans completed analyses
 every 15 seconds in a background worker, preparing missing or stale copies
-without blocking HTTP startup. Valid proxies are reused.
+without blocking HTTP startup. Valid proxies are reused. The worker scans
+both `fold_segmentation/live` (classical) and `fold_segmentation/live-onnx`
+(ONNX). Without a copy the site falls back to the OpenCV `mp4v`
+`annotated.mp4`, which browsers cannot play.
 
 One POSIX file lock per data directory serializes automatic encoders across
 Pi processes. The lock releases after a crash; a busy website worker retries
@@ -113,6 +172,10 @@ For manual preparation or custom quality settings, without rerunning vision:
 ```bash
 pixi run -e pi python -m maus_export.experimental_fold.fold_playback \
   --data-dir /path/to/private/data 3351
+
+# The same for an ONNX analysis.
+pixi run -e pi python -m maus_export.experimental_fold.fold_playback \
+  --data-dir /path/to/private/data 3351 --model onnx
 ```
 
 This requires `ffmpeg`, present in the locked Pi environment. It creates
@@ -173,3 +236,28 @@ set to `multi-user.target`. Run-data and video-range endpoints were verified
 through an SSH tunnel. Source, environment and private outputs live under
 `~/maus-fold-runtime/`; `~/.local/bin/maus-detect` is the convenience command.
 The installation does not configure dashboard authentication or robot control.
+
+## Measured timings (2026-11-01)
+
+Per-frame times on the deployed Pis, at 10 analyzed frames per second and
+one OpenCV/BLAS thread. They come from private runs; only aggregates are
+recorded here.
+
+| Pi | Measurement | Result |
+| --- | --- | ---: |
+| Pi 3 Model B, 1 GB | crepe-student model alone | 306 ms/frame |
+| Pi 3 Model B, 1 GB | ONNX video analysis, median (run 3344) | 854 ms/frame |
+| Pi 3 Model B, 1 GB | ONNX video analysis, median (run 2536) | 912 ms/frame |
+| Pi 3 Model B, 1 GB | classical, median (554 frames) | 528 ms/frame |
+| Pi 5 | ONNX end to end, wall clock | 152 ms/frame |
+| Pi 5 | ONNX analysis loop, median | 119 ms/frame |
+| Pi 5 | ONNX analysis loop, p90 | 125 ms/frame |
+| Pi 5 | ONNX model alone, median | 97 ms/frame |
+| Pi 5 | classical analysis loop, median | 222 ms/frame |
+
+- Run 2536 on the Pi 3 ran with thermal throttling at about 80 C
+- Pi 5 ONNX: 4,510 frames over 3 runs; classical: 6,117 frames over 4 runs.
+  The Pi 5 numbers were read from the review site's `/api/progress` and
+  `/api/run` on 2026-11-01
+- Only the Pi 5 with the ONNX backend stays under the 200 ms per-frame
+  budget; the Pi 3 suits review after the run, not live use

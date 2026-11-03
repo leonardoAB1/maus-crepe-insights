@@ -41,6 +41,32 @@ def test_pi_analysis_automatically_prepares_playback(
     assert calls == ["analyze"]
 
 
+def test_pi_detect_passes_model_to_analysis_and_playback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_video.analyse_video",
+        lambda *a, **k: calls.append(("analyze", k["model"])),
+    )
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_pi.ensure_pi_playback",
+        lambda *a, **k: calls.append(("compress", k["model"])),
+    )
+    main(
+        [
+            "1",
+            "--data-dir",
+            str(tmp_path),
+            "--analyze-only",
+            "--no-classify",
+            "--model",
+            "onnx",
+        ]
+    )
+    assert calls == [("analyze", "onnx"), ("compress", "onnx")]
+
+
 def test_pi_website_starts_and_stops_background_worker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -83,10 +109,27 @@ def test_worker_ignores_staging_and_incomplete_runs(
     )
     worker = PiPlaybackWorker(tmp_path)
     worker.scan_once()
-    assert calls == [(1, {"blocking": False})]
+    assert calls == [(1, {"blocking": False, "model": "classical"})]
     worker.stop_event.set()
     worker.scan_once()
     assert len(calls) == 1
+
+
+def test_worker_scans_classical_and_onnx_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for folder, run_id in (("live", "1"), ("live-onnx", "2")):
+        directory = tmp_path / "fold_segmentation" / folder / run_id
+        directory.mkdir(parents=True)
+        (directory / "annotated.mp4").write_bytes(b"synthetic")
+        (directory / "summary.json").write_text("{}")
+    calls = []
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_pi.ensure_pi_playback",
+        lambda path, run_id, **kwargs: calls.append((run_id, kwargs["model"])),
+    )
+    PiPlaybackWorker(tmp_path).scan_once()
+    assert calls == [(1, "classical"), (2, "onnx")]
 
 
 @pytest.mark.skipif(os.name != "posix", reason="Pi uses POSIX file locking")
@@ -122,3 +165,20 @@ def test_proxy_is_reused_and_global_lock_excludes_another_encoder(
     assert ensure_pi_playback(tmp_path, 1)
     assert ensure_pi_playback(tmp_path, 1)
     assert calls == ["encode"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="Pi uses POSIX file locking")
+def test_onnx_proxy_is_prepared_in_the_onnx_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    directory = tmp_path / "fold_segmentation/live-onnx/3"
+    directory.mkdir(parents=True)
+    (directory / "annotated.mp4").write_bytes(b"synthetic-original")
+    calls = []
+    monkeypatch.setattr(
+        "maus_export.experimental_fold.fold_pi.prepare_playback",
+        lambda data_dir, run_id, **kwargs: calls.append((run_id, kwargs)),
+    )
+    assert not ensure_pi_playback(tmp_path, 3)
+    assert ensure_pi_playback(tmp_path, 3, model="onnx")
+    assert calls == [(3, {"model": "onnx"})]
