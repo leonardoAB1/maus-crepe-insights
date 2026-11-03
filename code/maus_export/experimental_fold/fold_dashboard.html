@@ -142,6 +142,7 @@ function modelLine(model) {
   if (model.verdict) line.append(textNode('span', 'Model: ' + model.verdict +
     ' (fail ' + pct(model.p_fail) + ')', 'chip ' + (model.verdict === 'fail' ? 'fail' : 'ok')));
   if (model.agrees === false) line.append(textNode('span', 'Disagrees with robot', 'chip warn'));
+  if (model.source === 'video') line.append(textNode('span', 'From video frame', 'chip'));
   line.append(textNode('span', 'Fold: ' + model.fold_state + ' ' + pct(model.fold_p), 'chip'));
   for (const [reason, p] of Object.entries(model.reasons || {}))
     line.append(textNode('span', reason.replaceAll('_', ' ') + ' ' + pct(p),

@@ -241,7 +241,9 @@ pages:
   The classical gate abstains on narrow objects only, and student masks do
   not use it.
 - **Still frames versus video.** The frame heads were trained on check
-  stills; running them on video frames is not validated.
+  stills; running them on video frames is not validated. `classify_run`
+  still falls back to the video frame for a check without a still and marks
+  that row `source` = `video` in `pipeline.csv`.
 - **Speed on the Pi.** Classical video analysis took a median 413 ms per
   frame on a Raspberry Pi 3, so the 200 ms target is not met.
 - **Nothing here controls the robot.** All of it is offline analysis.

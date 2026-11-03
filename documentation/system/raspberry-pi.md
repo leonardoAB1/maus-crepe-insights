@@ -97,15 +97,20 @@ the operator explicitly authorizes unauthenticated network access.
 
 ## Vision models
 
-`detect` also runs the merged vision models on every check still of the
+`detect` also runs the merged vision models on every check of the
 runs it analyzes (`--classify`, on by default; `--no-classify` skips it).
 One ONNX session, `code/models/vision-pipeline/model.onnx`, gives the check
 verdict, fold class and failure reasons; the crepe-student mask adds the
 crepe area. Results go to `fold_segmentation/live/<id>/pipeline.csv` and show
 on each check in the website, with a "disagrees with robot" marker.
 
-- Copy the check stills (`raw/media/<id>/NN_<check>_frame.jpg`) with the run;
-  checks without a still are skipped. Video frames are not classified yet
+- Copy the check stills (`raw/media/<id>/NN_<check>_frame.jpg`) with the run
+  when you have them. A check without a still is classified on the run video
+  frame at that check (the observed moment of the video analysis, else the
+  logged start), resized to the calibrated still size. The `source` column
+  of `pipeline.csv` says `still` or `video`, and the website marks video
+  rows "From video frame". The heads were trained on stills, so video rows
+  are less reliable
 - If onnxruntime or the model files are missing, detection and the website
   still run; only the model results are absent
 

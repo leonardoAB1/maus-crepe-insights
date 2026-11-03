@@ -129,6 +129,7 @@ def test_classify_run_writes_csv_and_dashboard_reads_it(
     assert rows[0]["model_verdict"] == "fail" and rows[0]["agrees"] is False
     assert rows[1]["agrees"] is True
     assert rows[2]["agrees"] == ""
+    assert {r["source"] for r in rows} == {"still"}
     root = data / "fold_segmentation" / "live" / "7"
     events = [{"name": "spread"}, {"name": "fold2"}, {"name": "fold2"}]
     events.append({"name": "fold1"})
@@ -225,3 +226,172 @@ def test_shipped_pipeline_runs() -> None:
     assert set(result.probabilities) == set(vp.HEADS)
     for probs in result.probabilities.values():
         assert sum(probs.values()) == pytest.approx(1.0, abs=1e-4)
+
+
+VIDEO_FPS = 10
+VIDEO_FRAMES = 40
+VIDEO_SIZE = (120, 68)  # width, height
+GREY_STEP = 6  # frame i is a flat grey of i * GREY_STEP
+GREY_TOLERANCE = 2 * GREY_STEP  # mp4v and seeking are not frame exact
+
+
+def _video_run(data_dir: Path, run_id: int = 8, stills: bool = False) -> Path:
+    """A synthetic run with a video and two logged checks.
+
+    The phase clock origin is 12:00:00.5, so with the 0.1 s check delay the
+    spread check sits at 1.0 s and the fold1 check at 2.0 s of video.
+    """
+    run = {
+        "machineName": "synthetic",
+        "phases": [
+            {
+                "phase": "cook",
+                "timestamp": "2026-01-01T12:00:10",
+                "elapsed_sec": 10,
+            }
+        ],
+        "logs": [
+            {
+                "timestamp": "2026-01-01T12:00:01.4",
+                "msg": "check_spread started",
+            },
+            {
+                "timestamp": "2026-01-01T12:00:01.6",
+                "msg": "check_spread: crepe spread successfully",
+            },
+            {
+                "timestamp": "2026-01-01T12:00:02.4",
+                "msg": "check_fold1 started",
+            },
+            {
+                "timestamp": "2026-01-01T12:00:02.6",
+                "msg": "check_fold1: first fold incomplete",
+            },
+        ],
+    }
+    if stills:
+        run["visionChecks"] = [
+            {"phase": "spread", "frame": "01_spread_frame.jpg", "ok": True}
+        ]
+    runs = data_dir / "raw" / "runs"
+    runs.mkdir(parents=True)
+    (runs / f"{run_id}.json").write_text(json.dumps(run))
+    media = data_dir / "raw" / "media" / str(run_id)
+    media.mkdir(parents=True)
+    if stills:
+        cv2.imwrite(
+            str(media / "01_spread_frame.jpg"), np.zeros(FRAME_SHAPE, np.uint8)
+        )
+    writer = cv2.VideoWriter(
+        str(media / "video.mp4"),
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        VIDEO_FPS,
+        VIDEO_SIZE,
+    )
+    for index in range(VIDEO_FRAMES):
+        grey = index * GREY_STEP
+        writer.write(np.full((*VIDEO_SIZE[::-1], 3), grey, np.uint8))
+    writer.release()
+    return data_dir / "fold_segmentation" / "live" / str(run_id)
+
+
+class Recorder:
+    """Wraps a pipeline and keeps every frame it was given."""
+
+    def __init__(self, pipeline: vp.VisionPipeline) -> None:
+        self.pipeline = pipeline
+        self.frames: list[np.ndarray] = []
+
+    def run(self, bgr: np.ndarray) -> vp.FrameResult:
+        self.frames.append(bgr)
+        return self.pipeline.run(bgr)
+
+
+def _grey_at(seconds: float) -> float:
+    return seconds * VIDEO_FPS * GREY_STEP
+
+
+def test_video_frames_classify_checks_without_stills(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = tmp_path / "data"
+    root = _video_run(data)
+    size = (380, 215)  # a calibrated size other than the still size
+    monkeypatch.setattr(vp, "source_size", lambda robot: size)
+    recorder = Recorder(_pipeline(tmp_path))
+    rows = vp.classify_run(data, 8, recorder)
+    assert [(r["check"], r["attempt"], r["source"]) for r in rows] == [
+        ("spread", 1, "video"),
+        ("fold1", 1, "video"),
+    ]
+    assert [r["frame"] for r in rows] == ["video@1.0s", "video@2.0s"]
+    assert [r["robot_ok"] for r in rows] == [True, False]
+    assert all(f.shape == (size[1], size[0], 3) for f in recorder.frames)
+    for frame, seconds in zip(recorder.frames, (1.0, 2.0), strict=True):
+        assert abs(frame.mean() - _grey_at(seconds)) <= GREY_TOLERANCE
+    results = vp.read_results(root)
+    assert results[("spread", 1)]["source"] == "video"
+    assert results[("fold1", 1)]["verdict"] == "fail"
+
+
+def test_stills_win_and_observed_moments_pick_the_video_frame(
+    tmp_path: Path,
+) -> None:
+    data = tmp_path / "data"
+    root = _video_run(data, stills=True)
+    root.mkdir(parents=True)
+    observed_at = 3.0
+    (root / "observations.csv").write_text(
+        f"check,start,observed_at\nspread,1.0,0.5\nfold1,2.0,{observed_at}\n"
+    )
+    recorder = Recorder(_pipeline(tmp_path))
+    rows = vp.classify_run(data, 8, recorder)
+    assert [(r["check"], r["source"]) for r in rows] == [
+        ("spread", "still"),
+        ("fold1", "video"),
+    ]
+    assert rows[0]["frame"] == "01_spread_frame.jpg"
+    assert rows[1]["frame"] == f"video@{observed_at:.1f}s"
+    video_frame = recorder.frames[1]
+    assert video_frame.shape == FRAME_SHAPE  # unknown robot: still size
+    assert abs(video_frame.mean() - _grey_at(observed_at)) <= GREY_TOLERANCE
+
+
+def test_observation_for_another_start_is_ignored(tmp_path: Path) -> None:
+    data = tmp_path / "data"
+    root = _video_run(data)
+    root.mkdir(parents=True)
+    (root / "observations.csv").write_text(
+        "check,start,observed_at\nspread,7.0,3.0\nfold1,2.0,\n"
+    )
+    checks = vp.video_checks(data, 8)
+    assert [(c["check"], c["time"]) for c in checks] == [
+        ("spread", pytest.approx(1.0)),
+        ("fold1", pytest.approx(2.0)),
+    ]
+
+
+def test_run_without_logs_has_no_video_checks(tmp_path: Path) -> None:
+    data = tmp_path / "data"
+    _run(data)
+    assert vp.video_checks(data, 7) == []
+
+
+def test_source_size_reads_the_calibration() -> None:
+    from maus_export.experimental_fold.fold_dataset import CALIBRATION_PATH
+
+    corrections = json.loads(CALIBRATION_PATH.read_text())["robot_corrections"]
+    robot, correction = next(iter(corrections.items()))
+    assert vp.source_size(robot) == tuple(correction["source_size_px"])
+    assert vp.source_size("not-a-robot") == vp.RAW_SIZE
+    assert vp.source_size(None) == vp.RAW_SIZE
+
+
+def test_results_written_before_the_source_column_are_stills(
+    tmp_path: Path,
+) -> None:
+    fields = [f for f in vp.CSV_FIELDS if f != "source"]
+    (tmp_path / vp.CSV_NAME).write_text(
+        ",".join(fields) + "\nspread,1,01.jpg,True,0.1,pass,True,flat,0.9,{},\n"
+    )
+    assert vp.read_results(tmp_path)[("spread", 1)]["source"] == "still"
