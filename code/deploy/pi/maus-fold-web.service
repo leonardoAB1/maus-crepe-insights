@@ -1,0 +1,28 @@
+# Example unit for the "Fold insights" review website on a Raspberry Pi.
+# Not installed automatically: see documentation/system/raspberry-pi.md.
+# The raspi user and /home/raspi/maus-fold-runtime paths are examples from
+# the original deployment. Change User, WorkingDirectory, the pixi path and
+# --data-dir to match your Pi before copying this file to
+# /etc/systemd/system/.
+#
+# Binds to localhost only. Reach it through an SSH tunnel, or add the
+# lan.conf drop-in (unauthenticated, see its warning).
+
+[Unit]
+Description=Maus fold insights review website
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=raspi
+WorkingDirectory=/home/raspi/maus-fold-runtime/code
+ExecStart=/home/raspi/.local/bin/pixi run -e pi detect \
+    --data-dir /home/raspi/maus-fold-runtime/data --port 8766
+Environment=OMP_NUM_THREADS=1
+Environment=OPENBLAS_NUM_THREADS=1
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
