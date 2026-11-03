@@ -1,0 +1,25 @@
+# LF in the repository and in every checkout, on every OS
+* text=auto eol=lf
+
+# Binary files: never touch their bytes
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.onnx binary
+*.mcap binary
+*.parquet binary
+*.pdf binary
+*.pptx binary
+*.docx binary
+*.xlsx binary
+*.mp4 binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.pt binary
+*.pth binary
+*.npy binary
+*.npz binary

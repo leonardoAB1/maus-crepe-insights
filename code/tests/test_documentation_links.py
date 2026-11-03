@@ -67,6 +67,7 @@ PAGES = {
             "run-table-columns",
             "parameter-identity-and-compatibility",
             "vision-score-columns",
+            "overlay-pose-columns",
             "example-figure",
         ],
     ),

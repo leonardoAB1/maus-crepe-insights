@@ -89,6 +89,9 @@ worktrees/         # git worktrees, gitignored
 
 - Type hints on all public functions; small focused modules
 - 80 characters per line, enforced by ruff. Docs and comments wrap at 80 too
+- LF line endings in every text file, enforced by `.gitattributes`. Code that
+  writes text files passes `newline="\n"` (Python on Windows writes CRLF
+  otherwise)
 - Name magic numbers as constants. No bare numbers in logic
 - Comments only when the WHY is non-obvious
 - **ROS 2 nodes:** any file that defines a ROS 2 node ends in `_node.py`, and only node files use

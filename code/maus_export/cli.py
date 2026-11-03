@@ -91,6 +91,10 @@ def main() -> None:
     sub.add_parser(
         "vision", help="score check overlays -> vision.csv / vision.parquet"
     )
+    sub.add_parser(
+        "overlay-pose",
+        help="crepe position and angle per check attempt from the overlays",
+    )
     dashboard = sub.add_parser(
         "fold-experimental-dashboard", help="serve experimental video review"
     )
@@ -107,6 +111,12 @@ def main() -> None:
     watch.add_argument("--fps", type=float, default=DEFAULT_ANALYSIS_FPS)
     watch.add_argument("--port", type=int, default=8766)
     watch.add_argument("--replace", action="store_true")
+    watch.add_argument(
+        "--model", choices=("classical", "onnx", "both"), default="classical"
+    )
+    live.add_argument(
+        "--model", choices=("classical", "onnx"), default="classical"
+    )
     watch.add_argument("--no-browser", action="store_true")
     live.add_argument("run_id", type=int)
     live.add_argument(
@@ -121,6 +131,49 @@ def main() -> None:
         action="store_true",
         help="replace this run's existing analysis after successful processing",
     )
+    batch = sub.add_parser(
+        "fold-batch",
+        help="analyze all cached videos with the experimental pipeline",
+    )
+    batch.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    batch.add_argument(
+        "--model", choices=("classical", "onnx", "both"), default="classical"
+    )
+    batch.add_argument("--ids", type=int, nargs="+", default=None)
+    batch.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="number of videos processed concurrently (default: 1)",
+    )
+    batch.add_argument(
+        "--fps",
+        type=float,
+        default=DEFAULT_ANALYSIS_FPS,
+        help="analysed frames per second of video (default: 10)",
+    )
+    batch.add_argument(
+        "--replace",
+        action="store_true",
+        help="reprocess completed videos (default: skip them)",
+    )
+    review = sub.add_parser(
+        "fold-webserve", help="serve independent fold review"
+    )
+    review.add_argument("--port", type=int, default=8767)
+    review.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    video = sub.add_parser(
+        "fold-webserve-live", help="analyze one cached video"
+    )
+    video.add_argument("run_id", type=int)
+    video.add_argument("--fps", type=float, default=10.0)
+    video.add_argument("--replace", action="store_true")
+    video.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
+    worker = sub.add_parser("fold-webserve-batch", help="analyze cached videos")
+    worker.add_argument("--threads", type=int, default=1)
+    worker.add_argument("--fps", type=float, default=10.0)
+    worker.add_argument("--replace", action="store_true")
+    worker.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS)
     ex = sub.add_parser(
         "example", help="draw the annotated vision example figure"
     )
@@ -186,6 +239,41 @@ def main() -> None:
         "fold-dashboard", help="write local fold review dashboard"
     )
     data_dir_arg(fd)
+    fsl = sub.add_parser(
+        "fold-student", help="live video inference with the crepe student"
+    )
+    data_dir_arg(fsl)
+    fsl.add_argument("--ids", type=int, nargs="*", help="only these run ids")
+    fse = sub.add_parser(
+        "fold-student-eval", help="crepe student state at the check frames"
+    )
+    data_dir_arg(fse)
+    fal = sub.add_parser(
+        "fold-all-live",
+        help="one run video with every vision model and the task outputs",
+    )
+    data_dir_arg(fal)
+    fal.add_argument("--ids", type=int, nargs="+", required=True)
+    fal.add_argument(
+        "--plates",
+        type=Path,
+        help="parquet of per-run plate ellipses (run_id, cx, cy, w, h, angle)",
+    )
+    fsp = sub.add_parser(
+        "fold-student-pose",
+        help="crepe student centre and angle against the robot overlays",
+    )
+    data_dir_arg(fsp)
+    fsh = sub.add_parser(
+        "fold-student-human", help="crepe student against human labels"
+    )
+    data_dir_arg(fsh)
+    fsh.add_argument(
+        "--labels",
+        type=Path,
+        required=True,
+        help="private folder with set-*/phase-v1.json and masks-v1.json",
+    )
     ls = sub.add_parser(
         "label-states", help="print the unified crepe-state vocabulary"
     )
@@ -297,6 +385,7 @@ def main() -> None:
             fps=args.fps,
             port=args.port,
             open_browser=not args.no_browser,
+            model=args.model,
         )
     if args.cmd == "fold-experimental-live":
         from .experimental_fold.fold_video import analyse_video
@@ -307,8 +396,56 @@ def main() -> None:
                 args.run_id,
                 replace=args.replace,
                 analysis_fps=args.fps,
+                model=args.model,
             )
         )
+    if args.cmd == "fold-batch":
+        from .experimental_fold.fold_batch import run_batch
+
+        try:
+            result = run_batch(
+                data_dir,
+                threads=args.threads,
+                analysis_fps=args.fps,
+                replace=args.replace,
+                model=args.model,
+                run_ids=args.ids,
+            )
+        except ValueError as error:
+            p.error(str(error))
+        print(result)
+        if result["failed"]:
+            raise SystemExit(1)
+    if args.cmd == "fold-webserve":
+        from .webserve_fold.fold_dashboard import serve_dashboard
+
+        serve_dashboard(data_dir, args.port)
+    if args.cmd == "fold-webserve-live":
+        from .webserve_fold.fold_video import analyse_video
+
+        print(
+            analyse_video(
+                data_dir,
+                args.run_id,
+                analysis_fps=args.fps,
+                replace=args.replace,
+            )
+        )
+    if args.cmd == "fold-webserve-batch":
+        from .webserve_fold.fold_batch import run_batch
+
+        try:
+            result = run_batch(
+                data_dir,
+                threads=args.threads,
+                analysis_fps=args.fps,
+                replace=args.replace,
+            )
+        except ValueError as error:
+            p.error(str(error))
+        print(result)
+        if result["failed"]:
+            raise SystemExit(1)
     if args.cmd == "fold-live-eval":
         from .experimental_fold.fold_live_eval import evaluate_live
 
@@ -371,6 +508,10 @@ def main() -> None:
         from .vision_metrics import build_vision_table
 
         build_vision_table(data_dir)
+    if args.cmd == "overlay-pose":
+        from .overlay_pose import build_pose_table
+
+        build_pose_table(data_dir)
     if args.cmd == "analyze":
         from .analysis import N_BOOT, run_analysis
 
@@ -427,6 +568,31 @@ def main() -> None:
         from .fold_dashboard import build_dashboard
 
         print(build_dashboard(data_dir))
+    if args.cmd == "fold-student":
+        from .crepe_student import run_live as run_student
+
+        run_student(data_dir, set(args.ids) if args.ids else None)
+    if args.cmd == "fold-student-eval":
+        from .crepe_student import evaluate_check_frames
+
+        print(evaluate_check_frames(data_dir).to_string(index=False))
+    if args.cmd == "fold-all-live":
+        from .crepe_pose import load_plate_ellipses
+        from .crepe_student import CrepeStudent
+        from .live_all import Heads, render_run
+
+        plates = load_plate_ellipses(args.plates) if args.plates else None
+        student, heads = CrepeStudent.load(), Heads.load()
+        for run_id in args.ids:
+            print(render_run(data_dir, run_id, student, heads, plates))
+    if args.cmd == "fold-student-pose":
+        from .crepe_pose import evaluate as evaluate_pose
+
+        print(evaluate_pose(data_dir).to_string(index=False))
+    if args.cmd == "fold-student-human":
+        from .human_eval import evaluate
+
+        print(evaluate(data_dir, args.labels).to_string(index=False))
     if args.cmd == "example":
         from .figures import (
             DEFAULT_FOLD_RUN,

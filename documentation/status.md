@@ -1,6 +1,6 @@
 # Project status: what works and what does not
 
-As of 2026-11-01, against `main` at `d1c3701` plus the open pull requests
+As of 2026-11-01, against `main` at `bcd04b1` plus the open pull requests
 listed at the end. Every number below names the command or file that produced
 it. Run data lives in a private checkout, so a fresh clone reproduces the code
 and the offline tests, not the counts.
@@ -28,6 +28,9 @@ incomplete, the row says so, and the section after it names what is missing.
 | Labeling projects, one app per person | `code/labeling` helpers | set 2: 525 phase tasks with 186 labels, 525 mask tasks with 113 submissions. Set 1 still holds zero labels |
 | Mask prefill suggestions | mask-assist helper | 301 editable predictions on set 2, applied only to untouched tasks |
 | One state vocabulary for labels and models | `code/maus_export/crepe_states.py` | six states, legacy labels and model labels mapped on |
+| Video overlay renderer | `pixi run maus-export overlay` | draws masks, states, checks and deviation scores onto a recorded video or a camera index, with a JSONL sidecar of exactly what was drawn, and never overwrites an output. Only the records sidecar feeds it so far |
+| Local run viewer | `pixi run maus-export view` | a loopback web app that plays a run with the mask suggestions and the frame record beside it. It names the producers it does not have, and no model answers yet. Live crêpe masks on video come from the fold video analysis and its review sites instead |
+| Fold segmentation from video | `pixi run fold-frames`, `fold-segment`, `fold-eval` | 1,183 frames from 286 runs, 88.5 percent agreement on the passed checks. Thresholds were tuned on the same export it is evaluated on |
 | Deviation and fine-tuning pipeline | `code/maus_export/label_deviation.py` | deviation scoring and a weighted fine-tuning dataset, 27 offline tests. It has never compared a real prediction with a real reviewed mask |
 
 ## Not working, not finished or not verified
@@ -64,7 +67,8 @@ incomplete, the row says so, and the section after it names what is missing.
 - **Rectification is experimental upstream alignment, not camera
   calibration.** Lens distortion is not corrected, a planar homography cannot
   remove parallax, and metric pixel distances inherit that.
-- **The overlay renderer exists but nothing is wired to it.**
+- **The generic overlay renderer exists but nothing is wired to it.** Live
+  crêpe masks are drawn on video by the fold video analysis instead.
   `code/maus_export/overlay.py` draws masks, states, checks and deviation
   scores onto a video and is covered by offline tests, but no producer feeds
   it yet and no live stream has been tested. See
@@ -74,34 +78,40 @@ incomplete, the row says so, and the section after it names what is missing.
   drawn on it and the record fields in the side panel, and it names the
   producers it does not have. No model answers yet. See
   [run viewer](vision/review-app.md).
-- **No model has been trained on human labels.** Every model metric above comes
-  from labels derived from robot check verdicts, not from the labeling work.
+- **No model has been trained on human labels.** The crêpe student is scored
+  against the team's human masks and phase labels (median IoU 0.944 on 62
+  frames, live state 98.3% of 178 frames), but only on 5 runs of one robot.
+  Every other model metric comes from labels derived from robot check
+  verdicts.
 - **A fresh clone produces no artifacts.** Fetching runs needs dashboard access,
   and every frame, mask, label and table stays out of Git by design.
 
 ## Brief coverage
 
-The challenge tasks, and what this repository has for each of them.
+The challenge tasks, and what this repository has for each of them. How each
+task was approached is in the
+[README](../readme.md#how-we-tackled-them); the stages are on the
+[vision pipeline](vision/vision-pipeline.md) page.
 
 | Task | Asked output | In this repository | Verdict |
 | --- | --- | --- | --- |
-| 1, spread quality | crepe mask, diameter, quality score | per-run vision metrics over 138 runs (diameter, centre offset, circularity, holes, uncovered fraction), and a classical pixel-mask suggester inside the labeling tool. No spread model | partial |
-| 2, position and orientation | centre (x, y) and angle, precise enough for the spatula | centre offset is a recorded metric; `code/maus_export/fold_geometry.py` computes an edge angle, but the straight-edge gate accepted none of the 854 measured frames, and the fold-class card lists the edge angle as out of scope | not delivered |
-| 3, fold detection | flat, half, quarter or triangle, with confidence and edge angle | `code/models/fold-class`, four classes, weak labels. The triangle fold is unsupported by design | partial, triangle missing |
+| 1, spread quality | crepe mask, diameter, quality score | overlay scores over 138 runs (`pixi run vision`: diameter, centre offset, circularity, holes, uncovered fraction); crepe masks from the classical pipeline and the crepe student (pixel IoU 0.966 against SAM 3); a dough-dispensing check on video; spread verdict head (balanced accuracy 0.70) and a provisional `too_small` reason head. No single fitted quality score | partial |
+| 2, position and orientation | centre (x, y) and angle, precise enough for the spatula | reference pose per check from the robot overlays (`pixi run overlay-pose`), with the push_off angle matching the logged rotation up to a constant 15 degrees; live centre, axis, fold line and quarter corner from the student mask (`maus_export.crepe_pose`), median centre error 0.023 to 0.030 plate radii and axis error 1.1 to 1.6 degrees against the overlays. The reference is the robot's outline, and units are plate radii and image degrees | partial |
+| 3, fold detection | flat, half, quarter or triangle, with confidence and edge angle | three independent methods: `code/models/fold-class` (109 of 110 holdout frames), the crepe student rule (99.5 percent of 991 passed check moments) and the classical rule (88.5 percent). All scored on robot-derived labels. The triangle fold has no frames | partial, triangle missing |
 | Level 1, works on Maus data | model scored against the robot verdicts | the check-verdict heads, with agreement metrics on holdouts of 31 to 61 frames | partial |
-| Level 2, real time on a Pi 5 | under about 300 ms per frame | 4 ms per frame on a desktop CPU; the Pi figure is an unmeasured extrapolation, and the arm64 environment lives in PR #162 | not demonstrated |
-| Bonus, auto-labelling from video | | fold segmentation on `main` from PR #133, with the follow-ups in the draft stack below | in draft |
-| Bonus, a spread score that predicts a failed fold | | `code/models/fold-risk`, balanced accuracy 0.29, and a permutation test that does not beat the null | attempted, negative result reported |
-| Bonus, detect the crepe while the plate rotates | | no code tracks the rotating plate | not delivered |
+| Level 2, real time on a Pi 5 | under about 300 ms per frame | the Pi runtime is on `main` (`pixi run -e pi detect`). Classical video analysis takes a median 413 ms per frame on a Raspberry Pi 3; the embedder runs in 4 ms and the student in about 6 ms on a desktop CPU. No Pi 5 measurement | not demonstrated |
+| Bonus, auto-labelling from video | | whole-video fold timelines on `main` (classical and student backends) that vote the state at every logged check, with a review site | experimental |
+| Bonus, a spread score that predicts a failed fold | | `code/models/fold-risk`: within a robot the spread check does not predict fold failure in the current data | attempted, negative result reported |
+| Bonus, detect the crepe while the plate rotates | | the video analysis segments every sampled frame while the plate turns, but no code tracks the rotation itself | partial |
 
 ## In flight
 
-- PRs #137, #156, #158, #160 and #162, the classical fold-state segmentation
-  stack and a minimal Raspberry Pi runtime, all in draft and 45 commits and 63
-  files ahead of `main`. Landing them is the largest single item left.
-- Issue #128, retrain fold risk and failure reason on the per-robot harness.
-- Issue #126, enforce LF line endings.
-- Issue #95, one inference entry point that runs every frame classifier.
+- PR #224, every frame model merged into one ONNX pass, with model verdicts
+  beside the robot's on the Pi review site.
+- PR #184, the challenge brief as its own page.
+- Issue #207, retrain fold risk and failure reason on the per-robot split and
+  update their numbers.
+- Issue #106, the triangle fold class from human labels.
 
 ## Reproducing a number
 

@@ -1,5 +1,76 @@
 # Experimental fold-state segmentation
 
+## Website analysis runner
+
+The **Video analysis runner** panel starts a background local runner without
+blocking playback or progress polling. Select a cached video, or **All
+pending cached videos**, then press **Start both analyses**. Classical CV
+and ONNX jobs run concurrently; the segmentation selector chooses which
+results to view, not which backend to launch. The **nthreads** selector
+allows **1** (default), **4** or **16**. Both backends share that worker pool,
+with a minimum of two workers even at 1 so both can run simultaneously.
+These are analysis workers, not ONNX inference threads. Batch totals count
+backend/video jobs, so one video contributes two jobs in both mode.
+
+Selecting a video explicitly rebuilds both derived analyses. All-pending
+mode skips completed outputs. Raw inputs are never changed and no videos
+are fetched. Progress and artifacts stay separate for Classical and ONNX.
+The subprocess uses the server's Python environment, so start the website
+in the `ml` environment to enable ONNX launches.
+
+Only one server-owned runner can be active at a time, including requests
+from different browser tabs. Do not start a second server or separate CLI
+runner against those output directories: that is outside this guard.
+Errors remain visible in per-video progress and the private
+`fold_segmentation/web-runner.log`. Server restart does not cancel a child
+runner; let it finish before launching another. Larger concurrency settings
+can exhaust memory, especially with one ONNX session per video.
+
+`POST /api/runner` accepts only bounded JSON with `model`, `nthreads` and an
+optional cached `run_id`. It requires a custom request header and rejects
+cross-origin browser requests. `GET /api/runner` reports cached inputs and
+runner status. There is no shell command input. This is a private local
+analysis control, not authentication: keep the default localhost binding
+or use a trusted private network. Never expose it publicly.
+
+## Website model switch
+
+Prepare both segmentation backends and open the review site:
+
+```bash
+cd code
+pixi run -e ml fold-watch 1234 --model=both --data-dir "$DATA"
+```
+
+The **Segmentation** selector switches between **Classical CV** and **ONNX
+student**. It switches the video, timeline and check estimates together,
+keeping the same run and playback position when both analyses exist. Missing
+analyses are explicitly unavailable; the website never silently substitutes
+another backend or runs expensive inference in an HTTP request.
+
+Classical remains the default and writes `fold_segmentation/live/<run>/`.
+ONNX writes `fold_segmentation/live-onnx/<run>/`; `--replace` affects only the
+requested backend, or both when `--model both` is selected. Use
+`fold-experimental-live 1234 --model onnx` to prepare just the ONNX result.
+ONNX inference requires the `ml` environment; classical review does not.
+
+The student sees the original raw BGR camera frame with its existing model
+preprocessing. Its low-resolution binary mask is resized to the raw frame,
+then the calibrated source size, using nearest-neighbour interpolation.
+The same camera homography used for the classical image maps that mask to
+the corrected view, again using nearest-neighbour interpolation. Unsupported
+pixels and pixels outside the detected plate are excluded. Geometry,
+causal mask smoothing and fold voting use those corrected coordinates.
+
+This toggle compares segmentation backends, not two different fold state
+machines. Both use the existing experimental geometry and fold rules; it
+does not inherit the separate `fold-student` command's plate-free state
+machine or its reported agreement. Plate detection is still required.
+Confidence remains vote support, not calibrated ONNX confidence. ONNX masks
+do not use the classical warmth or arm-occlusion gates; a tool hiding food
+can change the detected area and fold estimate. No accuracy gain is implied
+by changing the backend.
+
 ## Integration status
 
 This offline analysis lives in `maus_export.experimental_fold`. It does not
@@ -75,6 +146,55 @@ commands refuse to overwrite their outputs. Move old generated files or use a
 fresh private data directory before rebuilding. Frame extraction and mask
 creation stage their output until complete. If an evaluation is interrupted,
 remove only its incomplete generated evaluation files before rerunning it.
+
+## Parallel batch processing and live progress
+
+From `code/`, process every cached run/video pair with configurable concurrency:
+
+```bash
+pixi run fold-batch --threads 4 --data-dir /absolute/path/to/data
+# Optional: reprocess completed runs at a different sampling rate.
+pixi run fold-batch --threads 1 --fps 5 --replace --data-dir /absolute/path/to/data
+```
+
+Discovery includes numeric `raw/runs/<id>.json` files with a matching
+`raw/media/<id>/video.mp4`. No download or sampled-evaluation restriction applies.
+`--threads` defaults to 1 and controls concurrent videos, not frames within a
+video. Each worker has its own decoder/encoder and frame buffers, so increase
+concurrency cautiously. Timeline plotting is serialized for Matplotlib safety.
+
+Runs with all five artifacts (summary, timeline CSV, observations CSV, annotated
+video and timeline PNG) are skipped by default. Partial outputs are retried;
+`--replace` recomputes completed outputs. Existing output is replaced only after
+successful processing. Individual failures do not stop the batch; final totals
+report completed/skipped/failed runs, and any failure gives exit code 1. Run only
+one batch per data directory and avoid other workers processing the same run ID.
+
+Keep `pixi run fold-experimental-dashboard --data-dir /absolute/path/to/data`
+running in another terminal. The sidebar shows a loading circle on active runs.
+Select a run, even before its output exists, to see its progress bar below the
+video: sampled frame counts, completion percentage, frames/s, seconds/frame,
+elapsed time and approximate ETA. Speed is end-to-end analysed-frame throughput,
+not source FPS or inference-only timing. Final artifact writing is included in
+elapsed time but not predicted by the ETA. Finished videos load automatically
+without interrupting playback of other selected runs.
+
+Processing failures move into the initially collapsed **Failed runs** section
+at the bottom, with exception type and message. Older snapshots lacking a
+message explicitly say so. Robot-reported failed checks do not count as runner
+failures. Failed runs remain selectable; retried runs return to the normal list.
+
+The read-only `/api/progress` endpoint polls atomic snapshots in private
+`data/fold_segmentation/progress/<id>.json`. Writes are throttled to twice per
+second, and the UI polls once per second. Snapshots survive exit and retries
+replace them. Active updates older than 30 seconds are flagged as potentially
+stopped; forced termination cannot write a terminal status.
+
+Implementation validation: offline tests exercise bounded concurrent workers,
+resume/retry/replace, failure isolation, clock-based throughput and ETA, HTTP
+polling, and a 500-run sidebar with selection, failure grouping and completion
+loading. The progress changes were ported onto the `experimental_fold` layout
+without replacing the main fold pipeline or its viewer.
 
 ## Method
 

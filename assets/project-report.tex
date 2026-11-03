@@ -1,0 +1,214 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=16mm,top=15mm,bottom=15mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{array,booktabs,tabularx}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdftitle={Maus Crepe Insights: Project Report},
+  pdfsubject={BaselHack 2026 project summary}
+}
+\usepackage{parskip}
+\definecolor{ink}{HTML}{263238}
+\definecolor{muted}{HTML}{68777D}
+\definecolor{teal}{HTML}{087E78}
+\definecolor{tealLight}{HTML}{E7F3F1}
+\definecolor{coral}{HTML}{D96B52}
+\definecolor{coralLight}{HTML}{FBEEE9}
+\definecolor{gold}{HTML}{D49A37}
+\definecolor{paper}{HTML}{F5F2EA}
+\definecolor{line}{HTML}{D9E0DE}
+\color{ink}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlength{\leftmargini}{14pt}
+\setlength{\itemsep}{2pt}
+\setlength{\topsep}{2pt}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{0pt}{9pt}{5pt}%
+  {\normalfont\large\bfseries\color{ink}}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\footnotesize\color{muted}MAUS CR\^EPE INSIGHTS
+  \quad / \quad BASELHACK 2026}
+\fancyfoot[R]{\footnotesize\color{muted}\thepage}
+\newcommand{\metric}[3]{%
+  \colorbox{tealLight}{\begin{minipage}[t][17mm][c]{0.222\linewidth}
+    \centering{\color{teal}\bfseries\LARGE #1}\par\vspace{1pt}
+    {\color{muted}\scriptsize #2}\par{\color{muted}\tiny #3}
+  \end{minipage}}}
+\newcommand{\tagline}[1]{{\color{teal}\small\bfseries\MakeUppercase{#1}}}
+\newcommand{\source}[1]{{\color{muted}\scriptsize Source: #1\par}}
+\begin{document}
+\thispagestyle{fancy}
+
+{\color{teal}\rule{\linewidth}{3pt}}\vspace{6pt}
+\tagline{Project report \quad / \quad 01 November 2026}\par
+\vspace{4pt}
+{\fontsize{26}{29}\selectfont\bfseries From run logs to\par
+cr\^epe insights}\par
+\vspace{4pt}
+{\large\color{muted}Maus Cr\^epe Insights \quad | \quad BaselHack 2026}\par
+\vspace{8pt}
+\colorbox{paper}{\parbox{\dimexpr\linewidth-2\fboxsep}{\small
+\textbf{Abstract.} We built an offline-reproducible pipeline to turn Maus
+Robotics run records and camera checks into analysis tables, vision
+measurements, model artifacts and review tools. The public repository contains
+working components, but not a validated end-to-end robot system. Sparse check
+coverage and weak labels limit what the reported model scores establish.}}
+\vspace{8pt}
+
+\noindent\metric{828}{run records}{exported as JSON and MCAP}%
+\hfill\metric{177}{table columns}{one row per run}%
+\hfill\metric{138}{vision rows}{of 828 exported runs}%
+\hfill\metric{62}{human mask labels}{valid comparisons}
+
+\section{Problem and approach}
+Maus robots make cr\^epe-quality decisions from a camera above a hotplate.
+Steam, glare, browning, a rotating plate and tools crossing the view make
+single-frame inspection difficult. The challenge asks for spread quality,
+position and orientation, and fold state, with a path toward real-time use.
+
+\vspace{2pt}
+\colorbox{paper}{\parbox{\dimexpr\linewidth-2\fboxsep}{\centering\small\bfseries
+Dashboard $\rightarrow$ JSON / MCAP $\rightarrow$ Metrics + models
+$\rightarrow$ Review tools}}
+\vspace{3pt}
+
+The exporter writes one ROS 2 MCAP per run and a 177-column Parquet table.
+The vision pipeline reads the robot's annotated check images as measurements
+such as diameter, centre offset, holes and fold overlap. Shared frame
+preprocessing feeds compact ONNX classifiers. Separate labeling and mask
+prefill tools support future human review; an overlay renderer and run viewer
+make outputs inspectable. Private run data, videos and annotations remain out
+of Git.
+
+\section{What the measurements say}
+\begin{tabularx}{\linewidth}{@{}
+  >{\raggedright\arraybackslash\bfseries}p{0.22\linewidth}
+  X
+  >{\raggedright\arraybackslash}p{0.28\linewidth}@{}}
+\toprule
+Evidence & Result & Interpretation \\
+\midrule
+Coverage & 138 of 828 runs have extracted vision measurements; 160 have any
+recorded check. & Coverage is selective, not a representative sample of all
+runs. Most failed runs lack a recorded check. \\
+Segmentation student & Pixel IoU 0.966 against SAM 3 teacher masks on held-out
+runs. & Agreement with pseudo-labels, not a human-verified quality score. \\
+Human comparison & Median mask IoU 0.944 on 62 valid masks; human--human median
+0.933 on 10 matched frames. & Five consecutive runs from one robot; four were
+used for student training. This is a pilot, not an independent test. \\
+Fold-state rule & 99.5\% agreement at 991 passed-check moments, versus 88.5\%
+for the classical pipeline on the same frames. & Thresholds were read from
+these frames, including the test subset; results are optimistic. \\
+Runtime & 5.71 ms median preprocessing plus inference on a four-thread Intel
+CPU. & Raspberry Pi 5 estimate is 64 ms, not a measurement on the board. \\
+\bottomrule
+\end{tabularx}
+\vspace{2pt}
+\source{Guide: \texttt{crepe-student.md}; model card: \texttt{model.json};
+coverage: \texttt{status.md}, snapshot d1c3701.}
+\vspace{7pt}
+\colorbox{coralLight}{\parbox{\dimexpr\linewidth-2\fboxsep}{\small
+\textbf{Readout.} The project has a reproducible data and model toolchain and a
+promising offline segmentation prototype. Its human-label comparison is a
+small pilot, not an independent test; the on-robot decision path is not yet
+integrated.}}
+
+\newpage
+\thispagestyle{fancy}
+{\color{coral}\rule{\linewidth}{3pt}}\vspace{6pt}
+\tagline{Findings \quad / \quad Limits before deployment}\par
+\vspace{4pt}
+{\fontsize{22}{25}\selectfont\bfseries A useful prototype,\par
+not yet a robot-ready system}\par
+\vspace{8pt}
+
+\section{Model results, with the right baseline}
+The strongest new result is a compact LR-ASPP MobileNetV3-Large segmentation
+student distilled from SAM 3 masks. It produces a cr\^epe mask; fold state is
+then estimated from mask area relative to that run's flat-cr\^epe reference.
+The exported ONNX model matches its PyTorch mask on the parity sample and is
+small enough for CPU inference. On the held-out runs, mask IoU against the
+teacher is 0.966. Check-moment agreement is 99.5\% on 991 passed checks, but
+that figure is not an independent estimate: thresholds were selected using the
+same check moments, including the evaluation subset.
+
+A first comparison against reviewed human labels reports median mask IoU 0.944
+on 62 valid masks; two human label sets reach median IoU 0.933 on 10 matched
+frames. The label export covers five consecutive runs of one robot, and four
+runs also appear in student training. These numbers are a useful review pilot,
+not an independent estimate of performance on new robots or runs.
+
+Earlier per-check classifiers predict the robot's own pass/fail verdicts, not
+verified food quality. Their holdout balanced accuracy ranges from 0.67 to
+0.92 on only 31--61 frames per check; three of four cards say they do not
+generalize. These results are weak evidence for deployment and must not be
+read as human-validated performance.
+
+\section{Known gaps}
+\begin{itemize}
+  \item \textbf{Coverage:} vision measurements cover 138/828 runs, all from a
+  short recent window in the documented export. Missing measurements are
+  unknown, not evidence of a good or bad run.
+  \item \textbf{Human evaluation:} the first comparison covers five
+  consecutive runs of one robot; four runs were used to train the student.
+  Broader, independent evaluation across runs and robots is still needed.
+  \item \textbf{Scope:} the student has no hole class, does not estimate
+  position or angle, and misses small fresh batter, hands and tools. It was
+  trained on check-moment frames.
+  \item \textbf{Generalization:} thresholds include evaluation frames; no
+  leave-one-robot-out student evaluation has been run, and one robot has only
+  six training runs.
+  \item \textbf{Integration:} the repository has a mask model, review tools and
+  overlay code, but no verified live path that returns all challenge decisions
+  from one camera frame. Raspberry Pi performance is estimated, not measured.
+\end{itemize}
+
+\section{What is reproducible}
+The code, model card, ONNX student, synthetic offline tests and documentation
+are public. The private dashboard export, frame tables, teacher masks and
+labeling records are not in the repository, so a fresh clone can reproduce the
+code checks but not the data-dependent counts or training run.
+
+\colorbox{tealLight}{\parbox{\dimexpr\linewidth-2\fboxsep}{\small
+\textbf{Offline check}\par
+\texttt{cd code \&\& pixi install \&\& pixi run test \&\& pixi run lint}\par
+This checks the public code; it does not rebuild private data artifacts.}}
+
+\section{Evidence trail}
+\small
+\begin{tabularx}{\linewidth}{@{}
+  >{\raggedright\arraybackslash\bfseries}p{0.34\linewidth}X@{}}
+\toprule
+Claim & Repository source \\
+\midrule
+Data counts and known gaps & \texttt{documentation/status.md} (snapshot
+revision d1c3701; counts from private export) \\
+Student method and evaluation &
+\texttt{documentation/vision/crepe-student.md} \\
+Model shape, splits and metrics &
+\texttt{code/models/crepe-student/model.json} \\
+Model use and rebuild requirements &
+\texttt{code/models/crepe-student/README.md} \\
+Project source &
+\href{https://github.com/leonardoAB1/maus-crepe-insights}
+{project repository} \\
+\bottomrule
+\end{tabularx}
+
+\vfill
+{\color{line}\rule{\linewidth}{0.6pt}}\par
+{\scriptsize\color{muted}Evidence snapshot: public repository main at
+\texttt{f5d1504} (1 Nov 2026). Data coverage counts are explicitly tied to the
+older status snapshot because that page has not been refreshed for this
+revision. The model-specific results above come from the student guide and
+model card at the evidence snapshot. This report is a concise account, not a
+claim of production readiness.}
+\end{document}

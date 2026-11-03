@@ -171,6 +171,38 @@ robot), since no millimetre scale is published for the plate.
 | `vision.fold2.area_ratio` | fold-2 area / fold-1 area: about 0.5 for a good quarter fold, about 1 when the second fold did nothing |
 | `vision.fold1.l_mean`, `l_std` (and fold2) | browning: CIE L* mean and spread of the crepe |
 
+## Overlay pose columns
+
+`pixi run overlay-pose` reads the same overlays and writes
+`data/training/overlay_pose.parquet`: the crepe position and angle for
+**every attempt** of the spread, fold1, fold2 and push_off checks. These are
+the reference labels for Task 2 (position and orientation). Rows are keyed
+like `training/frames.parquet` (`run_id`, `check`, `attempt`, counted per
+check from 1), plus `robot` and the robot's `ok` verdict.
+
+Positions are in zone radii from the zone centre, x to the right and y down.
+Angles are degrees in image coordinates, `atan2(dy, dx)`, so -90 points up.
+
+| Column | Checks | Meaning |
+|---|---|---|
+| `zone_r_px` | all | analysis-zone radius in pixels |
+| `dx_rel`, `dy_rel` | all | crepe outline centroid, signed offset from the zone centre |
+| `axis_deg` | all | principal axis of the crepe outline, -90 to 90 |
+| `ideal_dx_rel`, `ideal_dy_rel`, `ideal_axis_deg` | fold1, fold2 | same for the robot's ideal fold shape (magenta) |
+| `offset_err_rel` | fold1, fold2 | distance between the crepe and ideal-fold centroids |
+| `axis_err_deg` | fold1, fold2 | crepe axis minus ideal-fold axis, -90 to 90 |
+| `crepe_deg`, `plate_deg` | push_off | the robot's crepe direction (magenta) and plate direction (yellow) lines, both drawn from the zone centre |
+| `align_deg` | push_off | `plate_deg - crepe_deg`, wrapped to -180 to 180 |
+| `line_share`, `lines_ok` | push_off | share of line pixels on the detected direction; `lines_ok` when at least 0.5 for both lines |
+| `log_rotate_deg` | push_off | "rotating N deg" from the robot log after this attempt |
+| `log_residual_deg` | push_off | "residual N deg" when the robot pushed off unaligned |
+
+The push_off angle reproduces the robot's own reading. On the local export
+(257 push_off overlays, 248 with `lines_ok`), every logged rotation equals
+`align_deg` plus a constant 15.0 degrees (5th to 95th percentile 14.6 to 15.4,
+124 attempts). Attempts the robot passed sit at `align_deg` -17.7 +- 2.4;
+"crepe not aligned" failures sit near +35.
+
 ## Example figure
 
 `pixi run example` redraws `assets/vision-scores-example.jpg`, the annotated

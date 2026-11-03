@@ -1,5 +1,8 @@
 # Documentation
 
+- [Project report (PDF)](../assets/project-report.pdf), with the
+  [LaTeX source](../assets/project-report.tex)
+
 Start with [what works and what does not](status.md). It lists the capabilities,
 the gaps and the numbers behind each claim. Everything below goes deeper, one
 page per question.
@@ -15,6 +18,8 @@ page per question.
 
 ## Vision and frames
 
+- [Vision pipeline](vision/vision-pipeline.md): the whole vision stack on one
+  page, from raw frames and videos to failure insight, with links per stage
 - [Frame-level check dataset](vision/frames.md): one row per camera check frame
   with weak labels and the fixed split
 - [Frame embeddings](vision/frame-embeddings.md): the cached embedder output the
@@ -27,6 +32,8 @@ page per question.
   a stream, and what each source has to emit
 - [Fold segmentation](fold-segmentation.md): the classical video pipeline for
   fold-state features, evaluation and a local review dashboard
+- [Crêpe student](vision/crepe-student.md): the distilled crêpe mask model and
+  the plate-free fold state, live and at the check moments
 - [Run viewer](vision/review-app.md): a local web app that plays a run with the
   pipeline beside it, and how a model plugs in
 
@@ -47,6 +54,8 @@ page per question.
 
 - [Run-start dataset](training/training-dataset.md): candidates for predicting a
   run before it starts
+- [Classifier robustness](training/robustness.md): fold and verdict heads
+  under light, steam and rotation, plus the fold label leakage check
 - [Training data audit](training/training-audit.md): coverage of the training and
   vision data, aggregate only
 - [Vision-target dataset](training/vision-targets.md): the vision measurements

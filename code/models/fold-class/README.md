@@ -76,8 +76,10 @@ Training CV per robot (run-grouped, out-of-fold, train rows only):
 | otto | 8 | 1.00 | 0.02 |
 
 The label comes from which check took the frame, so a high score can partly
-mean "recognizes the check pose" rather than "reads the fold". The leakage
-check is part of #104.
+mean "recognizes the check pose" rather than "reads the fold". The
+[leakage check](../../../documentation/training/robustness.md) confirms it
+in part: on failed fold2 frames the segmentation calls half, the head says
+quarter 84% of the time.
 
 ## Sanity checks (frames the head never saw a label for)
 

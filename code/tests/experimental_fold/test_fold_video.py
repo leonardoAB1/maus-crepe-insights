@@ -73,6 +73,14 @@ def test_analyse_video_writes_timeline_without_seeking(
     writer.release()
     result = analyse_video(tmp_path, 1, analysis_fps=10)
     assert result["frames"] == 20
+    progress = json.loads(
+        (tmp_path / "fold_segmentation" / "progress" / "1.json").read_text()
+    )
+    assert progress["state"] == "completed"
+    assert progress["frames_done"] == progress["frames_total"] == 20
+    assert progress["fraction"] == 1.0
+    assert progress["fps"] > 0
+    assert progress["seconds_per_frame"] > 0
     out = tmp_path / "fold_segmentation" / "live" / "1"
     assert (out / "annotated.mp4").is_file()
     assert (out / "timeline.png").is_file()
@@ -122,6 +130,30 @@ def test_analyse_video_writes_timeline_without_seeking(
     assert summary["toppings_stage_logged"] is False
     assert (out / "reference" / "manifest.json").is_file()
     assert not (out / "old-marker").exists()
+
+    from maus_export.crepe_student import CrepeStudent
+
+    seen = []
+
+    class Student:
+        def mask(self, frame: np.ndarray) -> np.ndarray:
+            seen.append(frame.shape)
+            return np.zeros((20, 20), bool)
+
+    monkeypatch.setattr(CrepeStudent, "load", lambda: Student())
+    classical = (out / "timeline.csv").read_bytes()
+    onnx_result = analyse_video(tmp_path, 1, model="onnx")
+    assert onnx_result["frames"] == 20
+    assert seen == [(200, 200, 3)] * 20
+    assert (out / "timeline.csv").read_bytes() == classical
+    onnx_out = tmp_path / "fold_segmentation" / "live-onnx" / "1"
+    summary = json.loads((onnx_out / "summary.json").read_text())
+    assert summary["model"] == "onnx"
+    assert summary["foreground_method"] == "crepe_student_raw_then_rectified"
+    assert (onnx_out / "annotated.mp4").is_file()
+    onnx_timeline = pd.read_csv(onnx_out / "timeline.csv")
+    assert "segmentation_failed" not in set(onnx_timeline["status"])
+    assert "ok" in set(onnx_timeline["status"])
 
 
 def _timeline_rows(with_dough: bool) -> list[dict]:

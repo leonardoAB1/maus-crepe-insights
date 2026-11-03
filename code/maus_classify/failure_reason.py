@@ -12,9 +12,10 @@ At inference a check returns every modelled class whose probability reaches
 the check's abstain threshold, sorted by confidence, or `other` when none
 does. The threshold is picked by run-grouped CV on train rows only.
 
-Labels are the robot's own error strings (weak labels). The holdout is small
-and one robot, so each head is also tested by train CV against labels
-shuffled within robot, and per-robot CV scores are reported.
+Labels are the robot's own error strings (weak labels). The holdout is the
+per-robot split and small, so each head is also tested by train CV against
+labels shuffled within robot, and per-robot and leave-one-robot-out scores
+are reported.
 """
 
 from __future__ import annotations
@@ -30,11 +31,10 @@ from sklearn.dummy import DummyClassifier
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedGroupKFold
 
-from maus_export.doe_analyze import dump_json
-
 from .check_verdict import FAIL, check_rows, embedding_columns, make_head
 from .frames import normalize
-from .harness import metrics, train_and_evaluate
+from .harness import metrics, train_and_evaluate, write_card
+from .harness import permutation_test as harness_permutation_test
 from .split import TEST, TRAIN
 
 # Robot error string -> reason class, per check. Merges are deliberate:
@@ -172,28 +172,23 @@ def permutation_test(
     n_perm: int = N_PERM,
     seed: int = SEED,
 ) -> dict[str, Any]:
-    """Train-CV AUC against labels shuffled within robot (one-sided)."""
-    observed = _auc(y, oof_proba(X, y, groups, positive), positive)
-    rng = np.random.default_rng(seed)
-    null = []
-    for _ in range(n_perm):
-        perm = y.copy()
-        for r in np.unique(robots):
-            m = robots == r
-            perm[m] = rng.permutation(y[m])
-        null.append(_auc(perm, oof_proba(X, perm, groups, positive), positive))
-    v = np.asarray(null, float)
-    v = v[np.isfinite(v)]
-    p = (1 + int(np.sum(v >= observed))) / (1 + len(v))
+    """Train-CV AUC against labels shuffled within robot (one-sided),
+    through the shared `harness.permutation_test`."""
+    res = harness_permutation_test(
+        lambda labels: _auc(
+            labels, oof_proba(X, labels, groups, positive), positive
+        ),
+        y,
+        strata=robots,
+        n_perm=n_perm,
+        seed=seed,
+    )
     return {
-        "cv_auc": observed,
-        "n_perm": len(v),
-        "null_q05_q95": [
-            float(np.quantile(v, 0.05)),
-            float(np.quantile(v, 0.95)),
-        ],
-        "p_one_sided": float(p),
-        "beats_null": bool(p < ALPHA),
+        "cv_auc": res["value"],
+        "n_perm": res["n_perm"],
+        "null_q05_q95": res["null_q05_q95"],
+        "p_one_sided": res["p_value"],
+        "beats_null": bool(res["p_value"] < ALPHA),
     }
 
 
@@ -312,6 +307,8 @@ def train_head(
         feature_names=features,
         out_dir=out,
         timestamps=rows["ts_utc"].to_numpy(),
+        robots=rows["robot"].fillna("unknown").to_numpy(),
+        positive=cls,
         description=f"Is '{cls}' among the robot's reasons for a failed "
         f"{check} check? Frame embedding in, weak labels (robot errors).",
     )
@@ -343,7 +340,7 @@ def train_head(
         ),
         "holdout_auc": _auc(y[test], p_test, cls),
     }
-    dump_json(card, out / "model.json")
+    write_card(card, out / "model.json")
     return card, oof, p_test
 
 
@@ -398,7 +395,7 @@ def train_check(
             f"no reason class has {MIN_SUPPORT} train frames on both sides; "
             "not enough data to train a head"
         )
-        dump_json(card, out_dir / "model.json")
+        write_card(card, out_dir / "model.json")
         return card
     oof, p_test = {}, {}
     for cls in classes:
@@ -436,7 +433,7 @@ def train_check(
         if deploy
         else "research only: no head passes the null and majority checks"
     )
-    dump_json(card, out_dir / "model.json")
+    write_card(card, out_dir / "model.json")
     return card
 
 

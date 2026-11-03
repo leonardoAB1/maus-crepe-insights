@@ -29,10 +29,14 @@ from maus_classify.fold_risk import (
     fold_risk_table,
     lift_report,
 )
-from maus_classify.harness import ONNX_INPUT, ONNX_PROBA, train_and_evaluate
+from maus_classify.harness import (
+    ONNX_INPUT,
+    ONNX_PROBA,
+    train_and_evaluate,
+    write_card,
+)
 from maus_classify.split import TEST
 from maus_export.analysis import find_data_dir
-from maus_export.doe_analyze import dump_json
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
@@ -85,7 +89,7 @@ def shared_holdout(table: pd.DataFrame, card: dict[str, Any]) -> dict:
     p = proba[:, classes.index(FAIL)]
     robots = sorted(test[ROBOT].astype(str).unique())
     return {
-        "label": f"one robot ({', '.join(robots)})",
+        "label": f"per-robot holdout ({', '.join(robots)})",
         "report": lift_report(test["fold_fail"].to_numpy(float), p),
     }
 
@@ -132,6 +136,8 @@ def main() -> None:
         feature_names=PRIMARY,
         out_dir=HERE,
         timestamps=table["ts_utc"].to_numpy(),
+        robots=table[ROBOT].astype(str).to_numpy(),
+        positive=FAIL,
         description=f"{verdict.upper()}. Risk that fold1 or fold2 fails, "
         "from the last spread check (robot verdict and overlay scores). "
         "Weak labels (robot verdicts). See fold_risk.verdict.",
@@ -162,7 +168,7 @@ def main() -> None:
         "model_checks": checks,
         "shared_holdout": shared_holdout(table, card),
     }
-    dump_json(card, HERE / "model.json")
+    write_card(card, HERE / "model.json")
     print(
         f"{len(table)} runs. Within-robot delta AUC "
         f"{perm['observed_delta_auc']:+.2f}, shuffled null "

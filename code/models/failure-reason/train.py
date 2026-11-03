@@ -21,9 +21,9 @@ import pandas as pd
 
 from maus_classify import failure_reason as fr
 from maus_classify.check_verdict import embedding_columns
+from maus_classify.harness import write_card
 from maus_classify.split import TEST
 from maus_export.analysis import find_data_dir
-from maus_export.doe_analyze import dump_json
 
 HERE = Path(__file__).resolve().parent
 EXAMPLE = HERE.parents[2] / "assets" / "failure-reason-example.jpg"
@@ -107,6 +107,11 @@ def example_figure(
     )
     n_wrong = max(1, min(len(wrong), EXAMPLE_WRONG))
     chosen = wrong[:n_wrong] + right[: EXAMPLE_TILES - n_wrong]
+    # show a second robot when the picks all come from one
+    seen = {t.robot for t in chosen}
+    other = [t for _, t in tiles if t.robot not in seen]
+    if len(seen) < 2 and other:
+        chosen = chosen[: EXAMPLE_TILES - 1] + other[:1]
     return example_grid(
         chosen,
         EXAMPLE,
@@ -133,7 +138,7 @@ def main() -> None:
     for check in fr.CHECKS:
         cards[check] = fr.train_check(frames, embeddings, check, HERE / check)
         print(f"{check}: {cards[check]['verdict']}")
-    dump_json(summary(cards), HERE / "summary.json")
+    write_card(summary(cards), HERE / "summary.json")
     print(example_figure(data_dir, frames, embeddings))
 
 

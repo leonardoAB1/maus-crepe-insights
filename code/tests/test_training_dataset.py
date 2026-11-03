@@ -129,6 +129,7 @@ def test_schema_does_not_depend_on_later_input_rows(tmp_path: Path) -> None:
     assert "param.dispense.oil.grams" in earlier_schema.names
 
 
+@pytest.mark.slow
 def test_cli_exports_candidate_features_and_manifest(tmp_path: Path) -> None:
     raw = tmp_path / "raw" / "runs"
     raw.mkdir(parents=True)
@@ -301,6 +302,7 @@ def test_statuses_and_mixed_recipe_values_remain_distinct(
     )
 
 
+@pytest.mark.slow
 def test_cli_rejects_duplicate_json_keys_without_touching_old_output(
     tmp_path: Path,
 ) -> None:
@@ -354,6 +356,7 @@ def test_invalid_sensor_is_rejected_without_replacing_output(
     "sensor", ["hotplateTemp", "envTempStart", "envHumidityStart"]
 )
 @pytest.mark.parametrize("value", [True, False])
+@pytest.mark.slow
 def test_cli_rejects_boolean_sensor_privately(
     tmp_path: Path, sensor: str, value: bool
 ) -> None:
@@ -431,6 +434,7 @@ def test_nonfinite_sensor_value_is_rejected(
     assert list(output.parent.iterdir()) == [output]
 
 
+@pytest.mark.slow
 def test_cli_failure_does_not_echo_private_field_values(tmp_path: Path) -> None:
     raw = tmp_path / "raw" / "runs"
     raw.mkdir(parents=True)

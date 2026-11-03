@@ -1,0 +1,12 @@
+flowchart LR
+    raw[Check stills] --> fix[Image correction]
+    vid[Run video] --> fix
+    ovl[Robot overlays] --> read[Overlay scores]
+    fix --> seg[Crepe segmentation]
+    seg --> state[Fold state]
+    raw --> heads[Frame models]
+    state --> time[Video timeline]
+    log[Robot logs] --> time
+    time --> page[Review pages]
+    read --> why[Failure insight]
+    heads --> why

@@ -164,7 +164,10 @@ def estimate_alignment(raw: np.ndarray, overlay: np.ndarray) -> dict[str, Any]:
 
 
 def rectify(
-    image: np.ndarray, transform: dict[str, Any]
+    image: np.ndarray,
+    transform: dict[str, Any],
+    *,
+    interpolation: int = cv2.INTER_LINEAR,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Warp raw pixels and return a validity mask; never rescale implicitly."""
     if transform.get("schema_version") != SCHEMA_VERSION:
@@ -194,7 +197,7 @@ def rectify(
     denominators = corners @ matrix[2]
     if not (np.all(denominators > 0) or np.all(denominators < 0)):
         raise ValueError("Projective horizon intersects the source image")
-    output = cv2.warpPerspective(image, matrix, size)
+    output = cv2.warpPerspective(image, matrix, size, flags=interpolation)
     # Require a fully supported bilinear footprint, not just a nearest pixel.
     support = cv2.warpPerspective(
         np.ones(image.shape[:2], dtype=np.float32), matrix, size

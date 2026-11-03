@@ -8,16 +8,32 @@
 :root {color-scheme: dark; font-family: Inter, system-ui, sans-serif;
   background: #0a0f1d; color: #e8edf8}
 * {box-sizing: border-box} body {margin: 0} button {font: inherit}
-.layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh}
-aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828}
+select {font: inherit; color: inherit; background: #18243a;
+  border: 1px solid #2f4864; border-radius: 6px; padding: 5px}
+.layout {display: grid; grid-template-columns: 285px minmax(0,1fr); min-height: 100vh;
+  align-items: start}
+aside {border-right: 1px solid #263247; padding: 28px 18px; background: #101828;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto}
+.run-heading {display: flex; align-items: center; justify-content: space-between; gap: 8px}
+.spinner {width: 15px; height: 15px; border: 2px solid #344864;
+  border-top-color: #8cb9ff; border-radius: 50%; animation: spin .8s linear infinite;
+  flex-shrink: 0}
+@keyframes spin {to {transform: rotate(360deg)}}
+@media(prefers-reduced-motion: reduce) {.spinner {animation: none; border-style: dotted}}
+#progress {margin-top: 14px} #progress:empty {display: none}
+#progress progress {display: block; width: 100%; margin-top: 8px; accent-color: #8cb9ff}
 .brand {font-weight: 800; letter-spacing: -.04em; font-size: 24px}
 .eyebrow {color: #8294b1; font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .12em; margin: 30px 0 12px}
-#runs {display: grid; gap: 8px} .run {text-align: left; width: 100%; padding: 14px;
+#runs, #failed-runs {display: grid; gap: 8px}
+#failed-section {margin-top: 24px}
+#failed-section summary {cursor: pointer; color: #ff8b95; padding: 10px 0}
+.failure-reason {overflow-wrap: anywhere}
+ .run {text-align: left; width: 100%; padding: 14px;
   border: 1px solid #28374d; border-radius: 12px; color: #e9efff; background: #18243a;
   cursor: pointer} .run:hover, .run.active {border-color: #77a5ff; background: #213455}
 .sub {display: block; margin-top: 5px; font-size: 12px; color: #a2b2c9}
-main {padding: 34px clamp(20px,4vw,60px); max-width: 1600px; width: 100%; margin: auto}
+main {padding: 34px clamp(20px,4vw,60px); max-width: 1600px; width: 100%; margin: 0 auto}
 header {display: flex; align-items: end; justify-content: space-between; gap: 16px}
 h1 {font-size: clamp(26px,3vw,38px); margin: 5px 0; letter-spacing: -.04em}
 h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
@@ -32,25 +48,58 @@ h2 {font-size: 17px; margin: 0 0 8px} p {color: #98a9c2; line-height: 1.5}
 .event {display: block; width: 100%; margin-top: 9px; border: 1px solid #29394e;
   background: #18263b; color: #eef3fe; text-align: left; padding: 12px;
   border-radius: 10px; cursor: pointer} .event:hover {border-color: #75a7ff}
+.chip {display: inline-block; margin: 6px 6px 0 0; padding: 2px 8px;
+  border-radius: 999px; font-size: 12px; border: 1px solid #2f4360}
+.chip.ok {border-color: #2f7a5c} .chip.fail {border-color: #8a3a45}
+.chip.warn {color: #efcc83; border-color: #6b5634}
 .ok {color: #61d8a2} .fail {color: #ff8b95} .muted {color: #96a8c0}
 .notice {border: 1px solid #6b5634; color: #efcc83; padding: 12px;
   border-radius: 10px; font-size: 13px; margin-top: 20px}
 @media(max-width: 850px) {.layout {grid-template-columns: 1fr} aside {border-right: 0;
-  border-bottom: 1px solid #263247} .grid {grid-template-columns: 1fr} main {padding: 25px}}
+  border-bottom: 1px solid #263247; position: static; height: auto; max-height: 35vh} .grid {grid-template-columns: 1fr} main {padding: 25px}}
 </style>
 </head>
 <body>
 <div class="layout"><aside><div class="brand">◒ Fold insights</div>
-<div class="sub">Local video review</div><div class="eyebrow">Analysed runs</div>
-<div id="runs"><span class="muted">Loading videos...</span></div></aside>
+<div class="sub">Local video review</div><div class="eyebrow">Runs</div>
+<div id="connection" class="sub" role="status"></div>
+<div id="runs"><span class="muted">Loading videos...</span></div>
+<details id="failed-section" hidden><summary id="failed-summary">Failed runs</summary>
+<div id="failed-runs"></div></details></aside>
 <main><header><div><div class="eyebrow" style="margin:0">Vision analysis</div>
 <h1 id="title">Run overview</h1><p>Review logged checks and visual estimates.</p></div>
-<span class="pill">Local data only</span></header>
+<label class="pill">Segmentation
+<select id="model" aria-label="Segmentation model">
+<option value="classical">Classical CV</option>
+<option value="onnx">ONNX student</option>
+</select></label></header>
+<p class="sub">ONNX: raw-frame inference, then perspective-corrected mask.
+Both options use the same geometry and fold rules. Prepare both with
+<code>fold-watch --model both</code>.</p>
 <div class="notice">Experimental estimates, not ground truth or robot control.
 Robot verdicts can be wrong. Checks are shown after the robot tries each action;
 exact fold movement times are not logged. Video may contain people.</div>
+<section class="card" style="margin-top:18px"><h2>Video analysis runner</h2>
+<label>Video <select id="runner-video" aria-label="Video to analyze">
+<option value="">All pending cached videos</option></select></label>
+<label>nthreads <select id="nthreads" aria-label="Parallel video workers">
+<option value="1" selected>1</option><option value="4">4</option>
+<option value="16">16</option></select></label>
+<button id="start-runner" type="button" disabled>Start both analyses</button>
+<p class="sub">Starts Classical CV and ONNX together. The segmentation selector
+chooses which results to view. nthreads limits the shared worker pool, not
+ONNX inference threads; at 1, both mode uses 2 workers for concurrency.
+All pending skips completed results; choosing one video reanalyses both.
+Raw inputs
+are never changed. Do not run a separate CLI batch against the same outputs.</p>
+<div id="runner-status" class="sub" role="status">Loading runner...</div>
+</section>
 <div class="grid"><div><section class="card"><h2>Playback</h2>
 <video id="video" controls preload="metadata"></video>
+<div id="progress" aria-live="polite"></div>
+<p class="sub">Low-bandwidth playback when available.
+<a id="original" href="#" download hidden>Download original analysis video</a>
+(full quality, larger file).</p>
 <p class="sub">Overlay: <span style="color:#50d25f">green mask</span> ·
 <span style="color:#46c8eb">plate</span> ·
 <span style="color:#ffd21e">fold edges</span> ·
@@ -87,6 +136,20 @@ const phaseStyles = {
   add_topping: ['toppings (log)', '#ec86cb'],
   discard_crepe: ['discard', '#8295ac']
 };
+function modelLine(model) {
+  const line = document.createElement('div');
+  const pct = value => Math.round(value * 100) + '%';
+  if (model.verdict) line.append(textNode('span', 'Model: ' + model.verdict +
+    ' (fail ' + pct(model.p_fail) + ')', 'chip ' + (model.verdict === 'fail' ? 'fail' : 'ok')));
+  if (model.agrees === false) line.append(textNode('span', 'Disagrees with robot', 'chip warn'));
+  line.append(textNode('span', 'Fold: ' + model.fold_state + ' ' + pct(model.fold_p), 'chip'));
+  for (const [reason, p] of Object.entries(model.reasons || {}))
+    line.append(textNode('span', reason.replaceAll('_', ' ') + ' ' + pct(p),
+      'chip' + (p >= 0.5 ? ' fail' : '')));
+  if (model.crepe_share !== null && model.crepe_share !== undefined)
+    line.append(textNode('span', 'Crepe area ' + pct(model.crepe_share), 'chip'));
+  return line;
+}
 function legend() {
   const el = document.querySelector('#phase-legend');
   el.replaceChildren();
@@ -100,6 +163,75 @@ function legend() {
 const video = document.querySelector('#video');
 const canvas = document.querySelector('#chart');
 let selected = null;
+let selectedId = null;
+let cachedRuns = new Map();
+let progressJobs = new Map();
+const runButtons = new Map();
+const modelSelect = document.querySelector('#model');
+const modelQuery = () => modelSelect.value === 'onnx' ? '?model=onnx' : '';
+let requestVersion = 0;
+modelSelect.addEventListener('change', async () => {
+  const id = selectedId, time = video.currentTime || 0;
+  ++requestVersion;
+  cachedRuns.clear(); progressJobs.clear(); completedRuns = null;
+  selected = null; video.removeAttribute('src'); video.load();
+  document.querySelector('#original').hidden = true;
+  renderSidebar(); renderProgress(); draw();
+  await pollProgress(false);
+  if (id != null) await showRun(id, time);
+});
+let launchPending = false;
+let runnerOptionsKey = null;
+async function refreshRunner() {
+  const button = document.querySelector('#start-runner');
+  const status = document.querySelector('#runner-status');
+  try {
+    const response = await fetch('/api/runner' + modelQuery());
+    if (!response.ok) throw new Error('Runner unavailable');
+    const state = await response.json(), runs = state.runs || [];
+    const key = runs.join(',');
+    if (key !== runnerOptionsKey) {
+      const select = document.querySelector('#runner-video');
+      const chosen = select.value;
+      const all = textNode('option', 'All pending cached videos'); all.value = '';
+      select.replaceChildren(all);
+      for (const id of runs) {
+        const option = textNode('option', 'Run ' + id); option.value = String(id);
+        select.append(option);
+      }
+      select.value = runs.some(id => String(id) === chosen) ? chosen : '';
+      runnerOptionsKey = key;
+    }
+    button.disabled = launchPending || state.running || !runs.length;
+    if (!launchPending) status.textContent = state.running ?
+      'Running ' + state.model + ' with ' + (state.workers || state.nthreads) + ' shared workers.' :
+      state.returncode != null ? (state.returncode === 0 ? 'Runner completed.' :
+        'Runner failed. See per-video progress and private web-runner.log.') :
+      runs.length + ' cached videos available.';
+  } catch (_) {
+    button.disabled = true; status.textContent = 'Could not load runner status.';
+  }
+}
+document.querySelector('#start-runner').addEventListener('click', async () => {
+  if (launchPending) return;
+  launchPending = true;
+  document.querySelector('#start-runner').disabled = true;
+  const status = document.querySelector('#runner-status');
+  status.textContent = 'Starting analysis...';
+  try {
+    const id = document.querySelector('#runner-video').value;
+    const response = await fetch('/api/runner', {
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-Maus-Runner': '1'},
+      body: JSON.stringify({model: 'both',
+        nthreads: Number(document.querySelector('#nthreads').value || 1),
+        run_id: id ? Number(id) : null})
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not start runner');
+    await pollProgress(false);
+  } catch (error) {status.textContent = error.message;}
+  finally {launchPending = false;}
+});
 function textNode(tag, text, cls) {
   const el = document.createElement(tag); el.textContent = text;
   if (cls) el.className = cls; return el;
@@ -194,10 +326,34 @@ canvas.addEventListener('click', event => {
 });
 video.addEventListener('timeupdate', draw); video.addEventListener('loadedmetadata', draw);
 window.addEventListener('resize', draw);
-async function showRun(id) {
-  const response = await fetch('/api/run/' + id); if (!response.ok) return;
-  selected = await response.json(); document.querySelector('#title').textContent = 'Run ' + id;
-  video.src = '/video/' + id; const events = document.querySelector('#events');
+async function showRun(id, time = 0) {
+  const version = ++requestVersion, query = modelQuery();
+  document.querySelector('#original').hidden = true;
+  selectedId = id;
+  selected = null;
+  document.querySelector('#title').textContent = 'Run ' + id;
+  video.removeAttribute('src'); video.load();
+  const events = document.querySelector('#events');
+  events.textContent = 'No prepared analysis for this model. Video and checks will be available after processing completes.';
+  renderSidebar(); renderProgress(); draw();
+  if (!cachedRuns.has(id)) return;
+  try {
+    const response = await fetch('/api/run/' + id + query);
+    if (!response.ok) throw new Error('Run unavailable');
+    const detail = await response.json();
+    if (selectedId !== id || version !== requestVersion) return;
+    selected = detail;
+  } catch (_) {
+    if (selectedId === id && version === requestVersion)
+      events.textContent = 'Could not load this run. Select it to retry.';
+    return;
+  }
+  video.onloadedmetadata = () => {
+    video.currentTime = Math.min(time, video.duration || 0); draw();
+  };
+  video.src = '/video/' + id + query;
+  document.querySelector('#original').href = '/original-video/' + id + query;
+  document.querySelector('#original').hidden = false;
   events.replaceChildren();
   for (const highlight of selected.highlights || []) {
     const marker = textNode('button', highlight.name, 'event');
@@ -231,6 +387,7 @@ async function showRun(id) {
       Math.round((event.confidence || 0) * 100) + '%',
       event.verdict === 'failure' ? 'sub fail' : 'sub muted'));
     button.append(textNode('span', 'Check starts at ' + Math.max(0, event.time).toFixed(1) + 's', 'sub'));
+    if (event.model) button.append(modelLine(event.model));
     button.onclick = () => {
       video.currentTime = Math.max(0, event.observed_at ?? event.time);
     }; events.append(button);
@@ -240,26 +397,137 @@ async function showRun(id) {
   legend();
   draw();
 }
-async function init() {
+function isProcessing(job) {
+  return job && ['starting', 'running', 'finalizing'].includes(job.state);
+}
+function failureReason(job) {
+  const type = job.error || 'Processing error';
+  return job.error_message ? type + ': ' + job.error_message :
+    type + ' (no detailed message recorded)';
+}
+function renderSidebar() {
   const container = document.querySelector('#runs');
-  try {
-    const runs = await (await fetch('/api/runs')).json(); container.replaceChildren();
-    if (!runs.length) {container.textContent = 'No analysed videos yet.'; return;}
-    for (const run of runs) {
+  const failedContainer = document.querySelector('#failed-runs');
+  const ids = [...new Set([...cachedRuns.keys(), ...progressJobs.keys()])].sort((a, b) => a - b);
+  const visibleIds = new Set(ids);
+  for (const [id, button] of runButtons) {
+    if (!visibleIds.has(id)) {button.remove(); runButtons.delete(id);}
+  }
+  const failedIds = ids.filter(id => progressJobs.get(id)?.state === 'failed');
+  const regularIds = ids.filter(id => progressJobs.get(id)?.state !== 'failed');
+  document.querySelector('#failed-section').hidden = failedIds.length === 0;
+  document.querySelector('#failed-summary').textContent = 'Failed runs (' + failedIds.length + ')';
+  if (!container.children.length || !runButtons.size) container.replaceChildren();
+  for (const id of ids) {
+    let button = runButtons.get(id);
+    if (!button) {
+      button = textNode('button', '', 'run'); button.dataset.id = id;
+      button.onclick = () => showRun(id);
+      runButtons.set(id, button);
+    }
+    button.classList.toggle('active', id === selectedId);
+    button.setAttribute('aria-pressed', String(id === selectedId));
+    const run = cachedRuns.get(id), job = progressJobs.get(id);
+    const heading = textNode('span', '', 'run-heading');
+    heading.append(textNode('span', 'Run ' + id));
+    if (isProcessing(job) && !job.stale) {
+      const spinner = textNode('span', '', 'spinner');
+      spinner.setAttribute('role', 'status');
+      spinner.setAttribute('aria-label', 'Processing');
+      heading.append(spinner);
+    } else if (job && (job.stale || job.state === 'failed')) {
+      const warning = textNode('span', '!', 'fail');
+      warning.title = job.stale ? 'No recent runner update' : 'Processing failed';
+      heading.append(warning);
+    }
+    button.replaceChildren(heading);
+    if (job?.state === 'failed') {
+      button.append(textNode('span', failureReason(job), 'sub fail failure-reason'));
+    }
+    if (run) {
       const failures = run.events.filter(event => event.ok === false).length;
-      const button = textNode('button', 'Run ' + run.id, 'run'); button.dataset.id = run.id;
       button.append(textNode('span', failures ? failures + ' robot-reported failures' :
         'No reported failures', failures ? 'sub fail' : 'sub muted'));
       button.append(textNode('span',
         (run.visual_failures || 0) + ' visual failures, ' +
         (run.visual_unknown || 0) + ' unknown checks', 'sub'));
+      if (run.model_disagreements) button.append(textNode('span',
+        run.model_disagreements + ' model disagreements', 'sub fail'));
       button.append(textNode('span', run.dispense_ok === true ? 'Dough: stable' :
         run.dispense_ok === false ? 'Dough: flagged' : 'Dough: not measured',
         run.dispense_ok === false ? 'sub fail' : 'sub muted'));
-      button.onclick = () => showRun(run.id); container.append(button);
     }
-    showRun(runs[0].id);
-  } catch (_) {container.textContent = 'Could not load local videos.';}
+  }
+  // Keep existing buttons in place while polling to preserve scroll and focus.
+  for (const [target, group] of [[container, regularIds], [failedContainer, failedIds]]) {
+    group.forEach((id, index) => {
+      const button = runButtons.get(id);
+      if (target.children[index] !== button)
+        target.insertBefore(button, target.children[index] || null);
+    });
+  }
+  if (!regularIds.length) container.textContent = 'No analysed videos or active runners yet.';
 }
-init();
+function renderProgress() {
+  const container = document.querySelector('#progress');
+  container.replaceChildren();
+  const job = progressJobs.get(selectedId);
+  if (!job) return;
+  const seconds = value => value == null ? '—' : value.toFixed(2) + ' s';
+  container.append(textNode('strong', 'Processing: ' + job.state +
+    (job.stale ? ' · no recent update (runner may have stopped)' : ''),
+    job.state === 'failed' ? 'fail' : ''));
+  const bar = document.createElement('progress');
+  bar.max = 1; bar.value = job.fraction;
+  bar.setAttribute('aria-label', 'Run ' + job.id + ' processing completion');
+  container.append(bar);
+  container.append(textNode('div', (100 * job.fraction).toFixed(1) + '% · ' +
+    job.frames_done + ' / ' + (job.frames_total ?? '—') + ' frames (estimated total)' +
+    ' · ' + (job.fps == null ? '—' : job.fps.toFixed(2)) + ' frames/s' +
+    ' · ' + seconds(job.seconds_per_frame) + '/frame' +
+    ' · elapsed ' + seconds(job.elapsed_seconds) + ' · ETA ' + seconds(job.eta_seconds) +
+    (job.state === 'failed' ? ' · ' + failureReason(job) : ''), 'sub'));
+  container.append(textNode('span', 'End-to-end analysed-frame speed, not source video FPS.', 'sub'));
+}
+async function refreshRuns() {
+  const query = modelQuery();
+  const response = await fetch('/api/runs' + query);
+  if (!response.ok) throw new Error('Runs unavailable');
+  const runs = await response.json();
+  if (query === modelQuery()) cachedRuns = new Map(runs.map(run => [run.id, run]));
+}
+let completedRuns = null;
+async function pollProgress(schedule = true) {
+  const query = modelQuery();
+  const connection = document.querySelector('#connection');
+  try {
+    const response = await fetch('/api/progress' + query);
+    if (!response.ok) throw new Error('Progress unavailable');
+    const jobs = await response.json();
+    if (query !== modelQuery()) return;
+    const previous = progressJobs.get(selectedId);
+    progressJobs = new Map(jobs.map(job => [job.id, job]));
+    const completed = jobs.filter(job => job.state === 'completed').map(job =>
+      job.id + ':' + job.updated_at).join(',');
+    if (completedRuns === null || completed !== completedRuns) await refreshRuns();
+    if (query !== modelQuery()) return;
+    completedRuns = completed;
+    connection.textContent = '';
+    renderSidebar(); renderProgress();
+    const current = progressJobs.get(selectedId);
+    if (selectedId === null) {
+      const active = jobs.find(job => isProcessing(job) && !job.stale);
+      const first = active ? active.id : cachedRuns.keys().next().value ?? jobs[0]?.id;
+      if (first != null) await showRun(first);
+    } else if (current?.state === 'completed' &&
+        (previous?.state !== 'completed' || previous.updated_at !== current.updated_at)) {
+      await showRun(selectedId);
+    }
+  } catch (_) {connection.textContent = 'Connection lost; retrying…';}
+  finally {
+    await refreshRunner();
+    if (schedule) setTimeout(pollProgress, 1000);
+  }
+}
+pollProgress();
 </script></body></html>

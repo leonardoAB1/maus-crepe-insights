@@ -60,6 +60,69 @@ How results are scored:
 - **Bonus:** auto-labelling from run videos, a spread score that predicts a failed fold, detecting the
   crêpe while the plate rotates
 
+### How we tackled them
+
+The robot already judges every check and draws its analysis onto an overlay
+image. We use those verdicts and overlays as weak labels and reference
+measurements, and build independent vision next to them, so the two can be
+compared. The stages are on the
+[vision pipeline](documentation/vision/vision-pipeline.md) page.
+
+**1. Spread quality: measure the spread, then check it two ways.**
+
+- Read the robot's spread overlay back as numbers (`pixi run vision`):
+  diameter, centre offset, circularity, holes, bare plate inside the
+  outline, residue and browning, per run.
+- Segment the crêpe ourselves, live on every video frame: a classical mask
+  inside the detected plate, and the distilled crêpe student (ONNX, about
+  6 ms per frame, pixel IoU 0.966 against SAM 3). Against the team's human
+  masks the student scores a median IoU of 0.944, as close as two humans
+  are to each other (0.933). Both give area, diameter, holes and shape.
+- Watch the dough on video: a supervisor flags a spread whose plate
+  coverage collapses after pouring.
+- Frame models: the spread verdict head (balanced accuracy 0.70) and a
+  provisional "too small" failure-reason head.
+- **Missing:** no single fitted quality score yet, and a spread score does
+  not predict a later fold failure within a robot
+  ([fold risk](documentation/analysis/fold-risk.md)).
+
+**2. Position and orientation: one top-down view, then geometry.**
+
+- Map every robot's camera into one top-down view with a per-robot mean
+  correction ([robot correction](documentation/vision/robot-correction.md)).
+- Read the reference pose from the robot's overlays
+  (`pixi run overlay-pose`): crêpe centre and axis per check, and the
+  push-off angle, which matches the robot's logged rotation up to a
+  constant 15 degrees (90% of attempts within 0.4 degrees).
+- Measure our own pose from the live student mask in the top view
+  (`maus_export.crepe_pose`): centre, axis, fold line and a quarter's
+  corner on every frame. Against the robot's overlays the median centre
+  error is 0.023 plate radii (fold1) and the median axis error 1.1 degrees;
+  the fold line is found on every passed fold1 frame.
+- **Missing:** the reference is the robot's outline, not a human
+  measurement, and positions are in plate radii and image degrees, not
+  millimetres or robot coordinates.
+
+**3. Fold detection: three independent answers.**
+
+- `fold-class` head on the raw frame: empty, flat, half or quarter with a
+  probability, 109 of 110 holdout frames correct.
+- Crêpe student rule: crêpe area relative to the same run's flat crêpe,
+  99.5% agreement at 991 passed check moments.
+- Classical rule on the corrected mask (area shares, shape, a small
+  tie-break model), 88.5% on the same frames.
+- On video, each method votes the state for a second after every logged
+  check, so a failed fold shows up as a mismatch with the expected state.
+- Human check: the student's live state matches the team's human phase
+  labels on 98.3% of 178 frames (5 runs of one robot, a first check).
+- **Missing:** the triangle fold (no frame shows one), and most labels are
+  the robot's verdicts, so these scores are optimistic.
+
+**Real time.** The frame embedder runs in about 4 ms per frame on a desktop
+CPU and the student in about 6 ms. On a Raspberry Pi 3 the classical video
+analysis takes a median 413 ms per frame, so the Pi 5 target of about
+300 ms is not demonstrated yet ([Raspberry Pi](documentation/system/raspberry-pi.md)).
+
 Task by task, with what exists and what is missing:
 [challenge coverage](documentation/status.md#brief-coverage).
 
@@ -67,43 +130,87 @@ Task by task, with what exists and what is missing:
 
 <!-- diagram: status -->
 ```mermaid
-flowchart LR
-    api[Dashboard API] --> raw[Raw run JSON]
-    raw --> mcap[MCAP per run]
-    raw --> table[Runs table]
-    raw --> vision[Vision scores]
-    vision --> table
-    table --> frames[Frame table]
-    frames --> models[ONNX models]
-    raw --> pilot[Frame pilot]
-    pilot --> labels[Human labels]
-    labels --> masks[Reviewed masks]
-    masks --> rectified[Rectified frames]
-    models --> predict[Model predictions]
-    predict --> compare[Deviation scoring]
-    rectified --> compare
-    compare --> weights[Weighted dataset]
-    weights --> finetune[Fine-tuned model]
-    finetune --> live[Live frame]
-    models --> live
+flowchart TD
+    subgraph data[Data]
+        api[Dashboard API] --> raw[Raw run JSON]
+        raw --> mcap[MCAP per run]
+        raw --> table[Runs table]
+        raw --> vision[Vision scores]
+        vision --> table
+        table --> frames[Frame table]
+    end
+
+    subgraph frame_models[Frame models]
+        frames --> split[Per-robot split]
+        frames --> embed[Frame embedder]
+        split --> verdict[Check verdicts]
+        split --> foldstate[Fold state]
+        split --> reason[Failure reasons]
+        split --> risk[Fold risk]
+        embed --> verdict
+        embed --> foldstate
+        embed --> reason
+        vision --> risk
+    end
+
+    subgraph labels_path[Labels and masks]
+        raw --> pilot[Frame pilot]
+        pilot --> labels[Human labels]
+        labels --> masks[Reviewed masks]
+        masks --> rectified[Rectified frames]
+        raw --> foldseg[Fold segmentation]
+        raw --> viewer[Run viewer]
+        masks --> viewer
+    end
+
+    foldseg -. cross-check .-> foldstate
+
+    subgraph live_path[Live frame]
+        verdict --> predict[Model predictions]
+        foldstate --> predict
+        reason --> predict
+        predict --> compare[Deviation scoring]
+        rectified --> compare
+        foldseg --> compare
+        compare --> weights[Weighted dataset]
+        weights --> finetune[Fine-tuned model]
+        predict --> overlay[Overlay renderer]
+        masks --> overlay
+        predict --> pi[Pi runtime]
+        finetune --> pi
+        overlay --> live[Live frame]
+        pi --> live
+    end
 
     classDef done fill:#2e7d32,stroke:#1b5e20,color:#ffffff
     classDef partial fill:#ed6c02,stroke:#b53d00,color:#ffffff
     classDef todo fill:#616161,stroke:#424242,color:#ffffff
 
-    class api,raw,mcap,table,vision,frames,models,pilot done
-    class labels,masks,rectified,compare,weights partial
-    class predict,finetune,live todo
+    class api,raw,mcap,table,vision,frames,split,embed,pilot done
+    class verdict,foldstate,reason,risk,labels,masks,rectified partial
+    class foldseg,overlay,viewer,compare,weights partial
+    class predict,finetune,pi,live todo
 ```
 <!-- /diagram -->
 
-Green is built and verified, amber is built but not yet proven end to
-end, grey is not built. The data path, the runs and frame tables, the
-vision scores, the ONNX models and the labeling app are green. A live
-frame needs two more things: a reviewed mask export, which is blocked
-on the frames whose hole brush overlaps the material brush, and a
-material-mask model to predict with. The gaps and the numbers behind
-each colour are in [documentation/status.md](documentation/status.md).
+Green is built and verified, amber is built but not yet proven, grey is
+not built. The data path, the frame table, the per-robot split and the
+frame embedder are green. The four frame models are amber: they run and
+ship as ONNX, but the check verdicts do not yet generalize across robots,
+fold state and failure reasons rest on labels derived from the robot's own
+checks, and fold risk shows no signal. The overlay renderer, the run
+viewer and the fold segmentation are amber for the same reason, working
+code without an end-to-end proof: the overlay draws the layers onto a
+video and only the records sidecar feeds it, the viewer plays a run and
+answers with the pixel-mask suggestion only, and the fold segmentation is
+merged and evaluated on the same export it was tuned on. It also serves
+as an independent cross-check for fold state. A live frame still needs a
+prediction runtime on the Pi (in review), a reviewed mask export, which
+is blocked on the frames whose hole brush overlaps the material brush,
+and a material-mask model. The gaps and the numbers behind each colour
+are in
+[documentation/status.md](documentation/status.md).
+
 ## How it works
 
 **The robot.** A Raspberry Pi 5 runs ROS 2 and makes every decision; two Duet boards drive the motion and a
@@ -238,6 +345,26 @@ flowchart LR
 ```
 <!-- /diagram -->
 
+**Our vision pipeline.** From check stills and run videos to fold states, check verdicts and failure insight.
+Each stage and its own page are in [documentation/vision/vision-pipeline.md](documentation/vision/vision-pipeline.md).
+
+<!-- diagram: vision-pipeline -->
+```mermaid
+flowchart LR
+    raw[Check stills] --> fix[Image correction]
+    vid[Run video] --> fix
+    ovl[Robot overlays] --> read[Overlay scores]
+    fix --> seg[Crepe segmentation]
+    seg --> state[Fold state]
+    raw --> heads[Frame models]
+    state --> time[Video timeline]
+    log[Robot logs] --> time
+    time --> page[Review pages]
+    read --> why[Failure insight]
+    heads --> why
+```
+<!-- /diagram -->
+
 **What the vision scores measure.** The robot's check overlays already mark the crêpe outline, holes,
 residue and the ideal fold shape. `pixi run vision` reads those marks back as numbers per run (diameter,
 centre offset, bare plate inside the crêpe, fold overlap, fold-2/fold-1 area ratio, browning), so failures become measurable
@@ -352,6 +479,10 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 ## Documentation
 
 [Browse all documentation](documentation/README.md) by subject.
+
+Pitch deck: [assets/pitch/pitch-deck.pptx](assets/pitch/pitch-deck.pptx),
+with the talk track and the source of every number on a slide in
+[assets/pitch/notes.md](assets/pitch/notes.md).
 
 - [Project status: what works and what does not](documentation/status.md)
 

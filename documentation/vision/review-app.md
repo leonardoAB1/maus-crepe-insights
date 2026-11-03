@@ -46,6 +46,12 @@ refresh without restarting the app.
 | `records` | the fields and masks from a records sidecar, as written by `maus-export overlay` | working when a sidecar exists |
 | `check_verdict` | pass or fail from the ONNX check heads | placeholder: it needs `onnxruntime`, and it says so instead of showing nothing |
 
+Live crêpe masks on video already exist elsewhere: the fold video analysis
+draws the classical or student mask on every sampled frame into
+`annotated.mp4`, and both review sites play it (see
+[vision pipeline](vision-pipeline.md#6-video-timeline)). This viewer is
+where further producers plug in.
+
 A frame the model never saw, or a frame with no record, is shown as such: the
 panel says which producer failed and why, and the video keeps playing.
 
