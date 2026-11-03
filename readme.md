@@ -1,5 +1,19 @@
 # Maus Crêpe Insights - BaselHack 2026
 
+> **Project status:** BaselHack 2026 ended on 1 November 2026. This repository
+> is handed over to Maus Robotics. Start with the
+> [handover guide](documentation/handover.md); the final presentation is in
+> [assets/pitch](assets/pitch/README.md)
+> ([PDF](assets/pitch/crepeflow-pitch.pdf)).
+
+**See it in 30 seconds.** Two real runs on the same robot, one minute in.
+Every frame shows the three challenge tasks: spread quality, position and
+orientation, and fold detection. Click a preview for the full video.
+
+| A broken spread: P(pass) 0.02 | A good spread: P(pass) 0.91 |
+| --- | --- |
+| [![Run 2536, the batter spirals and leaves holes](assets/pitch/video/run-2536-preview.gif)](assets/pitch/video/run-2536.mp4) | [![Run 2542, a full round spread](assets/pitch/video/run-2542-preview.gif)](assets/pitch/video/run-2542.mp4) |
+
 Our BaselHack 2026 project on the **Maus Robotics** challenge. Maus builds autonomous crêpe robots.
 Every run is logged with phases, machine logs, on-robot vision checks (with images), recipe parameters and video.
 We turn that data into insight: why runs fail, which settings and conditions matter, and how to catch problems early.
@@ -118,10 +132,13 @@ compared. The stages are on the
 - **Missing:** the triangle fold (no frame shows one), and most labels are
   the robot's verdicts, so these scores are optimistic.
 
-**Real time.** The frame embedder runs in about 4 ms per frame on a desktop
-CPU and the student in about 6 ms. On a Raspberry Pi 3 the classical video
-analysis takes a median 413 ms per frame, so the Pi 5 target of about
-300 ms is not demonstrated yet ([Raspberry Pi](documentation/system/raspberry-pi.md)).
+**Real time.** On a Raspberry Pi 5 the student-based video analysis runs at
+0.15 s per frame end to end (4,510 frames, 3 runs), under the brief's target
+of about 300 ms; the per-frame loop itself takes a median 119 ms. The same
+loop takes 854 ms on a Raspberry Pi 3. On a desktop CPU the frame embedder
+runs in about 4 ms and the student in about 6 ms
+([Raspberry Pi](documentation/system/raspberry-pi.md),
+[status](documentation/status.md#brief-coverage)).
 
 Task by task, with what exists and what is missing:
 [challenge coverage](documentation/status.md#brief-coverage).
@@ -159,11 +176,14 @@ flowchart TD
         labels --> masks[Reviewed masks]
         masks --> rectified[Rectified frames]
         raw --> foldseg[Fold segmentation]
+        raw --> student[Crêpe student]
+        student --> pose[Crêpe pose]
         raw --> viewer[Run viewer]
         masks --> viewer
     end
 
     foldseg -. cross-check .-> foldstate
+    student -. cross-check .-> foldstate
 
     subgraph live_path[Live frame]
         verdict --> predict[Model predictions]
@@ -174,6 +194,8 @@ flowchart TD
         foldseg --> compare
         compare --> weights[Weighted dataset]
         weights --> finetune[Fine-tuned model]
+        student --> predict
+        pose --> overlay
         predict --> overlay[Overlay renderer]
         masks --> overlay
         predict --> pi[Pi runtime]
@@ -187,28 +209,31 @@ flowchart TD
     classDef todo fill:#616161,stroke:#424242,color:#ffffff
 
     class api,raw,mcap,table,vision,frames,split,embed,pilot done
+    class student,predict,overlay,viewer,pi,live done
     class verdict,foldstate,reason,risk,labels,masks,rectified partial
-    class foldseg,overlay,viewer,compare,weights partial
-    class predict,finetune,pi,live todo
+    class foldseg,pose,compare partial
+    class weights,finetune todo
 ```
 <!-- /diagram -->
 
 Green is built and verified, amber is built but not yet proven, grey is
 not built. The data path, the frame table, the per-robot split and the
-frame embedder are green. The four frame models are amber: they run and
-ship as ONNX, but the check verdicts do not yet generalize across robots,
-fold state and failure reasons rest on labels derived from the robot's own
-checks, and fold risk shows no signal. The overlay renderer, the run
-viewer and the fold segmentation are amber for the same reason, working
-code without an end-to-end proof: the overlay draws the layers onto a
-video and only the records sidecar feeds it, the viewer plays a run and
-answers with the pixel-mask suggestion only, and the fold segmentation is
-merged and evaluated on the same export it was tuned on. It also serves
-as an independent cross-check for fold state. A live frame still needs a
-prediction runtime on the Pi (in review), a reviewed mask export, which
-is blocked on the frames whose hole brush overlaps the material brush,
-and a material-mask model. The gaps and the numbers behind each colour
-are in
+frame embedder are green. So is the live path: the crêpe student mask
+(IoU 0.966 against SAM 3, a median 0.944 against human masks), the merged
+model pass with verdicts beside the robot's, the overlay renderer that
+draws every model into one video, the review website, and the Pi runtime,
+measured on a Raspberry Pi 5 at 0.15 s per frame end to end. The four
+frame models are amber: they run and ship as ONNX, but the check verdicts
+do not yet generalize across robots, fold state and failure reasons rest
+on labels derived from the robot's own checks, and fold risk shows no
+signal. Crêpe pose is amber because its reference is the robot's own
+outline, in plate radii and image degrees. The classical fold
+segmentation is amber because it is evaluated on the export it was tuned
+on; it and the student cross-check the fold state. Deviation scoring is
+amber and the weighted dataset and fine-tuning are grey: no model learns
+from the human labels yet, and the reviewed mask export is blocked on
+frames whose hole brush overlaps the material brush. The gaps and the
+numbers behind each colour are in
 [documentation/status.md](documentation/status.md).
 
 ## How it works
@@ -480,9 +505,11 @@ Workflow, code style and agent rules: see [AGENTS.md](AGENTS.md).
 
 [Browse all documentation](documentation/README.md) by subject.
 
-Pitch deck: [assets/pitch/pitch-deck.pptx](assets/pitch/pitch-deck.pptx),
-with the talk track and the source of every number on a slide in
-[assets/pitch/notes.md](assets/pitch/notes.md).
+Final pitch deck: [assets/pitch](assets/pitch/README.md), a reveal.js
+deck with speaker notes (press `S`), its
+[PDF](assets/pitch/crepeflow-pitch.pdf) and the two demo run videos.
+Picking the project up:
+[handover guide](documentation/handover.md).
 
 - [Project status: what works and what does not](documentation/status.md)
 

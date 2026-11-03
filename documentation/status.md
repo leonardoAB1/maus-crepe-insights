@@ -1,7 +1,8 @@
 # Project status: what works and what does not
 
-As of 2026-11-01, against `main` at `bcd04b1` plus the open pull requests
-listed at the end. Every number below names the command or file that produced
+As of 2026-11-01, against `main` at `bcd04b1`, with the Raspberry Pi 5
+timing added on 2026-11-03. BaselHack 2026 has ended and the repository is
+handed over to Maus Robotics: see the [handover guide](handover.md). Every number below names the command or file that produced
 it. Run data lives in a private checkout, so a fresh clone reproduces the code
 and the offline tests, not the counts.
 
@@ -99,16 +100,13 @@ task was approached is in the
 | 2, position and orientation | centre (x, y) and angle, precise enough for the spatula | reference pose per check from the robot overlays (`pixi run overlay-pose`), with the push_off angle matching the logged rotation up to a constant 15 degrees; live centre, axis, fold line and quarter corner from the student mask (`maus_export.crepe_pose`), median centre error 0.023 to 0.030 plate radii and axis error 1.1 to 1.6 degrees against the overlays. The reference is the robot's outline, and units are plate radii and image degrees | partial |
 | 3, fold detection | flat, half, quarter or triangle, with confidence and edge angle | three independent methods: `code/models/fold-class` (109 of 110 holdout frames), the crepe student rule (99.5 percent of 991 passed check moments) and the classical rule (88.5 percent). All scored on robot-derived labels. The triangle fold has no frames | partial, triangle missing |
 | Level 1, works on Maus data | model scored against the robot verdicts | the check-verdict heads, with agreement metrics on holdouts of 31 to 61 frames | partial |
-| Level 2, real time on a Pi 5 | under about 300 ms per frame | the Pi runtime is on `main` (`pixi run -e pi detect`). Classical video analysis takes a median 413 ms per frame on a Raspberry Pi 3; the embedder runs in 4 ms and the student in about 6 ms on a desktop CPU. No Pi 5 measurement | not demonstrated |
+| Level 2, real time on a Pi 5 | under about 300 ms per frame | the Pi runtime is on `main` (`pixi run -e pi detect`). Measured on a Raspberry Pi 5 with the ONNX student: 0.152 s per frame end to end (wall clock over 4,510 video frames from 3 runs) and a median 119 ms (p90 125 ms) inside the per-frame loop of correction, segmentation, size, pose, fold state and drawing; the classical backend takes a median 222 ms there (6,117 frames, 4 runs). Read from the review site's `/api/progress` and `/api/run` on the Pi 5. On a Raspberry Pi 3 the same ONNX loop takes a median 854 ms and the classical one 413 to 528 ms. The pass/fail check heads are not inside this loop and were not timed on the Pi 5 | met for the per-frame pipeline |
 | Bonus, auto-labelling from video | | whole-video fold timelines on `main` (classical and student backends) that vote the state at every logged check, with a review site | experimental |
 | Bonus, a spread score that predicts a failed fold | | `code/models/fold-risk`: within a robot the spread check does not predict fold failure in the current data | attempted, negative result reported |
 | Bonus, detect the crepe while the plate rotates | | the video analysis segments every sampled frame while the plate turns, but no code tracks the rotation itself | partial |
 
-## In flight
+## Open work
 
-- PR #224, every frame model merged into one ONNX pass, with model verdicts
-  beside the robot's on the Pi review site.
-- PR #184, the challenge brief as its own page.
 - Issue #207, retrain fold risk and failure reason on the per-robot split and
   update their numbers.
 - Issue #106, the triangle fold class from human labels.
