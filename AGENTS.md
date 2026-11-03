@@ -11,6 +11,9 @@ BaselHack 2026 project on the Maus Robotics challenge: turning crêpe robot run 
 vision checks with images, recipe parameters, video) into insight on why runs fail and what to
 change.
 
+- **Status:** the hackathon ended on 1 November 2026. The repo is handed over to Maus Robotics to
+  continue; start with `documentation/handover.md`
+
 - **GitHub:** https://github.com/leonardoAB1/maus-crepe-insights
 - **Team repo:** several people push here. Never rewrite shared history.
 - **Public repo:** the code is public, the Maus data is not (see Data handling).
@@ -50,7 +53,7 @@ change.
 
 ## Layout
 
-The BaselHack template structure is required by the jury. Keep it.
+The BaselHack template structure was required by the jury. Keep it, so links and docs stay valid.
 
 ```
 code/              # all code
@@ -80,6 +83,8 @@ worktrees/         # git worktrees, gitignored
   docs beyond aggregate numbers
 - Exception: a few curated, annotated example images may be committed under `assets/` for the
   README and pitch, and shown in PR descriptions. Never bulk images, raw frames, run logs or video
+- Exception: the two annotated demo run videos of the final pitch deck, with their poster frames,
+  are cleared for the public repo under `assets/pitch/video/`. Add no other video
 - Tokens live in `~/.maus-export/` or the `MAUS_TOKEN` env var. Never commit secrets or `.env`
 - Dashboard tools that write (`*_save`, `*_delete`) are off-limits unless the user asks for that
   write in the current session. Reading is fine
@@ -115,14 +120,18 @@ worktrees/         # git worktrees, gitignored
 4. Push and open a PR that references the issue (`Closes #N`). Fill in what changed, why, and how
    it was tested (offline tests, live dashboard run, or both). A PR that adds or changes a model
    includes an example result image from `assets/` that shows at least one failure or known limitation
-5. Reviews are encouraged but not required during the hackathon (0 approvals). The `ci`
-   workflow runs ruff and pytest on every PR and must pass before merging
+5. Reviews are encouraged but not required (0 approvals). The `ci` workflow runs ruff and pytest
+   on every PR and must pass before merging
 6. **Squash merge** into `main` (the only merge strategy). GitHub deletes the branch after merge
 
 The `main` branch is protected by the "protect main" ruleset: no force pushes, no deletion,
 changes only through PRs, squash merge only. Collaborators with write access can bypass it when
 merging a PR (for example when CI is red); direct pushes to `main` stay blocked.
 The repo admin can bypass it fully for emergencies.
+
+Two more rulesets, "freeze all branch pushes" and "freeze all tag pushes", froze the repo at the
+BaselHack submission deadline. They are kept but disabled; enabling them again blocks every push,
+admins included.
 
 Stacked PRs (a branch based on another open PR) are fine when changes depend on each other. Say so
 in the PR description and merge in order.
