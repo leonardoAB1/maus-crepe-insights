@@ -83,8 +83,9 @@ worktrees/         # git worktrees, gitignored
   docs beyond aggregate numbers
 - Exception: a few curated, annotated example images may be committed under `assets/` for the
   README and pitch, and shown in PR descriptions. Never bulk images, raw frames, run logs or video
-- Exception: the two annotated demo run videos of the final pitch deck, with their poster frames,
-  are cleared for the public repo under `assets/pitch/video/`. Add no other video
+- Exception: the two annotated demo run videos of the final pitch deck, with their poster frames
+  and short GIF previews, are cleared for the public repo under `assets/pitch/video/`. Add no
+  other video
 - Tokens live in `~/.maus-export/` or the `MAUS_TOKEN` env var. Never commit secrets or `.env`
 - Dashboard tools that write (`*_save`, `*_delete`) are off-limits unless the user asks for that
   write in the current session. Reading is fine

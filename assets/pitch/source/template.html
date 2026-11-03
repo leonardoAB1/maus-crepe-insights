@@ -1,0 +1,1000 @@
+<title>CrêpeFlow Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/*@@REVEAL_CSS@@*/
+</style>
+<style>
+/* Layout: 1280x720 slides; hotplate steel and batter-gold, robot overlay
+   colours (zone blue, outline green, hole red) used as the data palette. */
+:root {
+  --bg: #f2f1ed;
+  --surface: #ffffff;
+  --ink: #1b1d20;
+  --muted: #62666b;
+  --line: #d8d6cf;
+  --accent: #a8561a;
+  --accent-soft: #f1dfcb;
+  --zone: #2b55c9;
+  --ok: #2d8048;
+  --fail: #c03a2e;
+  --fail-soft: #efc9c4;
+  --cancel: #c58a1c;
+  --abort: #8d9096;
+  --on-mark: #ffffff;
+  --qr-bg: #ffffff; /* QR stays dark on white in both themes */
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131416; --surface: #1d1f23; --ink: #ecebe5; --muted: #9b9ea4;
+    --line: #33363c; --accent: #e3a55a; --accent-soft: #3a2d1e;
+    --zone: #7b9cff; --ok: #5bbd7c; --fail: #ec6b5e; --fail-soft: #4a2622;
+    --cancel: #dcaa4a; --abort: #7d8188; --on-mark: #131416;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131416; --surface: #1d1f23; --ink: #ecebe5; --muted: #9b9ea4;
+  --line: #33363c; --accent: #e3a55a; --accent-soft: #3a2d1e;
+  --zone: #7b9cff; --ok: #5bbd7c; --fail: #ec6b5e; --fail-soft: #4a2622;
+  --cancel: #dcaa4a; --abort: #7d8188; --on-mark: #131416;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--ink); }
+.reveal-viewport { background: var(--bg); }
+.reveal { font-family: var(--font-body); font-size: 24px; color: var(--ink); }
+.reveal .slides { text-align: left; }
+.reveal .slides section { height: 100%; box-sizing: border-box; }
+.reveal .controls, .reveal .progress { color: var(--accent); }
+.reveal .slide-number {
+  background: transparent; color: var(--muted);
+  font-family: var(--font-mono); font-size: 14px;
+}
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: var(--font-display); font-weight: 800; margin: 0;
+  text-wrap: balance; letter-spacing: -0.01em; line-height: 1.05;
+}
+.reveal h2 { font-size: 46px; }
+.reveal h3 { font-size: 22px; font-weight: 600; }
+.reveal p { margin: 0; line-height: 1.4; }
+.eyebrow {
+  font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent);
+}
+.lede { font-size: 24px; color: var(--muted); max-width: 62ch; }
+.src {
+  position: absolute; left: 0; bottom: 0; font-family: var(--font-mono);
+  font-size: 13px; color: var(--muted);
+}
+.stack { display: flex; flex-direction: column; gap: 22px; }
+.mono { font-family: var(--font-mono); }
+.num { font-variant-numeric: tabular-nums; }
+svg text { font-family: var(--font-body); }
+.t-ink { fill: var(--ink); } .t-muted { fill: var(--muted); }
+.t-on { fill: var(--on-mark); }
+.f-ok { fill: var(--ok); } .f-fail { fill: var(--fail); }
+.f-cancel { fill: var(--cancel); } .f-abort { fill: var(--abort); }
+.f-fail-soft { fill: var(--fail-soft); } .f-surface { fill: var(--surface); }
+.f-accent { fill: var(--accent); } .f-line { fill: var(--line); }
+.s-line { stroke: var(--line); } .s-accent { stroke: var(--accent); }
+.s-muted { stroke: var(--muted); }
+
+/* Title */
+.title-grid {
+  display: grid; grid-template-columns: 1fr 440px; gap: 48px;
+  align-items: center; height: 100%;
+}
+.title-grid h1 { font-size: 84px; margin-block: 18px 22px; }
+.title-grid h1 em { font-style: normal; color: var(--accent); }
+.team {
+  margin-top: 34px; display: flex; gap: 14px; align-items: baseline;
+  font-family: var(--font-display); font-size: 30px; font-weight: 600;
+}
+.team span {
+  font-family: var(--font-mono); font-size: 15px; color: var(--muted);
+  font-weight: 400;
+}
+.plate {
+  width: 440px; height: 440px; border-radius: 50%;
+  background-image: url("@@IMG:vision-scores-example.jpg@@");
+  background-size: 1730px 985px; background-position: -230px -360px;
+  box-shadow: 0 0 0 10px var(--surface), 0 0 0 11px var(--line);
+}
+.plate-cap {
+  margin-top: 26px; text-align: center; font-family: var(--font-mono);
+  font-size: 14px; color: var(--muted);
+}
+
+/* Problem */
+.big-stat {
+  display: flex; gap: 22px; align-items: baseline; margin-top: 4px;
+}
+.big-stat b {
+  font-family: var(--font-display); font-size: 92px; font-weight: 800;
+  color: var(--fail); line-height: 1;
+}
+.big-stat p { font-size: 26px; max-width: 34ch; }
+
+/* Pipeline slide */
+.overlay-row {
+  display: grid; grid-template-columns: 590px 1fr; gap: 32px;
+  align-items: start;
+}
+.overlay-row img { width: 590px; border-radius: 6px; display: block; }
+.legend { display: flex; flex-direction: column; gap: 10px; font-size: 19px; }
+.legend li { display: flex; gap: 10px; align-items: center; list-style: none; }
+.legend ul { margin: 0; padding: 0; display: flex; flex-direction: column;
+  gap: 8px; }
+.chip { width: 18px; height: 18px; border-radius: 4px; flex: none;
+  border: 3px solid; box-sizing: border-box; }
+.legend .reads {
+  margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 18px; line-height: 1.45;
+}
+
+/* Results */
+.tiles {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+}
+.tile {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 14px 16px; display: flex;
+  flex-direction: column; gap: 6px;
+}
+.tile b {
+  font-family: var(--font-display); font-size: 44px; font-weight: 800;
+  line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.tile .what { font-size: 17px; font-weight: 600; line-height: 1.25; }
+.tile .ref { font-size: 14px; color: var(--muted); line-height: 1.3; }
+.pose-crop {
+  width: 700px; height: 271px; overflow: hidden; border-radius: 6px;
+  margin-inline: auto;
+}
+.pose-crop img { width: 700px; display: block; margin-top: -49px; }
+.caveat { font-size: 16px; color: var(--muted); text-align: center; }
+
+/* Findings */
+.find-grid { display: grid; grid-template-columns: 1fr 470px; gap: 36px; }
+.finds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.find {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px 18px; display: flex;
+  flex-direction: column; gap: 8px;
+}
+.find { padding: 20px 22px; gap: 10px; }
+.find h3 { font-size: 23px; }
+.find p { font-size: 18px; color: var(--muted); line-height: 1.4; }
+.find .do {
+  margin-top: auto; font-size: 16px; color: var(--ink); font-weight: 600;
+}
+.find .do::before { content: "Change: "; color: var(--accent); }
+.find.lead .do::before { content: "Test: "; }
+.chart-cap { font-size: 15px; color: var(--muted); margin-top: 6px; }
+
+/* DoE */
+.doe-grid { display: grid; grid-template-columns: 640px 1fr; gap: 40px; }
+table.settings { border-collapse: collapse; width: 100%; font-size: 21px; }
+table.settings th, table.settings td {
+  padding: 14px 10px; border-bottom: 1px solid var(--line); text-align: right;
+}
+table.settings th {
+  font-family: var(--font-mono); font-weight: 500; font-size: 14px;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+}
+table.settings th:first-child, table.settings td:first-child {
+  text-align: left;
+}
+table.settings td { font-variant-numeric: tabular-nums; }
+table.settings td.hint {
+  text-align: left; font-size: 15px; color: var(--accent); width: 150px;
+}
+.steps { margin: 0; padding-left: 26px; display: flex; flex-direction: column;
+  gap: 18px; font-size: 22px; line-height: 1.35; }
+.steps li::marker { color: var(--accent); font-family: var(--font-mono); }
+.closing {
+  position: absolute; left: 0; right: 96px; bottom: 0; display: flex;
+  justify-content: space-between; align-items: baseline;
+  border-top: 2px solid var(--accent); padding-top: 14px;
+}
+.closing strong { font-family: var(--font-display); font-size: 28px; }
+.closing span { font-family: var(--font-mono); font-size: 17px;
+  color: var(--muted); }
+
+/* Appendix */
+.divider { display: flex; flex-direction: column; justify-content: center;
+  height: 100%; gap: 14px; }
+.divider h2 { font-size: 64px; }
+table.brief { border-collapse: collapse; width: 100%; font-size: 17px; }
+table.brief th, table.brief td {
+  padding: 10px 10px; border-bottom: 1px solid var(--line);
+  text-align: left; vertical-align: top; line-height: 1.35;
+}
+table.brief th { font-family: var(--font-mono); font-weight: 500;
+  font-size: 13px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.06em; }
+table.brief td:first-child { font-weight: 600; width: 230px; }
+.pill {
+  display: inline-block; font-family: var(--font-mono); font-size: 13px;
+  padding: 2px 9px; border-radius: 99px; white-space: nowrap;
+  border: 1.5px solid currentColor;
+}
+.pill.part { color: var(--cancel); }
+.pill.no { color: var(--fail); }
+.pill.ok { color: var(--ok); }
+.pill.go { color: var(--accent); }
+table.brief td.next { color: var(--muted); font-size: 15px; width: 190px; }
+.limits { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 36px;
+  margin: 0; padding-left: 22px; font-size: 18px; line-height: 1.4; }
+.wide-img { width: 100%; border-radius: 6px; display: block;
+  background: #fcfcfa; }
+pre.cmd {
+  margin: 0; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px 20px; font-family: var(--font-mono);
+  font-size: 20px; color: var(--ink); white-space: pre-wrap;
+  box-shadow: none; width: auto;
+}
+.t-accent { fill: var(--accent); } .f-ink-dot { fill: var(--ink);
+  stroke: var(--bg); stroke-width: 3; }
+.next4 { list-style: none; margin: 0; padding: 0; display: grid;
+  grid-template-columns: repeat(4, 1fr); gap: 14px; counter-reset: n; }
+.next4 li { counter-increment: n; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
+  font-size: 16px; line-height: 1.4; color: var(--muted); }
+.next4 li::before { content: counter(n); display: block;
+  font-family: var(--font-mono); color: var(--accent); font-size: 14px;
+  margin-bottom: 4px; }
+.next4 b { color: var(--ink); }
+.pi-grid { display: grid; grid-template-columns: 1fr 220px; gap: 40px;
+  align-items: start; }
+.pi-url { font-family: var(--font-mono); font-size: 54px; font-weight: 500;
+  color: var(--accent); text-decoration: none; letter-spacing: -0.02em; }
+.pi-url:hover, .pi-url:focus-visible { text-decoration: underline; }
+.pi-net { font-size: 17px; color: var(--muted); line-height: 1.5; }
+.pi-net .mono { color: var(--ink); font-size: 15px; }
+.pi-list { margin: 0; padding-left: 22px; font-size: 19px; line-height: 1.4;
+  display: flex; flex-direction: column; gap: 6px; }
+.qr-card { margin: 0; display: flex; flex-direction: column; gap: 10px;
+  align-items: center; }
+.qr { width: 200px; height: 200px; background: var(--qr-bg);
+  border-radius: 10px; padding: 12px; box-sizing: border-box; }
+.qr svg { width: 100%; height: 100%; display: block; }
+.qr-card figcaption { font-family: var(--font-mono); font-size: 14px;
+  color: var(--muted); }
+.pi-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  border-top: 1px solid var(--line); padding-top: 16px; }
+.pi-stats div { display: flex; flex-direction: column; gap: 4px; }
+.pi-stats b { font-family: var(--font-display); font-size: 36px;
+  font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.pi-stats span { font-size: 15px; color: var(--muted); line-height: 1.3; }
+.pi-note { font-size: 15px; color: var(--muted); max-width: 90ch; }
+.f-accent-soft { fill: var(--accent-soft); } .f-muted { fill: var(--muted); }
+.t-fail { fill: var(--fail); }
+.sys { gap: 20px; }
+.sys-run { display: flex; flex-direction: column; gap: 10px;
+  border-top: 1px solid var(--line); padding-top: 16px; }
+.sys-label { font-size: 16px; color: var(--muted); }
+.sys-label b { color: var(--accent); }
+.ways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.way { background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px 18px; display: flex;
+  flex-direction: column; gap: 8px; font-size: 17px; line-height: 1.4; }
+.way h3 { font-size: 23px; color: var(--accent); }
+.way .q { font-style: italic; color: var(--muted); }
+.lbl { display: block; font-family: var(--font-mono); font-style: normal;
+  font-weight: 500; font-size: 12px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+.ask { font-size: 22px; color: var(--muted); margin-top: -10px;
+  max-width: 70ch; }
+.ask::before { content: "Q  "; font-family: var(--font-mono);
+  color: var(--accent); font-weight: 500; }
+.way .a { margin-top: auto; font-weight: 600; }
+.verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 28px;
+  border-top: 2px solid var(--accent); padding-top: 14px; }
+.verdict h3 { font-size: 21px; margin-bottom: 4px; }
+.verdict p { font-size: 17px; color: var(--muted); line-height: 1.4; }
+.verdict b { color: var(--ink); }
+.reveal h2 { font-size: 42px; }
+.dsd { border-top: 2px solid var(--accent); padding-top: 14px;
+  display: flex; flex-direction: column; gap: 10px; }
+.dsd h3 { font-size: 21px; }
+.dsd-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.dsd-row b { font-family: var(--font-display); font-size: 26px;
+  font-weight: 800; color: var(--accent); }
+.dsd-row p { font-size: 16px; color: var(--muted); line-height: 1.4;
+  margin-top: 4px; }
+.clips { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.clip { margin: 0; display: flex; flex-direction: column; gap: 10px;
+  min-width: 0; }
+.clip video { width: 100%; aspect-ratio: 16 / 9; display: block;
+  border-radius: 8px; background: var(--surface); }
+.clip figcaption { font-size: 17px; line-height: 1.4; color: var(--muted); }
+.clip .pill { margin-right: 6px; }
+.clips-note { font-size: 17px; color: var(--muted); }
+.video-off { border: 1.5px dashed var(--line); border-radius: 8px;
+  padding: 40px 32px; font-size: 20px; color: var(--muted); }
+.s-fail { stroke: var(--fail); } .f-abort { fill: var(--abort); }
+.pi-both { display: grid; grid-template-columns: 760px 1fr; gap: 32px;
+  border-top: 1px solid var(--line); padding-top: 14px; align-items: start; }
+.pi-chart h3 { font-size: 18px; margin-bottom: 8px; }
+.pi-what { font-size: 19px; line-height: 1.4; max-width: 60ch; }
+.pi-side { display: flex; flex-direction: column; gap: 16px; }
+.pi-side div { display: flex; flex-direction: column; gap: 4px; }
+.pi-side b { font-family: var(--font-display); font-size: 34px;
+  font-weight: 800; line-height: 1; }
+.pi-side span { font-size: 15px; color: var(--muted); line-height: 1.3; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal .slides section { transition: none !important; }
+}
+</style>
+
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. Title -->
+<section>
+  <div class="title-grid">
+    <div>
+      <p class="eyebrow">Maus Crepe Insights &middot; BaselHack 2026 &middot; Maus Robotics challenge</p>
+      <h1>From pass/fail to <em>measurement</em></h1>
+      <p class="lede">Maus robots bake crêpes on their own and log every run.
+        We turned 828 of those runs into numbers that say why a crêpe
+        failed and which setting to change next.</p>
+      <div class="team">CrêpeFlow Team <span>github.com/leonardoAB1/maus-crepe-insights</span></div>
+    </div>
+    <div>
+      <div class="plate" role="img" aria-label="A real spread check from the robot camera, with bare plate inside the crêpe marked in yellow"></div>
+      <p class="plate-cap">a real spread check: bare plate marked in yellow</p>
+    </div>
+  </div>
+  <aside class="notes">Maus robots make crêpes by themselves and log every
+  run: phases, logs, about 110 recipe settings, camera checks and video. We
+  are the CrêpeFlow Team, and in one line: we turned those logs into
+  measurements, and the measurements into concrete next steps for
+  Maus.</aside>
+</section>
+
+<!-- 2. Problem -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">The problem</p>
+    <p class="ask">Why do crêpe runs fail?</p>
+    <h2>Nobody can tell: a failed crêpe comes with a verdict, not a reason</h2>
+    <svg viewBox="0 0 1180 252" width="1180" height="252" role="img"
+      aria-label="430 runs that started a crêpe: 181 succeeded, 147 not succeeded, 66 canceled, 36 aborted. Of the 147 failures, 116 have no check data.">
+      <text x="0" y="16" class="t-muted" font-size="15">430 runs that started a crêpe</text>
+      <rect x="0" y="26" width="495.7" height="60" rx="3" class="f-ok"/>
+      <rect x="496.7" y="26" width="402.4" height="60" rx="3" class="f-fail"/>
+      <rect x="900.1" y="26" width="180.1" height="60" rx="3" class="f-cancel"/>
+      <rect x="1081.2" y="26" width="98.8" height="60" rx="3" class="f-abort"/>
+      <g class="t-on"><text x="16" y="53" font-size="24" font-weight="700">181</text><text x="16" y="75" font-size="15">succeeded</text>
+      <text x="512" y="53" font-size="24" font-weight="700">147</text><text x="512" y="75" font-size="15">not succeeded</text>
+      <text x="914" y="53" font-size="24" font-weight="700">66</text><text x="914" y="75" font-size="15">canceled</text>
+      <text x="1093" y="53" font-size="24" font-weight="700">36</text><text x="1093" y="75" font-size="15">aborted</text></g>
+      <polygon points="496.7,88 899.1,88 1180,150 0,150" class="f-fail-soft"/>
+      <rect x="0" y="152" width="930.2" height="60" rx="3" class="f-fail-soft"/>
+      <rect x="931.2" y="152" width="95.3" height="60" rx="3" class="f-fail"/>
+      <rect x="1027.5" y="152" width="71.2" height="60" rx="3" class="f-fail"/>
+      <rect x="1099.7" y="152" width="47.2" height="60" rx="3" class="f-fail"/>
+      <rect x="1147.9" y="152" width="32.1" height="60" rx="3" class="f-fail"/>
+      <text x="16" y="188" class="t-ink" font-size="22" font-weight="600">116 failed with no check data at all</text>
+      <text x="979" y="189" class="t-on" font-size="20" font-weight="600" text-anchor="middle">12</text>
+      <text x="1063" y="189" class="t-on" font-size="20" font-weight="600" text-anchor="middle">9</text>
+      <text x="1123" y="189" class="t-on" font-size="20" font-weight="600" text-anchor="middle">6</text>
+      <text x="1164" y="189" class="t-on" font-size="18" font-weight="600" text-anchor="middle">4</text>
+      <text x="1180" y="240" class="t-muted" font-size="15" text-anchor="end">31 with a reason: 12 spread, 9 fold 2, 6 plate checks, 4 fold 1</text>
+    </svg>
+    <div class="big-stat">
+      <b>79%</b>
+      <p>of failed runs cannot be explained from the data. Where a check
+        exists, it is still only pass or fail.</p>
+    </div>
+  </div>
+  <p class="src">Source: documentation/system/crepe-stages.md, runs table (828 runs, 3 robots)</p>
+  <aside class="notes">Of 430 runs that started a crêpe, 147 did not
+  succeed. For 116 of those there is no check data at all, so nobody can say
+  why they failed. And where a check exists, the robot records only pass or
+  fail plus a short message. No measurement, no direction to change. That gap
+  is what we worked on.</aside>
+</section>
+
+<!-- 2b. The robot -->
+<section>
+  <div class="stack sys">
+    <p class="eyebrow">The robot</p>
+    <p class="ask">What does the robot see, and what does it decide on its own?</p>
+    <h2>One robot, one Pi, a camera over the hotplate</h2>
+    <svg viewBox="0 0 1180 222" width="1180" height="222" role="img"
+      aria-label="Robot system: camera, sensor boards and kiosk connect to a
+      Raspberry Pi 5, which drives two Duet motion boards and uploads to a
+      cloud worker behind the Maus dashboard. Our pipeline reads the dashboard
+      read-only.">
+      <defs><marker id="sys-arr" viewBox="0 0 10 10" refX="9" refY="5"
+        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" class="f-muted"/></marker></defs>
+      <rect x="0" y="8" width="200" height="56" rx="7" class="f-surface s-line" stroke-width="1.5"/><text x="14" y="33.0" class="t-ink" font-size="18" font-weight="600">Hotplate camera</text><text x="14" y="53.0" class="t-muted" font-size="13">checks + video</text><rect x="0" y="82" width="200" height="56" rx="7" class="f-surface s-line" stroke-width="1.5"/><text x="14" y="107.0" class="t-ink" font-size="18" font-weight="600">Sensor boards</text><text x="14" y="127.0" class="t-muted" font-size="13">temperature, humidity</text><rect x="0" y="156" width="200" height="56" rx="7" class="f-surface s-line" stroke-width="1.5"/><text x="14" y="181.0" class="t-ink" font-size="18" font-weight="600">Kiosk tablet</text><text x="14" y="201.0" class="t-muted" font-size="13">orders, payment</text><rect x="300" y="62" width="230" height="96" rx="7" class="f-accent-soft s-accent" stroke-width="2.5"/><text x="314" y="107.0" class="t-ink" font-size="18" font-weight="600">Raspberry Pi 5</text><text x="314" y="127.0" class="t-muted" font-size="13">ROS 2, decides on board</text><rect x="640" y="8" width="170" height="56" rx="7" class="f-surface s-line" stroke-width="1.5"/><text x="654" y="33.0" class="t-ink" font-size="18" font-weight="600">Duet 2</text><text x="654" y="53.0" class="t-muted" font-size="13">motion board</text><rect x="900" y="8" width="170" height="56" rx="7" class="f-surface s-line" stroke-width="1.5"/><text x="914" y="33.0" class="t-ink" font-size="18" font-weight="600">Duet 1</text><text x="914" y="53.0" class="t-muted" font-size="13">motors, heaters</text><rect x="640" y="156" width="170" height="56" rx="7" class="f-surface s-line" stroke-width="1.5"/><text x="654" y="181.0" class="t-ink" font-size="18" font-weight="600">Cloud worker</text><text x="654" y="201.0" class="t-muted" font-size="13">logs, images, video</text><rect x="900" y="156" width="170" height="56" rx="7" class="f-surface s-line" stroke-width="1.5"/><text x="914" y="181.0" class="t-ink" font-size="18" font-weight="600">Maus dashboard</text><text x="914" y="201.0" class="t-muted" font-size="13">every run</text><path d="M200,36 C250,36 250,95 298,95" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><text x="214" y="30" class="t-muted" font-size="12" font-family="IBM Plex Mono, monospace">USB3</text><path d="M200,110 H298" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><text x="236" y="104" class="t-muted" font-size="12" font-family="IBM Plex Mono, monospace">USB</text><path d="M200,184 C250,184 250,125 298,125" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><text x="220" y="200" class="t-muted" font-size="12" font-family="IBM Plex Mono, monospace">web</text><path d="M530,95 C585,95 585,36 638,36" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><text x="566" y="56" class="t-muted" font-size="12" font-family="IBM Plex Mono, monospace">SPI</text><path d="M810,36 H898" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><text x="826" y="28" class="t-muted" font-size="12" font-family="IBM Plex Mono, monospace">CAN-FD</text><path d="M530,125 C585,125 585,184 638,184" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><text x="548" y="176" class="t-muted" font-size="12" font-family="IBM Plex Mono, monospace">uploads</text><path d="M810,184 H898" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><path d="M1070,184 H1088" fill="none" class="s-muted" stroke-width="2" marker-end="url(#sys-arr)"/><rect x="1090" y="150" width="90" height="68" rx="7" class="f-surface s-accent" stroke-width="2.5" stroke-dasharray="5 4"/><text x="1135" y="180" class="t-accent" font-size="15" font-weight="700" text-anchor="middle">us</text><text x="1135" y="199" class="t-muted" font-size="12" text-anchor="middle">read-only</text>
+    </svg>
+    <div class="sys-run">
+      <p class="sys-label">A run, about 3.5 minutes; the crêpe is served
+        after about 2.5. <b>Orange</b> = a camera check with an image.</p>
+      <svg viewBox="0 0 1180 118" width="1180" height="118"
+      role="img" aria-label="A run goes Prep, Bake, Serve, Reset. Camera
+      checks: plate checks in Prep, spread in Bake, fold 1, fold 2 and
+      push-off in Serve. The outcome is decided at the end, in Reset.">
+      <polygon points="0,0 273,0 289,59.0 273,118 0,118" class="f-surface s-line" stroke-width="1.5"/><text x="16" y="32" class="t-ink" font-size="21" font-weight="700">Prep</text><text x="16" y="56" class="t-muted" font-size="15">prepare, oil</text><rect x="16" y="72" width="120" height="26" rx="13" class="f-accent"/><text x="76" y="90" class="t-on" font-size="14" font-weight="600" text-anchor="middle">plate checks</text><polygon points="297,0 570,0 586,59.0 570,118 297,118 313,59.0" class="f-surface s-line" stroke-width="1.5"/><text x="327" y="32" class="t-ink" font-size="21" font-weight="700">Bake</text><text x="327" y="56" class="t-muted" font-size="15">spread batter, cook, topping</text><rect x="327" y="72" width="71" height="26" rx="13" class="f-accent"/><text x="363" y="90" class="t-on" font-size="14" font-weight="600" text-anchor="middle">spread</text><polygon points="594,0 867,0 883,59.0 867,118 594,118 610,59.0" class="f-surface s-line" stroke-width="1.5"/><text x="624" y="32" class="t-ink" font-size="21" font-weight="700">Serve</text><text x="624" y="56" class="t-muted" font-size="15">fold, push off, handover</text><rect x="624" y="72" width="71" height="26" rx="13" class="f-accent"/><text x="660" y="90" class="t-on" font-size="14" font-weight="600" text-anchor="middle">fold 1</text><rect x="701.2" y="72" width="71" height="26" rx="13" class="f-accent"/><text x="737" y="90" class="t-on" font-size="14" font-weight="600" text-anchor="middle">fold 2</text><rect x="778.4000000000001" y="72" width="88" height="26" rx="13" class="f-accent"/><text x="822" y="90" class="t-on" font-size="14" font-weight="600" text-anchor="middle">push-off</text><polygon points="891,0 1164,0 1180,59.0 1164,118 891,118 907,59.0" class="f-surface s-line" stroke-width="1.5"/><text x="921" y="32" class="t-ink" font-size="21" font-weight="700">Reset</text><text x="921" y="56" class="t-muted" font-size="15">wipe, discard, plate load</text><text x="921" y="90" class="t-fail" font-size="15" font-weight="600">outcome decided here</text>
+    </svg>
+    </div>
+  </div>
+  <p class="src">Source: documentation/system/system.md,
+    documentation/system/crepe-stages.md</p>
+  <aside class="notes">Quick picture of the machine. Everything runs on a
+  Raspberry Pi with ROS 2: a camera looks down at the hotplate, two Duet
+  boards drive the motors and heaters, and every run is uploaded to Maus's
+  dashboard. We only read from that dashboard; we never send anything to a
+  robot. Each run goes prep, bake, serve, reset, and the camera checks the
+  plate, the spread, both folds and the push-off. A failed check does not stop
+  the run: the result is only decided at the very end. That is why the
+  failure reason gets lost.</aside>
+</section>
+
+<!-- 2c. Data first -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">Step 1: data before vision</p>
+    <p class="ask">Before any vision model: can plain data, control theory and experiments explain the failures?</p>
+    <h2>Partly: data explains a lot, but most failures leave no data behind</h2>
+    <div class="ways">
+      <div class="way">
+        <h3>Data analysis</h3>
+        <p class="q"><span class="lbl">Question</span>Which settings and conditions go with failure?</p>
+        <p>History analysis over <b class="num">401</b> hot full cycles and
+          the robot's settings.</p>
+        <p class="a"><span class="lbl">Answer</span>Failures follow the robot, not the spread: fold failure
+          is 21% on maus-quin and 61% on maus-pixi.</p>
+      </div>
+      <div class="way">
+        <h3>Control theory</h3>
+        <p class="q"><span class="lbl">Question</span>What is the robot, seen as a system?</p>
+        <svg viewBox="0 0 300 132" width="100%" height="132" role="img"
+          aria-label="Run-to-run loop: analysis sets 6 settings on the robot,
+          camera and logs measure quality once per batch, back to analysis.">
+          <defs><marker id="loop-arr" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="f-muted"/></marker></defs>
+          <rect x="2" y="4" width="112" height="38" rx="6"
+            class="f-accent-soft s-accent" stroke-width="2"/>
+          <text x="58" y="28" class="t-ink" font-size="15" font-weight="600"
+            text-anchor="middle">analysis</text>
+          <rect x="186" y="4" width="112" height="38" rx="6"
+            class="f-surface s-line" stroke-width="1.5"/>
+          <text x="242" y="28" class="t-ink" font-size="15" font-weight="600"
+            text-anchor="middle">robot</text>
+          <rect x="88" y="90" width="124" height="38" rx="6"
+            class="f-surface s-line" stroke-width="1.5"/>
+          <text x="150" y="114" class="t-ink" font-size="15" font-weight="600"
+            text-anchor="middle">camera, logs</text>
+          <g fill="none" class="s-muted" stroke-width="2"
+            marker-end="url(#loop-arr)">
+            <path d="M114,23 H184"/>
+            <path d="M242,42 C242,80 230,109 214,109"/>
+            <path d="M88,109 C70,109 58,80 58,44"/>
+          </g>
+          <text x="149" y="16" class="t-muted" font-size="12"
+            text-anchor="middle">6 settings</text>
+          <text x="2" y="78" class="t-muted" font-size="12">once per</text>
+          <text x="2" y="92" class="t-muted" font-size="12">batch</text>
+        </svg>
+        <p class="a"><span class="lbl">Answer</span>A run-to-run loop that a person closes today by trial and
+          error.</p>
+      </div>
+      <div class="way">
+        <h3>Experiments</h3>
+        <p class="q"><span class="lbl">Question</span>Can the history tell cause from coincidence?</p>
+        <p>No: settings were changed together, a few runs at a time.</p>
+        <p class="a"><span class="lbl">Answer</span>A Design of Experiments (DoE): <b class="num">19</b>
+          runs that vary six settings independently.</p>
+      </div>
+    </div>
+    <div class="verdict">
+      <div><h3>Numbers beat pixels where numbers exist</h3>
+        <p>On fold 2, a simple regression on the robot's own overlay scores
+          reaches <b class="num">0.88</b>, against <b class="num">0.67</b> for
+          an image model.</p></div>
+      <div><h3>But most failures have no numbers</h3>
+        <p><b class="num">116 of 147</b> failed runs carry no check data. That
+          is where vision comes in.</p></div>
+    </div>
+  </div>
+  <p class="src">Source: documentation/analysis/analysis.md, doe.md,
+    fold-risk.md, documentation/status.md</p>
+  <aside class="notes">Before training any vision model we thought out of the
+  box: maybe plain data, control theory and designed experiments already
+  explain the failures. Data analysis over 401 full cycles showed failures
+  follow the robot. Control theory says the robot is a loop that a person
+  closes by trial and error. And because settings always moved together, only
+  a designed experiment can separate them. Where the robot records numbers, a
+  simple regression even beats an image model on fold 2. But for most failed
+  runs there are no numbers at all, and that is why we also built
+  vision.</aside>
+</section>
+
+<!-- 5. Findings -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">Step 1: data</p>
+    <p class="ask">What goes with failure in the run history?</p>
+    <h2>The data already explains a lot: failures follow the robot, cancels follow the wait</h2>
+    <div class="find-grid">
+      <div class="finds">
+        <div class="find">
+          <h3>Cancels happen while customers wait</h3>
+          <p><b class="num">34 of 66</b> cancels come during cook, the longest
+            stage (median 47 s). A chocolate topping adds another 61 s.</p>
+          <p class="do">show progress, or start the next order sooner</p>
+        </div>
+        <div class="find">
+          <h3>Fold failures follow the robot</h3>
+          <p>Once the robot is accounted for, a bad spread does not predict a
+            bad fold (odds ratio 1.67, 95% interval 0.50 to 5.53).</p>
+          <p class="do">compare maus-pixi's setup with maus-quin's</p>
+        </div>
+        <div class="find lead">
+          <h3>One lead worth a test</h3>
+          <p>Bare plate at spread time predicts residue at fold time:
+            odds ratio <b class="num">2.47</b> per SD (1.12 to 5.56).</p>
+          <p class="do">include it in the next batch</p>
+        </div>
+        <div class="find">
+          <h3>Most failures are unrecorded</h3>
+          <p><b class="num">116 of 147</b> failed runs carry no check data, so
+            their cause is unknowable today.</p>
+          <p class="do">record every check on every run</p>
+        </div>
+      </div>
+      <div>
+        <svg viewBox="0 0 470 300" width="470" height="300" role="img"
+          aria-label="Fold failure rate per robot: maus-quin 21 percent, maus-pixi 61 percent, maus-otto 6 of 7 runs.">
+          <text x="0" y="18" class="t-ink" font-size="19" font-weight="600">Fold-failure rate per robot</text>
+          <g class="s-line" stroke-width="1">
+            <line x1="110" y1="40" x2="110" y2="262"/>
+            <line x1="200" y1="40" x2="200" y2="262"/>
+            <line x1="290" y1="40" x2="290" y2="262"/>
+            <line x1="380" y1="40" x2="380" y2="262"/>
+            <line x1="470" y1="40" x2="470" y2="262" />
+          </g>
+          <g font-size="13" class="t-muted" text-anchor="middle">
+            <text x="110" y="284">0%</text><text x="200" y="284">25%</text>
+            <text x="290" y="284">50%</text><text x="380" y="284">75%</text>
+            <text x="456" y="284">100%</text>
+          </g>
+          <g font-size="17" class="t-ink" text-anchor="end">
+            <text x="98" y="86">maus-quin</text>
+            <text x="98" y="162">maus-pixi</text>
+            <text x="98" y="238">maus-otto</text>
+          </g>
+          <rect x="110" y="60" width="75.6" height="40" rx="3" class="f-zone" style="fill:var(--zone)"/>
+          <rect x="110" y="136" width="219.6" height="40" rx="3" style="fill:var(--fail)"/>
+          <rect x="110" y="212" width="308.6" height="40" rx="3" style="fill:var(--abort)"/>
+          <g font-size="17" font-weight="600" class="t-ink">
+            <text x="193" y="86">21%</text>
+            <text x="338" y="162">61%</text>
+            <text x="427" y="238">6/7</text>
+          </g>
+        </svg>
+        <p class="chart-cap">maus-otto has only 7 such runs. Robot and time
+          period coincide in this data, so the batch on the next slide
+          separates them.</p>
+      </div>
+    </div>
+  </div>
+  <p class="src">Source: documentation/system/crepe-stages.md, documentation/analysis/fold-risk.md</p>
+  <aside class="notes">So what did plain data tell us? Four things Maus can act on today.
+  Half the cancels happen during cook, the longest wait, so that is a
+  customer experience issue, not a robot fault. Fold failures depend on which
+  robot: pixi fails three times as often as quin, and the spread does not
+  predict it. One lead is worth testing: bare plate at spread predicting
+  residue at fold. And most failures are unrecorded, so record checks on
+  every run.</aside>
+</section>
+
+<!-- 6a. What the data says -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">Step 1: data</p>
+    <p class="ask">Which recipe settings should Maus change, and which way?</p>
+    <h2>The history points at two knobs: lower fan inset, raise fan power</h2>
+    <svg viewBox="0 0 1180 366" width="1180" height="366"
+      role="img" aria-label="Six settings with the range the batch tests,
+      the current value, and the direction the run history favours.">
+      <defs><marker id="doe-arr" viewBox="0 0 10 10" refX="8" refY="5"
+        markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" class="f-accent"/></marker></defs>
+      <g font-family="IBM Plex Mono, monospace" font-size="13"
+        class="t-muted" letter-spacing="1">
+        <text x="0" y="16">SETTING</text>
+        <text x="250" y="16">BATCH RANGE &#183; &#9679; NOW</text>
+        <text x="620" y="16">WHAT THE RUN HISTORY SAYS</text>
+      </g>
+      <text x="0" y="70" class="t-ink" font-size="19" font-weight="600">fan inset (mm)</text><rect x="250" y="59" width="330" height="10" rx="5" class="f-line"/><line x1="415.0" y1="55" x2="415.0" y2="73" class="s-muted" stroke-width="1.5"/><text x="250" y="89" class="t-muted" font-size="13">5</text><text x="580" y="89" class="t-muted" font-size="13" text-anchor="end">20</text><line x1="567.0" y1="64" x2="250.0" y2="64" class="s-accent" stroke-width="4" marker-end="url(#doe-arr)"/><circle cx="580.0" cy="64" r="8" class="f-ink-dot"/><text x="620" y="64" class="t-accent" font-size="19" font-weight="700">Lower</text><text x="620" y="85" class="t-muted" font-size="15">more fold 1 passes; it now sits at the top of its range</text><text x="0" y="124" class="t-ink" font-size="19" font-weight="600">fan power</text><rect x="250" y="113" width="330" height="10" rx="5" class="f-line"/><line x1="415.0" y1="109" x2="415.0" y2="127" class="s-muted" stroke-width="1.5"/><text x="250" y="143" class="t-muted" font-size="13">0.85</text><text x="580" y="143" class="t-muted" font-size="13" text-anchor="end">1</text><line x1="263.0" y1="118" x2="580.0" y2="118" class="s-accent" stroke-width="4" marker-end="url(#doe-arr)"/><circle cx="250.0" cy="118" r="8" class="f-ink-dot"/><text x="620" y="118" class="t-accent" font-size="19" font-weight="700">Raise</text><text x="620" y="139" class="t-muted" font-size="15">bigger spreads that pass; it now sits at the bottom</text><text x="0" y="178" class="t-ink" font-size="19" font-weight="600">y center</text><rect x="250" y="167" width="330" height="10" rx="5" class="f-line"/><line x1="415.0" y1="163" x2="415.0" y2="181" class="s-muted" stroke-width="1.5"/><text x="250" y="197" class="t-muted" font-size="13">&minus;46</text><text x="580" y="197" class="t-muted" font-size="13" text-anchor="end">&minus;42</text><line x1="278.2" y1="172" x2="250.0" y2="172" class="s-accent" stroke-width="4" marker-end="url(#doe-arr)"/><circle cx="291.2" cy="172" r="8" class="f-ink-dot"/><text x="620" y="172" class="t-accent" font-size="19" font-weight="700">Lower</text><text x="620" y="193" class="t-muted" font-size="15">better fold 1 and fold 2; little room left</text><text x="0" y="232" class="t-ink" font-size="19" font-weight="600">z scrape start</text><rect x="250" y="221" width="330" height="10" rx="5" class="f-line"/><line x1="415.0" y1="217" x2="415.0" y2="235" class="s-muted" stroke-width="1.5"/><text x="250" y="251" class="t-muted" font-size="13">38.9</text><text x="580" y="251" class="t-muted" font-size="13" text-anchor="end">41.5</text><line x1="567.0" y1="226" x2="250.0" y2="226" class="s-accent" stroke-width="4" stroke-dasharray="7 6" marker-end="url(#doe-arr)"/><circle cx="580.0" cy="226" r="8" class="f-ink-dot"/><text x="620" y="226" class="t-accent" font-size="19" font-weight="700">Lower, unsure</text><text x="620" y="247" class="t-muted" font-size="15">fold 1 improves, but single-change tests disagree</text><text x="0" y="286" class="t-ink" font-size="19" font-weight="600">inner flowrate (g/s)</text><rect x="250" y="275" width="330" height="10" rx="5" class="f-line"/><line x1="415.0" y1="271" x2="415.0" y2="289" class="s-muted" stroke-width="1.5"/><text x="250" y="305" class="t-muted" font-size="13">12</text><text x="580" y="305" class="t-muted" font-size="13" text-anchor="end">14</text><circle cx="415.0" cy="280" r="8" class="f-ink-dot"/><text x="620" y="280" class="t-accent" font-size="19" font-weight="700">Hold at 13</text><text x="620" y="301" class="t-muted" font-size="15">0 of 9 runs succeeded at any other value</text><text x="0" y="340" class="t-ink" font-size="19" font-weight="600">outer fan tail (deg)</text><rect x="250" y="329" width="330" height="10" rx="5" class="f-line"/><line x1="415.0" y1="325" x2="415.0" y2="343" class="s-muted" stroke-width="1.5"/><text x="250" y="359" class="t-muted" font-size="13">5</text><text x="580" y="359" class="t-muted" font-size="13" text-anchor="end">25</text><circle cx="580.0" cy="334" r="8" class="f-ink-dot"/><text x="620" y="334" class="t-accent" font-size="19" font-weight="700">No signal yet</text><text x="620" y="355" class="t-muted" font-size="15">no clear effect; 5 deg succeeded once in 7 runs</text>
+    </svg>
+    <ol class="next4">
+      <li><b>Confirm</b> whether y center and z scrape start may change per
+        run. If not, the batch shrinks to 4 settings.</li>
+      <li><b>Quick test</b> the two clearest moves: fan power up from 0.85,
+        fan inset down from 20. Keep inner flowrate at 13.</li>
+      <li><b>Run the 19-run DoE sheet</b> on one robot, plain topping, shuffled
+        order, with check stills saved on every run.</li>
+      <li><b>Send back the run ids.</b> The analysis says which knob, which
+        way, and suggests the next 4 runs.</li>
+    </ol>
+  </div>
+  <p class="src">Source: history analysis over 401 hot full cycles
+    (documentation/analysis/analysis.md); now = median of the last 30 runs;
+    DoE: documentation/analysis/doe.md</p>
+  <aside class="notes">Next, the recipe settings. The bar is the range our batch tests, the dot
+  is where Maus runs today, the arrow is the direction the history favours.
+  Fan inset sits at the top of its range while the data wants it lower; fan
+  power sits at the bottom while the data wants it higher. That is a quick
+  test Maus can run this week. Inner flowrate should stay at 13: every other
+  value failed. Settings moved together in the past, so these are hints, not
+  proof.</aside>
+</section>
+
+<!-- 6. Next -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">Step 1: control theory + DoE</p>
+    <p class="ask">How do we prove which setting causes what?</p>
+    <h2>A Definitive Screening Design turns hints into causes in 19 runs</h2>
+    <div class="doe-grid">
+      <table class="settings">
+        <thead><tr><th>Setting</th><th>Low</th><th>Mid</th><th>High</th><th>History says</th></tr></thead>
+        <tbody>
+          <tr><td>fan power</td><td>0.85</td><td>0.925</td><td>1.0</td><td class="hint">raise: larger spread</td></tr>
+          <tr><td>outer fan tail (deg)</td><td>5</td><td>15</td><td>25</td><td class="hint"></td></tr>
+          <tr><td>inner flowrate (g/s)</td><td>12</td><td>13</td><td>14</td><td class="hint">13 only ever worked</td></tr>
+          <tr><td>fan inset (mm)</td><td>5</td><td>12.5</td><td>20</td><td class="hint">lower: better fold 1</td></tr>
+          <tr><td>y center</td><td>&minus;46</td><td>&minus;44</td><td>&minus;42</td><td class="hint">lower: better folds</td></tr>
+          <tr><td>z scrape start</td><td>38.9</td><td>40.2</td><td>41.5</td><td class="hint"></td></tr>
+        </tbody>
+      </table>
+      <ol class="steps">
+        <li>Maus runs a ready sheet: 16 design runs plus 3 centre runs, in shuffled order.</li>
+        <li>Each setting's effect is measured on its own, including its sweet spot.</li>
+        <li>Our pipeline scores every run, then the fit says which knob to turn and which way.</li>
+        <li>Score every run live on the Pi 5, at about 0.15 s per frame.</li>
+      </ol>
+    </div>
+    <div class="dsd">
+      <h3>Why a Definitive Screening Design (DSD)</h3>
+      <div class="dsd-row">
+        <div><b>19 runs, not 729</b><p>Testing every combination of 6
+          settings at 3 levels takes 3<sup>6</sup> = 729 runs.</p></div>
+        <div><b>Each setting on its own</b><p>No effect is mixed up with
+          another setting or with a curve: their correlation in the design
+          is 0.</p></div>
+        <div><b>Sweet spots visible</b><p>Three levels show whether the best
+          value lies inside the range; 3 centre runs measure run-to-run
+          noise.</p></div>
+      </div>
+    </div>
+  </div>
+  <p class="src">Source: documentation/analysis/doe.md, code/maus_export/doe.py</p>
+  <aside class="notes">This is where control theory comes in. The robot is a plant in a
+  run-to-run loop: settings go in, quality comes out once per batch, and
+  today a person closes that loop by trial and error. We use a Design of
+  Experiments, specifically a Definitive Screening Design (Jones and
+  Nachtsheim, 2011): 19 runs instead of 729 for every combination. Each
+  setting's effect, and its sweet spot, is measured on its own. In control
+  terms, this is system identification of the run-to-run loop. We never send commands to a
+  robot; it is a run sheet Maus runs by hand.</aside>
+</section>
+
+<!-- 3. What we built -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">Step 2: vision</p>
+    <p class="ask">How do we measure the runs that recorded nothing?</p>
+    <h2>Where the numbers run out, we gave the robot better eyes</h2>
+    <svg viewBox="0 0 1180 150" width="1180" height="150" role="img"
+      aria-label="Pipeline: robot runs, dashboard export, MCAP and tables, then overlay reading and crêpe segmentation, measurements, failure insight.">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="f-accent"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke-width="2" class="s-accent" marker-end="url(#arr)">
+        <path d="M160,75 H202"/><path d="M364,75 H406"/>
+        <path d="M568,75 C590,75 590,37 610,37"/>
+        <path d="M568,75 C590,75 590,113 610,113"/>
+        <path d="M772,37 C794,37 794,75 814,75"/>
+        <path d="M772,113 C794,113 794,75 814,75"/>
+        <path d="M976,75 H1018"/>
+      </g>
+      <g font-size="17" font-weight="600" class="t-ink">
+        <rect x="0" y="48" width="160" height="54" rx="6" class="f-surface s-line" stroke-width="1.5"/>
+        <text x="12" y="70">Robot runs</text>
+        <rect x="204" y="48" width="160" height="54" rx="6" class="f-surface s-line" stroke-width="1.5"/>
+        <text x="216" y="70">Dashboard export</text>
+        <rect x="408" y="48" width="160" height="54" rx="6" class="f-surface s-line" stroke-width="1.5"/>
+        <text x="420" y="70">MCAP + tables</text>
+        <rect x="612" y="10" width="160" height="54" rx="6" class="f-surface s-accent" stroke-width="2.5"/>
+        <text x="624" y="32">Overlay reading</text>
+        <rect x="612" y="86" width="160" height="54" rx="6" class="f-surface s-accent" stroke-width="2.5"/>
+        <text x="624" y="108">Crêpe segmentation</text>
+        <rect x="816" y="48" width="160" height="54" rx="6" class="f-surface s-accent" stroke-width="2.5"/>
+        <text x="828" y="70">Measurements</text>
+        <rect x="1020" y="48" width="160" height="54" rx="6" class="f-surface s-line" stroke-width="1.5"/>
+        <text x="1032" y="70">Failure insight</text>
+      </g>
+      <g font-size="13" class="t-muted">
+        <text x="12" y="90">828 runs, 3 robots</text>
+        <text x="216" y="90">read-only, MCP</text>
+        <text x="420" y="90">177 fields per run</text>
+        <text x="624" y="52">robot's own marks</text>
+        <text x="624" y="128">SAM 3 to student</text>
+        <text x="828" y="90">size, holes, fold, pose</text>
+        <text x="1032" y="90">what to change</text>
+      </g>
+    </svg>
+    <div class="overlay-row">
+      <img src="@@IMG:vision-scores-example.jpg@@" alt="Spread check and fold 2 check overlays with the vision scores we read from them">
+      <div class="legend">
+        <h3>The robot already draws its analysis</h3>
+        <ul>
+          <li><i class="chip" style="border-color:#2b55c9"></i>analysis zone</li>
+          <li><i class="chip" style="border-color:#21b84a"></i>crêpe outline</li>
+          <li><i class="chip" style="border-color:#e0302a"></i>holes</li>
+          <li><i class="chip" style="border-color:#d64bd6"></i>ideal fold shape</li>
+        </ul>
+        <p class="reads">We read those marks back per run: diameter, centre
+          offset, circularity, bare plate, residue, fold overlap, fold 2 / fold 1
+          area ratio and browning. A distilled segmentation model gives the
+          same view on live video.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Data took us far, but 116 of 147 failures carry no numbers at all. So
+  step two: vision. We export runs read-only into ROS 2 MCAP files and one
+  table with 177 fields per run. The robot already paints its analysis on each
+  check image, so we read those marks back as numbers. For live video, we
+  distilled SAM 3 into a small segmentation model.</aside>
+</section>
+
+<!-- 4. Results -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">Step 2: vision</p>
+    <p class="ask">Does the vision work, and is it fast enough?</p>
+    <h2>The eyes work: mask, fold and pose, running on a Pi</h2>
+    <div class="tiles">
+      <div class="tile"><b>0.966</b><span class="what">mask IoU vs SAM 3</span><span class="ref">225 held-out frames, 57 runs</span></div>
+      <div class="tile"><b>0.944</b><span class="what">median IoU vs human masks</span><span class="ref">62 frames; two humans agree at 0.933</span></div>
+      <div class="tile"><b>99.5%</b><span class="what">fold state matches the robot</span><span class="ref">991 checks; classical pipeline 88.5%</span></div>
+      <div class="tile"><b>1.1°</b><span class="what">fold axis error, median</span><span class="ref">centre within 0.023 plate radii (fold 1)</span></div>
+      <div class="tile"><b>0.15 s</b><span class="what">per frame on a Raspberry Pi 5</span><span class="ref">measured end to end; under the 300 ms target</span></div>
+    </div>
+    <div class="pose-crop">
+      <img src="@@IMG:crepe-pose-example.jpg@@" alt="Model mask, centre, fold edge and heading on a spread, a fold 1 and a fold 2 frame, with the axis error against the robot">
+    </div>
+    <p class="caveat">References are SAM 3, the robot's own overlays and a five-run human pilot on one robot. Right tile: a fold 2 miss of 13°.</p>
+  </div>
+  <p class="src">Source: code/models/crepe-student/model.json, documentation/training/crepe-student.md</p>
+  <aside class="notes">The segmentation model matches its SAM 3 teacher at 0.966 IoU and human
+  masks at a median of 0.944, about as close as two humans agree. From the
+  mask we get the fold state, 99.5 percent in line with the robot, and the
+  pose the spatula needs. On a Raspberry Pi 5 a whole run is analysed at about
+  0.15 seconds per frame, end to end, under the 300 ms target. The right tile is a real miss, so you see where it is weaker.</aside>
+</section>
+
+<!-- 6c. Real runs on video -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">Step 2: vision</p>
+    <p class="ask">What does it look like on a real run?</p>
+    <h2>One minute into two runs: a broken spread scores 0.02, a good one 0.91</h2>
+    <!--@@VIDEO-->
+    <div class="clips">
+      <figure class="clip">
+        <video src="video/run-2536.mp4" poster="video/run-2536.jpg"
+          muted loop playsinline controls preload="none"
+          data-start="0"></video>
+        <figcaption><span class="pill no">flagged</span>
+          Run 2536: the batter spirals and leaves holes; spread quality P(pass) 0.02 at 60 s</figcaption>
+      </figure>
+      <figure class="clip">
+        <video src="video/run-2542.mp4" poster="video/run-2542.jpg"
+          muted loop playsinline controls preload="none"
+          data-start="0"></video>
+        <figcaption><span class="pill ok">good</span>
+          Run 2542: a full, round spread; spread quality P(pass) 0.91 at 60 s</figcaption>
+      </figure>
+    </div>
+    <!--@@/VIDEO-->
+    <p class="clips-note">Every frame shows the three brief tasks: spread
+      quality, position and orientation, and fold detection, next to the
+      top-down view.</p>
+  </div>
+  <aside class="notes">Two real runs on the same robot, maus-pixi, filmed at
+  the same moment, one minute in, during cook. On the left, the batter
+  spiralled and left holes: the model gives the spread a 2 percent chance of
+  passing. On the right, a full round crêpe at 91 percent. The three panels
+  under each video are the three tasks from the brief, computed on every
+  frame, and the folds and pose follow later in the clip.</aside>
+</section>
+
+<!-- 7. See it on the Pi -->
+<section>
+  <div class="stack">
+    <p class="eyebrow">See it running</p>
+    <p class="ask">Does it run on robot hardware today?</p>
+    <h2>Yes: on a Raspberry Pi 5, about 0.15 s per frame</h2>
+    <div class="pi-grid">
+      <div class="stack">
+        <a class="pi-url" href="http://192.168.22.131/" target="_blank"
+          rel="noopener">192.168.22.131</a>
+        <p class="pi-net">Open it on the venue Wi-Fi <b>memox.world</b>. Our
+          Pi 3 runs the same site at 192.168.23.119.</p>
+        <p class="pi-what">Every run's video with the crêpe mask and fold
+          state, and each robot check next to our verdict and a "disagrees with
+          robot" marker.</p>
+      </div>
+      <figure class="qr-card">
+        <div id="pi-qr" class="qr" data-url="http://192.168.22.131/"></div>
+        <figcaption>scan on the venue Wi-Fi</figcaption>
+      </figure>
+    </div>
+    <div class="pi-both">
+      <div class="pi-chart">
+        <h3>Analysis time per frame on both boards, median</h3>
+        <svg viewBox="0 0 760 170" width="760" height="170" role="img"
+        aria-label="Per-frame time: Pi 3 ONNX 854 ms, Pi 3 classical 528 ms,
+        Pi 5 classical 222 ms, Pi 5 ONNX 119 ms; target 300 ms.">
+        <text x="0" y="26" class="t-ink" font-size="16" font-weight="600">Pi 3</text><text x="48" y="26" class="t-muted" font-size="15">ONNX model</text><rect x="250" y="8" width="367.2" height="24" rx="3" class="f-abort"/><text x="625.2" y="26" class="t-ink" font-size="15" font-weight="600">854 ms</text><text x="0" y="60" class="t-ink" font-size="16" font-weight="600">Pi 3</text><text x="48" y="60" class="t-muted" font-size="15">classical</text><rect x="250" y="42" width="227.0" height="24" rx="3" class="f-abort"/><text x="485.0" y="60" class="t-ink" font-size="15" font-weight="600">528 ms</text><text x="0" y="94" class="t-ink" font-size="16" font-weight="600">Pi 5</text><text x="48" y="94" class="t-muted" font-size="15">classical</text><rect x="250" y="76" width="95.5" height="24" rx="3" class="f-accent"/><text x="337.5" y="94" class="t-on" font-size="15" font-weight="600" text-anchor="end">222 ms</text><text x="0" y="128" class="t-ink" font-size="16" font-weight="600">Pi 5</text><text x="48" y="128" class="t-muted" font-size="15">ONNX model</text><rect x="250" y="110" width="51.2" height="24" rx="3" class="f-accent"/><text x="309.2" y="128" class="t-ink" font-size="15" font-weight="600">119 ms</text>
+        <line x1="379.0" y1="2" x2="379.0" y2="146" class="s-fail"
+          stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="385.0" y="162" class="t-fail" font-size="14"
+          font-weight="600">300 ms target (Level 2)</text>
+        <text x="250" y="162" class="t-muted" font-size="13">0</text>
+      </svg>
+      </div>
+      <div class="pi-side">
+        <div><b>8 of 8</b><span>fold 1 and fold 2 checks agree with the
+          robot (Pi 3 demo, 5 runs)</span></div>
+        <div><b>12 of 13</b><span>crêpes found; none on the 5 empty
+          plates</span></div>
+        <p class="pi-note">End to end, a whole run on the Pi 5 takes 0.15 s
+          per frame (4,510 frames, 3 runs), including reading the video. The
+          bars show the analysis of each frame: correction, segmentation, size,
+          pose, fold state, drawing. Spread agrees on 2 of 4 checks.</p>
+      </div>
+    </div>
+  </div>
+  <div class="closing">
+    <strong>CrêpeFlow Team</strong>
+    <span>github.com/leonardoAB1/maus-crepe-insights</span>
+  </div>
+  <aside class="notes">Everything you saw runs on a
+  Raspberry Pi 5 on this Wi-Fi: scan the code or open the address. A whole run
+  is analysed at about 0.15 seconds per frame, end to end, under the 300
+  millisecond target from the brief; the analysis of each frame itself takes
+  119 milliseconds. We tested on both boards: our 1 GB Pi 3 took 854
+  milliseconds with the same model, so the Pi 5 is about seven times faster, and even the
+  classical method fits the target there. On the Pi, both fold checks agree with the robot 8 out
+  of 8, and it finds the crêpe on 12 of 13 frames without inventing one on an
+  empty plate. The two misses are spread checks near the threshold. Thank you, we are the CrêpeFlow Team.</aside>
+</section>
+
+<!-- Appendix -->
+<section>
+  <div class="divider">
+    <p class="eyebrow">Appendix</p>
+    <h2>The brief scorecard, next steps, and how to check our work</h2>
+  </div>
+</section>
+
+<section>
+  <div class="stack">
+    <p class="eyebrow">The brief</p>
+    <h2>Every brief item has a working answer</h2>
+    <table class="brief">
+      <thead><tr><th>Brief item</th><th>Status</th><th>What we delivered</th><th>Next</th></tr></thead>
+      <tbody>
+        <tr><td>Task 1: spread quality</td><td><span class="pill ok">delivered</span></td><td>Crêpe mask at IoU 0.966 vs SAM 3 and 0.944 vs human masks; diameter, circularity, holes and bare plate measured per run</td><td class="next">hole class in our own mask</td></tr>
+        <tr><td>Task 2: centre and angle</td><td><span class="pill ok">delivered</span></td><td>Centre within 0.023 plate radii, fold axis within 1.1° (median, fold 1); push-off angle read from 248 of 257 overlays</td><td class="next">millimetres in robot coordinates</td></tr>
+        <tr><td>Task 3: fold detection</td><td><span class="pill ok">delivered</span></td><td>Flat, half and quarter at 99.5% agreement on 991 checks; fold edge found on every passed fold 1</td><td class="next">triangle fold</td></tr>
+        <tr><td>Level 1: works on Maus data</td><td><span class="pill ok">met</span></td><td>99.5% fold-state agreement with the robot's own checks; on the Pi, fold checks agree 8 of 8</td><td class="next">more robots in the holdout</td></tr>
+        <tr><td>Level 2: real time on a Pi 5</td><td><span class="pill ok">met on a Pi 5</span></td><td>Measured on a Pi 5: 0.15 s per frame end to end (119 ms of analysis) for mask, size, pose and fold state, over 4,510 video frames from 3 runs</td><td class="next">time the pass/fail check heads per frame</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">Source: documentation/status.md, model cards in code/models/, Pi 3 and Pi 5 measurements</p>
+  <aside class="notes">All three tasks and Level 1 are delivered with
+  measured numbers. Level 2 is measured on the target board: about 0.15 s per
+  frame end to end on a Pi 5, under the 300 ms target. Next is timing the pass/fail check
+  heads in the same loop.</aside>
+</section>
+
+<section>
+  <div class="stack">
+    <p class="eyebrow">Appendix</p>
+    <h2>What comes next</h2>
+    <img class="wide-img" src="@@IMG:check-verdict-robots.png@@" alt="Balanced accuracy per check: own-robot holdout versus the robot held out entirely">
+    <ul class="limits">
+      <li>Train on the 186 phase labels and 113 masks we already collected, so models learn from people, not only robot verdicts.</li>
+      <li>Train across more robots, so every check holds up on a robot the model has never seen.</li>
+      <li>Record check stills on every run: today 138 of 828 runs have vision metrics.</li>
+      <li>Add a material and hole mask, so the deviation check runs on real predictions.</li>
+      <li>Time the pass/fail check heads per frame on the Pi 5; the per-frame pipeline already runs at 0.15 s.</li>
+      <li>Rerun all numbers with Maus: the code and tests are public, the run data stays private.</li>
+    </ul>
+  </div>
+  <aside class="notes">If asked about limits: this chart compares each check
+  model on a holdout of a known robot with a robot it has never seen. Scores
+  drop on unseen robots, so training across more robots is the first next
+  step. Each line here is a concrete next step.</aside>
+</section>
+
+<section>
+  <div class="stack">
+    <p class="eyebrow">Appendix</p>
+    <h2>Check it yourself</h2>
+    <pre class="cmd">git clone https://github.com/leonardoAB1/maus-crepe-insights
+cd maus-crepe-insights/code
+pixi install &amp;&amp; pixi run test &amp;&amp; pixi run lint</pre>
+    <p class="lede">The test suite runs offline, without Maus data. Every number
+      in this deck has a source in <span class="mono">documentation/status.md</span>
+      and the model cards in <span class="mono">code/models/</span>.
+      Licence: PolyForm Noncommercial 1.0.0.</p>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/plugin/notes/notes.min.js"></script>
+<script>
+  const qrBox = document.getElementById("pi-qr");
+  if (qrBox && typeof qrcode !== "undefined") {
+    const qr = qrcode(0, "M");
+    qr.addData(qrBox.dataset.url);
+    qr.make();
+    qrBox.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+  }
+  // Start run clips at the spread (50 s) each time their slide opens.
+  function startClips(slide) {
+    if (!slide) return;
+    slide.querySelectorAll("video[data-start]").forEach((v) => {
+      const go = () => {
+        v.currentTime = Number(v.dataset.start);
+        v.play().catch(() => {});
+      };
+      if (v.readyState >= 1) go();
+      else v.addEventListener("loadedmetadata", go, { once: true });
+    });
+  }
+  // Reveal prints each slide on a page of size slide * (1 + margin).
+  const SLIDE_W = 1280, SLIDE_H = 720, MARGIN = 0.05;
+  if (/print-pdf/i.test(window.location.search)) {
+    const page = document.createElement("style");
+    page.textContent = "@page { size: " +
+      Math.floor(SLIDE_W * (1 + MARGIN)) + "px " +
+      Math.floor(SLIDE_H * (1 + MARGIN)) + "px; margin: 0 }";
+    document.head.appendChild(page);
+  }
+  Reveal.initialize({
+    width: SLIDE_W, height: SLIDE_H, margin: MARGIN,
+    center: false, hash: false, controls: true, progress: true,
+    slideNumber: "c/t", transition: "fade", transitionSpeed: "fast",
+    pdfSeparateFragments: false, pdfMaxPagesPerSlide: 1,
+    plugins: typeof RevealNotes === "undefined" ? [] : [RevealNotes]
+  });
+  Reveal.on("ready", (e) => startClips(e.currentSlide));
+  Reveal.on("slidechanged", (e) => startClips(e.currentSlide));
+</script>
