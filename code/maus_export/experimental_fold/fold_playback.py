@@ -10,6 +10,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from .fold_backend import MODELS, analysis_root
+
 DEFAULT_WIDTH = 480
 DEFAULT_BITRATE_KBPS = 120
 ENCODER_THREADS = 1
@@ -46,14 +48,19 @@ def prepare_playback(
     replace: bool = False,
     width: int = DEFAULT_WIDTH,
     bitrate_kbps: int = DEFAULT_BITRATE_KBPS,
+    model: str = "classical",
 ) -> dict:
-    """Encode H.264/yuv420p fast-start playback as a private artifact."""
+    """Encode H.264/yuv420p fast-start playback as a private artifact.
+
+    ``model`` selects the analysis folder, so ONNX results get a browser
+    playable proxy too instead of the OpenCV mp4v original.
+    """
     if run_id < 0 or width < 2 or width % 2 or bitrate_kbps <= 0:
         raise ValueError("Require nonnegative id, positive bitrate, even width")
     encoder = shutil.which("ffmpeg")
     if encoder is None:
         raise FileNotFoundError("ffmpeg is required to prepare playback")
-    directory = data_dir / "fold_segmentation/live" / str(run_id)
+    directory = analysis_root(data_dir, model) / str(run_id)
     original = directory / "annotated.mp4"
     signature = source_signature(original)
     if playback_video(directory) != original and not replace:
@@ -126,6 +133,7 @@ def main() -> None:
     parser.add_argument("run_ids", nargs="+", type=int)
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--replace", action="store_true")
+    parser.add_argument("--model", choices=MODELS, default="classical")
     parser.add_argument("--width", type=int, default=DEFAULT_WIDTH)
     parser.add_argument(
         "--bitrate-kbps", type=int, default=DEFAULT_BITRATE_KBPS
@@ -139,6 +147,7 @@ def main() -> None:
                 replace=args.replace,
                 width=args.width,
                 bitrate_kbps=args.bitrate_kbps,
+                model=args.model,
             ),
             flush=True,
         )

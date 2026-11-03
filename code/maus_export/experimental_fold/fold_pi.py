@@ -7,28 +7,35 @@ import sys
 import threading
 from pathlib import Path
 
+from .fold_backend import MODELS, analysis_root
 from .fold_playback import playback_video, prepare_playback
 
 SCAN_INTERVAL_SECONDS = 15.0
 WORKER_JOIN_SECONDS = 2.0
+LOCK_NAME = ".playback.lock"
 
 
 def ensure_pi_playback(
-    data_dir: Path, run_id: int, *, blocking: bool = True
+    data_dir: Path,
+    run_id: int,
+    *,
+    blocking: bool = True,
+    model: str = "classical",
 ) -> bool:
     """Prepare a missing proxy, serializing Pi encoders across processes.
 
     The POSIX lock releases even after a crash. It is global to this data
-    directory so a website worker cannot compete with another Pi encoder.
+    directory, shared by both models, so a website worker cannot compete
+    with another Pi encoder.
     """
     import fcntl
 
-    root = data_dir / "fold_segmentation"
-    directory = root / "live" / str(run_id)
+    directory = analysis_root(data_dir, model) / str(run_id)
     original = directory / "annotated.mp4"
     if not original.is_file():
         return False
-    with (root / ".playback.lock").open("a") as lock:
+    lock_path = data_dir / "fold_segmentation" / LOCK_NAME
+    with lock_path.open("a") as lock:
         flags = fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB)
         try:
             fcntl.flock(lock, flags)
@@ -37,10 +44,11 @@ def ensure_pi_playback(
         try:
             if playback_video(directory) == original:
                 print(
-                    f"Pi: preparing low-bandwidth playback for {run_id}",
+                    f"Pi: preparing {model} low-bandwidth playback"
+                    f" for {run_id}",
                     flush=True,
                 )
-                prepare_playback(data_dir, run_id)
+                prepare_playback(data_dir, run_id, model=model)
             return True
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)
@@ -55,8 +63,17 @@ class PiPlaybackWorker:
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def scan_once(self) -> None:
-        """Ignore staging directories and let an active encoder finish first."""
-        root = self.data_dir / "fold_segmentation/live"
+        """Ignore staging directories and let an active encoder finish first.
+
+        Both the classical and the ONNX analysis folders are scanned.
+        """
+        for model in MODELS:
+            if self.stop_event.is_set():
+                break
+            self._scan_model(model)
+
+    def _scan_model(self, model: str) -> None:
+        root = analysis_root(self.data_dir, model)
         for directory in sorted(root.glob("*")):
             if self.stop_event.is_set():
                 break
@@ -69,7 +86,10 @@ class PiPlaybackWorker:
                 continue
             try:
                 ensure_pi_playback(
-                    self.data_dir, int(directory.name), blocking=False
+                    self.data_dir,
+                    int(directory.name),
+                    blocking=False,
+                    model=model,
                 )
             except (
                 OSError,
