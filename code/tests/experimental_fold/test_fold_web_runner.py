@@ -54,6 +54,8 @@ def test_launch_selected_video_and_prevent_duplicates(
     result = runner.start({"nthreads": threads, "model": "onnx", "run_id": 1})
     assert result["running"] is True
     command, options = runner.calls[0]
+    assert command[1:3] == ["-m", "maus_export.experimental_fold.fold_batch"]
+    assert "maus_export.cli" not in command
     assert command[command.index("--threads") + 1] == str(threads)
     assert command[command.index("--model") + 1] == "onnx"
     assert command[-3:] == ["--ids", "1", "--replace"]
